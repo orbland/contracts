@@ -1,13 +1,10 @@
-# Nectar Contract
+# Eric's Orb Contract
 
-Nectar accounting contract
+Eric's Orb (the proto-orb) contract. Auction + Harberger taxed ownership.
 
 ### Usage
 
 ```shell
-npx hardhat help
-npx hardhat test
-GAS_REPORT=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
+yarn install
+yarn hardhat test --typecheck
 ```
