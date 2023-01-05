@@ -21,9 +21,11 @@ contract EricOrb is ERC721, Ownable {
     uint256 timestamp;
   }
 
-  uint256 private _triggersCount = 0;
   mapping(uint256 => HashTime) public triggers;
+  uint256 public triggersCount = 0;
   mapping(uint256 => HashTime) public responses;
+  mapping(uint256 => bool) public responseFlagged;
+  uint256 public flaggedResponsesCount = 0;
 
   // Auction params
 
@@ -68,6 +70,7 @@ contract EricOrb is ERC721, Ownable {
 
   event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
   event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+  event ResponseFlagged(address indexed from, uint256 indexed responseId);
 
   constructor() ERC721("EricOrb", "ORB") {
     _safeMint(address(this), 0);
@@ -414,10 +417,10 @@ contract EricOrb is ERC721, Ownable {
   function trigger(bytes32 contentHash_) external onlyHolder onlyHolderHeld onlyHolderSolvent {
     require(block.timestamp >= lastTriggerTime + COOLDOWN, "orb is not ready yet");
     lastTriggerTime = block.timestamp;
-    uint256 triggerId = _triggersCount;
+    uint256 triggerId = triggersCount;
 
     triggers[triggerId] = HashTime(contentHash_, block.timestamp);
-    _triggersCount += 1;
+    triggersCount += 1;
 
     emit Triggered(_msgSender(), triggerId, contentHash_, block.timestamp);
   }
@@ -429,6 +432,18 @@ contract EricOrb is ERC721, Ownable {
     responses[toTrigger_] = HashTime(contentHash_, block.timestamp);
 
     emit Responded(_msgSender(), toTrigger_, contentHash_, block.timestamp);
+  }
+
+  function flagResponse(uint256 responseId_) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+    // solvency requirement is a weird one, but keeping it consistent with trigger()
+    require(responses[responseId_].timestamp != 0, "response does not exist");
+    require(responses[responseId_].timestamp > block.timestamp - 7 days, "response is too old to flag");
+    require(responseFlagged[responseId_] == false, "response has already been flagged");
+
+    responseFlagged[responseId_] = true;
+    flaggedResponsesCount += 1;
+
+    emit ResponseFlagged(_msgSender(), responseId_);
   }
 
   function _triggerExists(uint256 triggerId_) internal view returns (bool) {
