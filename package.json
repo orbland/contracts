@@ -42,6 +42,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.7.3"
+    "@openzeppelin/contracts": "^4.7.3",
+    "dotenv": "^16.0.3"
   }
 }
