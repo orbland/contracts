@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 contract EricOrb is ERC721, Ownable {
   // Orb params
@@ -27,10 +27,14 @@ contract EricOrb is ERC721, Ownable {
 
   // Auction params
 
-  uint256 private constant STARTING_PRICE = 0.1 ether; // Auction starts at
-  uint256 private constant MINIMUM_BID_STEP = 0.01 ether; // Each bid has to increase price by at least this much
-  uint256 private constant MINIMUM_AUCTION_DURATION = 1 days; // Auction will run for at least
-  uint256 public constant BID_AUCTION_EXTENSION = 30 minutes; // If remaining time is less than this, auction will be extend to now + this
+  // Auction starts at
+  uint256 private constant STARTING_PRICE = 0.1 ether;
+  // Each bid has to increase price by at least this much
+  uint256 private constant MINIMUM_BID_STEP = 0.01 ether;
+  // Auction will run for at least
+  uint256 private constant MINIMUM_AUCTION_DURATION = 1 days;
+  // If remaining time is less than this, auction will be extend to now + this
+  uint256 public constant BID_AUCTION_EXTENSION = 30 minutes;
 
   uint256 public startTime;
   uint256 public endTime;
@@ -45,7 +49,7 @@ contract EricOrb is ERC721, Ownable {
   uint256 public constant SALE_ROYALTIES_NUMERATOR = 1000; // Secondary sale to issuer: 10%
 
   mapping(address => uint256) private _funds;
-  uint256 private _lastSettlementTime; // of the orb holder, shouldn't be useful is orb is held by contract.
+  uint256 private _lastSettlementTime; // of the orb holder, shouldn"t be useful is orb is held by contract.
 
   // Events
 
@@ -65,35 +69,36 @@ contract EricOrb is ERC721, Ownable {
   event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
   event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
 
-  constructor() ERC721('EricOrb', 'ORB') {
+  constructor() ERC721("EricOrb", "ORB") {
     _safeMint(address(this), 0);
   }
 
   // ERC-721 compatibility
 
   function _baseURI() internal pure override returns (string memory) {
-    return 'https://static.orb.land/eric/';
+    return "https://static.orb.land/eric/";
   }
 
   // In the future we might allow transfers.
   // It would settle (both accounts in multi-orb) and require the receiver to have deposit.
   function transferFrom(address, address, uint256) public pure override {
-    revert('transfering not supported, purchase required');
+    revert("transfering not supported, purchase required");
     // transferFrom(address from, address to, uint256 tokenId) external override onlyOwner onlyOwnerHeld
-    // require(_isApprovedOrOwner(_msgSender(), tokenId), 'ERC721: caller is not token owner or approved');
+    // require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner or approved");
     // _transfer(from, to, tokenId);
   }
 
   function safeTransferFrom(address, address, uint256) public pure override {
-    revert('transfering not supported, purchase required');
+    revert("transfering not supported, purchase required");
     // safeTransferFrom(address from, address to, uint256 tokenId) external override onlyOwner onlyOwnerHeld
-    // safeTransferFrom(from, to, tokenId, '');
+    // safeTransferFrom(from, to, tokenId, "");
   }
 
   function safeTransferFrom(address, address, uint256, bytes memory) public pure override {
-    revert('transfering not supported, purchase required');
-    // safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) external override onlyOwner onlyOwnerHeld
-    // require(_isApprovedOrOwner(_msgSender(), tokenId), 'ERC721: caller is not token owner or approved');
+    revert("transfering not supported, purchase required");
+    // safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
+    //   external override onlyOwner onlyOwnerHeld
+    // require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner or approved");
     // _safeTransfer(from, to, tokenId, data);
   }
 
@@ -102,51 +107,51 @@ contract EricOrb is ERC721, Ownable {
   // inherits onlyOwner
 
   modifier notOwner() {
-    require(owner() != _msgSender(), 'caller is the owner');
+    require(owner() != _msgSender(), "caller is the owner");
     _;
   }
 
-  // Should be use in conjuction with onlyHolderHeld to make sure it's not the contract
+  // Should be use in conjuction with onlyHolderHeld to make sure it"s not the contract
   modifier onlyHolder() {
     address holder = ERC721.ownerOf(0);
-    require(_msgSender() == holder, 'not orb holder');
+    require(_msgSender() == holder, "not orb holder");
     _;
   }
 
   modifier onlyHolderHeld() {
     address holder = ERC721.ownerOf(0);
-    require(address(this) != holder, 'contract holds the orb');
+    require(address(this) != holder, "contract holds the orb");
     _;
   }
 
   modifier onlyContractHeld() {
     address holder = ERC721.ownerOf(0);
-    require(address(this) == holder, 'contract does not hold the orb');
+    require(address(this) == holder, "contract does not hold the orb");
     _;
   }
 
   modifier onlyDuringAuction() {
-    require(auctionRunning(), 'auction not running');
+    require(auctionRunning(), "auction not running");
     _;
   }
 
   modifier notDuringAuction() {
-    require(!auctionRunning(), 'auction running');
+    require(!auctionRunning(), "auction running");
     _;
   }
 
   modifier notWinningBidder() {
-    require(_msgSender() != winningBidder, 'not permitted for winning bidder');
+    require(_msgSender() != winningBidder, "not permitted for winning bidder");
     _;
   }
 
   modifier onlyHolderInsolvent() {
-    require(!_holderSolvent(), 'holder solvent');
+    require(!_holderSolvent(), "holder solvent");
     _;
   }
 
   modifier onlyHolderSolvent() {
-    require(_holderSolvent(), 'holder insolvent');
+    require(_holderSolvent(), "holder insolvent");
     _;
   }
 
@@ -165,7 +170,7 @@ contract EricOrb is ERC721, Ownable {
 
   modifier hasFunds() {
     address recipient = _msgSender();
-    require(_funds[recipient] > 0, 'no funds available');
+    require(_funds[recipient] > 0, "no funds available");
     _;
   }
 
@@ -214,8 +219,8 @@ contract EricOrb is ERC721, Ownable {
     uint256 currentFunds = _funds[_msgSender()];
     uint256 totalFunds = currentFunds + msg.value;
 
-    require(amount_ >= minimumBid(), 'bid not sufficient');
-    require(totalFunds >= fundsRequiredToBid(amount_), 'not sufficient funds');
+    require(amount_ >= minimumBid(), "bid not sufficient");
+    require(totalFunds >= fundsRequiredToBid(amount_), "not sufficient funds");
 
     _funds[_msgSender()] = totalFunds;
     winningBidder = _msgSender();
@@ -230,7 +235,7 @@ contract EricOrb is ERC721, Ownable {
   }
 
   function closeAuction() external notDuringAuction onlyContractHeld {
-    require(endTime > 0, 'auction was not started');
+    require(endTime > 0, "auction was not started");
     if (winningBidder != address(0)) {
       price = winningBid;
       _funds[winningBidder] -= price;
@@ -256,14 +261,14 @@ contract EricOrb is ERC721, Ownable {
   // Key funds manangement methods
 
   function fundsOf(address user_) external view returns (uint256) {
-    require(user_ != address(0), 'address zero is not valid');
+    require(user_ != address(0), "address zero is not valid");
     return _funds[user_];
   }
 
   function deposit() external payable {
     address holder = ERC721.ownerOf(0);
     if (_msgSender() == holder) {
-      require(_holderSolvent(), 'deposits allowed only during solvency');
+      require(_holderSolvent(), "deposits allowed only during solvency");
     }
 
     _funds[_msgSender()] += msg.value;
@@ -275,7 +280,7 @@ contract EricOrb is ERC721, Ownable {
   }
 
   function withdraw(uint256 amount_) external notWinningBidder settlesIfHolder hasFunds {
-    require(_funds[_msgSender()] >= amount_, 'not enough funds');
+    require(_funds[_msgSender()] >= amount_, "not enough funds");
     _withdraw(amount_);
   }
 
@@ -301,7 +306,7 @@ contract EricOrb is ERC721, Ownable {
 
     if (owner() == holder) {
       return;
-      // Owner doesn't need to pay themselves
+      // Owner doesn"t need to pay themselves
     }
 
     assert(address(this) != holder); // should never be reached if contract holds the orb
@@ -338,18 +343,20 @@ contract EricOrb is ERC721, Ownable {
     uint256 newPrice_
   ) external payable onlyHolderHeld onlyHolderSolvent settles {
     // require current price to prevent front-running
-    require(currentPrice_ == price, 'current price incorrect');
-    require(newPrice_ > 0, 'new price cannot be zero when purchasing'); // just to prevent errors, price can be set to 0 later
+    require(currentPrice_ == price, "current price incorrect");
+
+    // just to prevent errors, price can be set to 0 later
+    require(newPrice_ > 0, "new price cannot be zero when purchasing");
 
     address holder = ERC721.ownerOf(0);
-    require(_msgSender() != holder, 'you already own the orb');
+    require(_msgSender() != holder, "you already own the orb");
 
     _funds[_msgSender()] += msg.value;
     uint256 totalFunds = _funds[_msgSender()];
 
     // requires more than price -- not specified how much more, expects UI to handle
-    require(totalFunds > price, 'not enough funds');
-    // require(totalFunds >= minimumAcceptedPurchaseAmount(), 'not enough funds');
+    require(totalFunds > price, "not enough funds");
+    // require(totalFunds >= minimumAcceptedPurchaseAmount(), "not enough funds");
 
     uint256 ownerRoyalties = (price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
     uint256 currentOwnerShare = price - ownerRoyalties;
@@ -405,7 +412,7 @@ contract EricOrb is ERC721, Ownable {
   }
 
   function trigger(bytes32 contentHash_) external onlyHolder onlyHolderHeld onlyHolderSolvent {
-    require(block.timestamp >= lastTriggerTime + COOLDOWN, 'orb is not ready yet');
+    require(block.timestamp >= lastTriggerTime + COOLDOWN, "orb is not ready yet");
     lastTriggerTime = block.timestamp;
     uint256 triggerId = _triggersCount;
 
@@ -416,8 +423,8 @@ contract EricOrb is ERC721, Ownable {
   }
 
   function respond(uint256 toTrigger_, bytes32 contentHash_) external onlyOwner {
-    require(_triggerExists(toTrigger_), 'this orb trigger does not exist');
-    require(!_responseExists(toTrigger_), 'this orb trigger has already been responded');
+    require(_triggerExists(toTrigger_), "this orb trigger does not exist");
+    require(!_responseExists(toTrigger_), "this orb trigger has already been responded");
 
     responses[toTrigger_] = HashTime(contentHash_, block.timestamp);
 
