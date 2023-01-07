@@ -287,6 +287,10 @@ describe("Eric's Orb", function () {
       beforeClose = await takeSnapshot()
       await expect(orbUser2.closeAuction()).to.not.be.reverted
     })
+    it("Should not allow starting the auction again until it is closed", async function () {
+      await beforeClose.restore()
+      await expect(orbDeployer.startAuction()).to.be.revertedWith("auction already started")
+    })
     it("Should pay out the winning bid to the contract owner", async function () {
       await beforeClose.restore()
       const ownerFundsBefore = await orbDeployer.fundsOf(deployer.address)

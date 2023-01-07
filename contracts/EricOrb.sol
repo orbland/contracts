@@ -180,6 +180,8 @@ contract EricOrb is ERC721, Ownable {
   // Auction
 
   function startAuction() external onlyOwner onlyContractHeld notDuringAuction {
+    require(endTime == 0, "auction already started");
+
     startTime = block.timestamp;
     endTime = block.timestamp + MINIMUM_AUCTION_DURATION;
     winningBidder = address(0);
