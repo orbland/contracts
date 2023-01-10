@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
+    "solmate": "^6.6.1",
     "dotenv": "^16.0.3"
   }
 }
