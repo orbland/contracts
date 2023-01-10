@@ -329,7 +329,7 @@ describe("Eric's Orb", function () {
       await expect(orbUser2.closeAuction()).to.not.be.reverted
 
       expect(await orbDeployer.lastTriggerTime()).to.be.greaterThan(0)
-      await expect(orbUser.trigger(triggerData)).to.emit(orbDeployer, "Triggered")
+      await expect(orbUser.trigger(triggerData, "")).to.emit(orbDeployer, "Triggered")
     })
     it("Should not show the auction as running after closing", async function () {
       expect(await orbDeployer.auctionRunning()).to.be.eq(false)
@@ -452,7 +452,7 @@ describe("Eric's Orb", function () {
       // orb is immediately triggerable after purchase
       expect(await orbUser.cooldownRemaining()).to.be.eq(0)
 
-      await expect(orbUser.trigger(triggerData)).to.not.be.reverted
+      await expect(orbUser.trigger(triggerData, "what is 42?")).to.not.be.reverted
       expect(await orbUser.cooldownRemaining()).to.be.eq(await orbDeployer.COOLDOWN())
       await time.increase(await orbDeployer.COOLDOWN())
       expect(await orbUser.cooldownRemaining()).to.be.eq(0)
@@ -461,14 +461,14 @@ describe("Eric's Orb", function () {
     })
     it("Should not allow orb triggering before the cooldown expires", async function () {
       await afterClose.restore()
-      await expect(orbUser.trigger(triggerData)).to.not.be.reverted
+      await expect(orbUser.trigger(triggerData, "")).to.not.be.reverted
       await time.increase((await orbDeployer.COOLDOWN()).sub(60 * 60)) // 1 hour before cooldown expires
-      await expect(orbUser.trigger(triggerData)).to.be.revertedWith("orb is not ready yet")
+      await expect(orbUser.trigger(triggerData, "what is 42?")).to.be.revertedWith("orb is not ready yet")
     })
     it("Should not allow anyone but the holder to trigger the orb", async function () {
       await afterClose.restore()
       expect(await orbUser.cooldownRemaining()).to.be.eq(0)
-      await expect(orbUser2.trigger(triggerData)).to.be.revertedWith("not orb holder")
+      await expect(orbUser2.trigger(triggerData, "")).to.be.revertedWith("not orb holder")
     })
     it("Should allow the holder to trigger the orb", async function () {
       await afterClose.restore()
@@ -476,7 +476,8 @@ describe("Eric's Orb", function () {
       const timestampBeforeTrigger = await time.latest()
       const triggerTimestamp = timestampBeforeTrigger + 60 * 60 // 1 hour later
       await time.setNextBlockTimestamp(triggerTimestamp)
-      await expect(orbUser.trigger(triggerData))
+      await expect(orbUser.trigger(triggerData, "a".repeat(281))).to.be.revertedWith("cleartext is too long")
+      await expect(orbUser.trigger(triggerData, ""))
         .to.emit(orbDeployer, "Triggered")
         .withArgs(user.address, 0, triggerData, triggerTimestamp)
       const firstTrigger = await orbDeployer.triggers(0)
@@ -486,10 +487,22 @@ describe("Eric's Orb", function () {
 
       const secondTriggerTimestamp = timestampBeforeTrigger + 7 * 24 * 60 * 60 + 2 * 60 * 60 // 1 week and 2 hours
       await time.setNextBlockTimestamp(secondTriggerTimestamp)
-      await expect(orbUser.trigger(triggerData))
+      await expect(orbUser.trigger(triggerData, "what is 0?")).to.be.revertedWith(
+        "cleartext does not match content hash"
+      )
+      await expect(orbUser.trigger(triggerData, "what is 42?"))
         .to.emit(orbDeployer, "Triggered")
         .withArgs(user.address, 1, triggerData, secondTriggerTimestamp)
       expect(await orbDeployer.triggersCount()).to.be.eq(2)
+    })
+    it("Should not allow providing incorrect cleartext", async function () {
+      await expect(orbUser.recordTriggerCleartext(0, "a".repeat(281))).to.be.revertedWith("cleartext is too long")
+      await expect(orbUser.recordTriggerCleartext(0, "what is 0?")).to.be.revertedWith(
+        "cleartext does not match content hash"
+      )
+    })
+    it("Should allow providing correct cleartext", async function () {
+      await expect(orbUser.recordTriggerCleartext(0, "what is 42?")).to.not.be.reverted
     })
     it("Should not allow anyone but the owner to respond", async function () {
       await expect(orbUser.respond(0, triggerData)).to.be.revertedWith("Ownable: caller is not the owner")

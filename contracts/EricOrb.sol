@@ -22,6 +22,7 @@ contract EricOrb is ERC721, Ownable {
   }
 
   mapping(uint256 => HashTime) public triggers;
+  mapping(uint256 => string) public triggersCleartext;
   uint256 public triggersCount = 0;
   mapping(uint256 => HashTime) public responses;
   mapping(uint256 => bool) public responseFlagged;
@@ -416,15 +417,46 @@ contract EricOrb is ERC721, Ownable {
     }
   }
 
-  function trigger(bytes32 contentHash_) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+  function trigger(
+    bytes32 contentHash_,
+    string memory cleartext_
+  ) external onlyHolder onlyHolderHeld onlyHolderSolvent {
     require(block.timestamp >= lastTriggerTime + COOLDOWN, "orb is not ready yet");
+
+    uint256 cleartextLength = bytes(cleartext_).length;
+    require(cleartextLength <= 280, "cleartext is too long");
+
     lastTriggerTime = block.timestamp;
     uint256 triggerId = triggersCount;
 
     triggers[triggerId] = HashTime(contentHash_, block.timestamp);
     triggersCount += 1;
 
+    if (cleartextLength > 0) {
+      bytes32 submittedCleartextHash = keccak256(abi.encodePacked(cleartext_));
+      require(contentHash_ == submittedCleartextHash, "cleartext does not match content hash");
+
+      triggersCleartext[triggerId] = cleartext_;
+    }
+
     emit Triggered(_msgSender(), triggerId, contentHash_, block.timestamp);
+  }
+
+  function recordTriggerCleartext(
+    uint256 triggerId_,
+    string memory cleartext_
+  ) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+    uint256 cleartextLength = bytes(cleartext_).length;
+    require(cleartextLength <= 280, "cleartext is too long");
+    // not requiring to be more than 0
+
+    bytes32 recordedContentHash = triggers[triggerId_].contentHash;
+    bytes32 submittedCleartextHash = keccak256(abi.encodePacked(cleartext_));
+
+    require(recordedContentHash == submittedCleartextHash, "cleartext does not match content hash");
+
+    triggersCleartext[triggerId_] = cleartext_;
+    // allows overwriting; assuming now hash collisions, just wastes gas
   }
 
   function respond(uint256 toTrigger_, bytes32 contentHash_) external onlyOwner {
