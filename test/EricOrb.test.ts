@@ -359,6 +359,22 @@ describe("Eric's Orb", function () {
       expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
       expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year)
     })
+    it("Should not allow any transfers", async function () {
+      await expect(orbUser.transferFrom(user.address, user2.address, 0)).to.be.revertedWith(
+        "transfering not supported, purchase required"
+      )
+      await expect(
+        orbUser["safeTransferFrom(address,address,uint256)"](user.address, user2.address, 0)
+      ).to.be.revertedWith("transfering not supported, purchase required")
+      await expect(
+        orbUser["safeTransferFrom(address,address,uint256,bytes)"](
+          user.address,
+          user2.address,
+          0,
+          ethers.utils.randomBytes(32)
+        )
+      ).to.be.revertedWith("transfering not supported, purchase required")
+    })
     it("Should allow the holder to change the price", async function () {
       expect(await orbUser.price()).to.be.eq(ethers.utils.parseEther("1"))
       expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
@@ -722,7 +738,9 @@ describe("Eric's Orb", function () {
     })
   })
 
-  // describe('ERC-721', function () {
-  //   // @todo test functions that work and functions that don't
-  // })
+  describe("ERC-721", function () {
+    it("Should return a correct token URI", async function () {
+      expect(await orbUser.tokenURI(0)).to.be.eq("https://static.orb.land/eric/0")
+    })
+  })
 })

@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox"
 import "@nomiclabs/hardhat-solhint"
 import "hardhat-contract-sizer"
 import "hardhat-gas-reporter"
+import "solidity-coverage"
 
 import * as dotenv from "dotenv"
 dotenv.config()

@@ -110,10 +110,10 @@ contract EricOrb is ERC721, Ownable {
 
   // inherits onlyOwner
 
-  modifier notOwner() {
-    require(owner() != _msgSender(), "caller is the owner");
-    _;
-  }
+  // modifier notOwner() {
+  //   require(owner() != _msgSender(), "caller is the owner");
+  //   _;
+  // }
 
   // Should be use in conjuction with onlyHolderHeld to make sure it"s not the contract
   modifier onlyHolder() {
