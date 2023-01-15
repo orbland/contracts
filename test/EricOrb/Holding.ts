@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox"
 
 import { expect } from "chai"
 import { ethers } from "hardhat"
+import { BigNumber } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { takeSnapshot, SnapshotRestorer, time } from "@nomicfoundation/hardhat-network-helpers"
 
@@ -85,6 +86,12 @@ export default function () {
 
     expect(await orbUser.price()).to.be.eq(ethers.utils.parseEther("2"))
   })
+  it("Should have a limit for maximum price", async function () {
+    await expect(orbUser.setPrice(BigNumber.from(2).pow(129))).to.be.revertedWithCustomError(
+      orbDeployer,
+      "InvalidNewPrice"
+    )
+  })
   it("Should adjust foreclosure date after price adjustment", async function () {
     expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year * 0.75)
   })
@@ -98,6 +105,32 @@ export default function () {
   })
   it("Should not allow anyone else to change the price", async function () {
     await expect(orbUser2.setPrice(defaultValue.mul(3))).to.revertedWithCustomError(orbDeployer, "NotHolder")
+  })
+  it("Should correctly report effective funds", async function () {
+    await afterClose.restore()
+    await time.increase(year * 0.25)
+
+    await expect(orbUser.fundsOf(ethers.constants.AddressZero)).to.be.revertedWithCustomError(
+      orbDeployer,
+      "InvalidAddress"
+    )
+
+    expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
+    const ownerFunds = await orbUser.fundsOf(deployer.address)
+    const user2Funds = await orbUser.fundsOf(user2.address)
+    expect(await orbUser.effectiveFundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.075"))
+    expect(await orbUser.effectiveFundsOf(deployer.address)).to.be.eq(ethers.utils.parseEther("0.025").add(ownerFunds))
+
+    await time.setNextBlockTimestamp(closeTimestamp + year * 0.5)
+    await expect(orbUser2.settle()).to.emit(orbDeployer, "Settlement")
+    expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.05"))
+    expect(await orbUser.fundsOf(deployer.address)).to.be.eq(ownerFunds.add(ethers.utils.parseEther("0.05")))
+    expect(await orbUser.fundsOf(user2.address)).to.be.eq(user2Funds)
+    expect(await orbUser.effectiveFundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.05"))
+    expect(await orbUser.effectiveFundsOf(deployer.address)).to.be.eq(ownerFunds.add(ethers.utils.parseEther("0.05")))
+    expect(await orbUser.effectiveFundsOf(user2.address)).to.be.eq(user2Funds)
+
+    expect(await orbUser.lastSettlementTime()).to.be.eq(await time.latest())
   })
   it("Should allow anyone to settle what holder owes", async function () {
     await afterClose.restore()

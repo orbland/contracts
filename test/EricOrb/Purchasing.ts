@@ -54,6 +54,12 @@ export default function () {
       orbUser2.purchase(ethers.utils.parseEther("0.1"), ethers.utils.parseEther("0.5"), { value: defaultValue })
     ).to.be.revertedWithCustomError(orbDeployer, "CurrentPriceIncorrect")
   })
+  it("Should block purchases with new price set to zero", async function () {
+    expect(await orbUser2.price()).to.be.eq(defaultValue)
+    await expect(
+      orbUser2.purchase(defaultValue, 0, { value: ethers.utils.parseEther("1.2") })
+    ).to.be.revertedWithCustomError(orbDeployer, "InvalidNewPrice")
+  })
   it("Should block purchases without any funds for deposit", async function () {
     expect(await orbUser2.fundsOf(user2.address)).to.be.eq(0)
     await expect(
