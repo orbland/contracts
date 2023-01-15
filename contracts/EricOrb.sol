@@ -8,9 +8,17 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title   Eric's Orb - Harberger Tax NFT with auction and on-chain triggers and responses
  * @author  Jonas Lekevicius, Eric Wall
- * @dev     Supperts ERC-721 interface, does not support token transfers.
+ * @dev     Supports ERC-721 interface, does not support token transfers.
  *          Uses {Ownable}'s {owner()} to identify the issuer of the Orb.
- * @notice  TODO human-friendly introduction to the contract.
+ * @notice  Eric's Orb is a basic Q&A-type Orb. The holder has the right to submit a text-based question to
+ *          Eric and the right to receive a text-based response. The question is limited to 280 characters but
+ *          responses may come in any length. Questions and answers are hash-committed to the Ethereum blockchain
+ *          so that the track record cannot be changed. The Orb has a 1-week cooldown.
+ *
+ *          The Orb uses Harberger Tax and is always on sale. This means that when you purchase the Orb, you must
+ *          also set a price which you’re willing to sell the Orb at. However, you must pay 10% of that amount to
+ *          the Orb smart contract per year in order to maintain the Orb ownership. This amount is accounted for
+ *          per second, and user funds need to be topped up before the foreclosure time to maintain ownership.
  */
 contract EricOrb is ERC721, Ownable {
   ////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +124,8 @@ contract EricOrb is ERC721, Ownable {
   string internal constant BASE_URL = "https://static.orb.land/eric/";
   // Special value returned when foreclosure time is "never".
   uint256 internal constant INFINITY = type(uint256).max;
+  // Maximum orb price, limited to prevent potential overflows.
+  uint256 internal constant MAX_PRICE = 2 ** 128;
 
   // STATE
 
@@ -123,8 +133,10 @@ contract EricOrb is ERC721, Ownable {
   mapping(address => uint256) private _funds;
 
   // Price of the Orb. No need for mapping, as only one token is very minted.
-  uint256 public price;
-  // Last time orb holder's funds were settled. Shouldn't be useful is orb is held by the contract.
+  // Shouldn't be useful is orb is held by the contract.
+  uint256 private _price;
+  // Last time orb holder's funds were settled.
+  // Shouldn't be useful is orb is held by the contract.
   uint256 private _lastSettlementTime;
 
   // Auction State Variables
@@ -364,13 +376,12 @@ contract EricOrb is ERC721, Ownable {
 
   /**
    * @notice  Total funds (funds on contract + sent value) required to fund a bid of a given value.
-   *          Returns the bid amount + enough to cover the Harberger tax for one Harberger tax period.
+   *          Returns bid amount + enough to cover the Harberger tax for one Harberger tax period, 1 year by default.
    * @dev     Can be used together with {minimumBid()} and {fundsOf{}} to figure out msg.value required for bid().
    * @param   amount  Bid amount to calculate for.
    * @return  uint256  Total funds required to satisfy the bid of `amount`.
    */
   function fundsRequiredToBid(uint256 amount) public pure returns (uint256) {
-    // Minimum deposit is 1 Holder Tax Period, currently 1 year.
     uint256 requiredDeposit = (amount * HOLDER_TAX_NUMERATOR) / FEE_DENOMINATOR;
     return amount + requiredDeposit;
   }
@@ -427,7 +438,7 @@ contract EricOrb is ERC721, Ownable {
 
   /**
    * @notice  Closes the Auction, transferring the winning bid to the issuer, and the orb to the winner.
-   *          The Orb can be triggered immediately.
+   *          Sets lastTriggerTime so that the Orb could be triggered immediately.
    *          If no bids were made, resets the state to allow the auction to be started again later.
    * @dev     Critical state transition function. Called after endTime, but only if it's not 0.
    *          Can be called by anyone, although probably will be called by the issuer or the winner.
@@ -440,13 +451,12 @@ contract EricOrb is ERC721, Ownable {
 
     if (winningBidder != address(0)) {
       _setPrice(winningBid);
-      _funds[winningBidder] -= price;
-      _funds[owner()] += price;
+      _funds[winningBidder] -= _price;
+      _funds[owner()] += _price;
 
       _transfer(address(this), winningBidder, ERIC_ORB_ID);
 
       _lastSettlementTime = block.timestamp;
-      // Allow triggering immediately after closing the auction.
       lastTriggerTime = block.timestamp - COOLDOWN;
 
       emit AuctionClosed(winningBidder, winningBid);
@@ -467,10 +477,10 @@ contract EricOrb is ERC721, Ownable {
 
   /**
    * @notice  Returns funds deposited on the contract by the given address.
-   * @param   user  Address to return funds for.
+   * @param   user  Address to return funds of.
    * @return  uint256  Address funds.
    */
-  function fundsOf(address user) external view returns (uint256) {
+  function fundsOf(address user) public view returns (uint256) {
     if (user == address(0)) {
       revert InvalidAddress(address(0));
     }
@@ -479,7 +489,46 @@ contract EricOrb is ERC721, Ownable {
   }
 
   /**
+   * @notice  Returns funds for an address on this contract, freely available to withdraw.
+   *          Accounts for owed Harberger tax, so can be used to display an actual effective balance.
+   * @dev     The only addresses where this mismatches with {fundsOf()} is the issuer and the holder.
+   * @param   user  Address to return effective funds of.
+   * @return  uint256  Address effective funds.
+   */
+  function effectiveFundsOf(address user) external view returns (uint256) {
+    uint256 unadjustedFunds = fundsOf(user);
+    address holder = ERC721.ownerOf(ERIC_ORB_ID);
+
+    if (user == owner() || user == holder) {
+      uint256 owedFunds = _owedSinceLastSettlement();
+      uint256 holderFunds = fundsOf(holder);
+      uint256 transferableToOwner = holderFunds <= owedFunds ? holderFunds : owedFunds;
+
+      if (user == owner()) {
+        return unadjustedFunds + transferableToOwner;
+      }
+      if (user == holder) {
+        return unadjustedFunds - transferableToOwner;
+      }
+    }
+
+    return unadjustedFunds;
+  }
+
+  /**
+   * @notice  Returns the last time funds were settled from orb holder to orb issuer. Can be used to
+   *          calculate effective funds of the holder or the issuer in real time.
+   * @dev     Reverts if orb is held by the contract, as settlements are meaningless in that state.
+   * @return  uint256  Timestamp of the last settlement.
+   */
+  function lastSettlementTime() public view onlyHolderHeld returns (uint256) {
+    return _lastSettlementTime;
+  }
+
+  /**
    * @notice  Returns if the current orb holder has enough funds to cover Harberger tax until now.
+   *          Always true is issuer holds the orb.
+   * @dev     Reverts if orb is held by the contract, contract cannot be solvent or insolvent.
    * @return  bool  If the current holder is solvent.
    */
   function holderSolvent() external view onlyHolderHeld returns (bool) {
@@ -520,13 +569,25 @@ contract EricOrb is ERC721, Ownable {
   }
 
   /**
-   * @notice  .
-   * @dev     .
+   * @notice  Settlements transfer funds from orb holder to orb issuer.
+   *          Orb accounting minimizes required transactions: orb holder's foreclosure time is only
+   *          dependent on the price and available funds. Fund transfers are not necessary unless
+   *          these variables (price, holder funds) are being changed. Settlement transfers funds owed
+   *          since the last settlement, and a new period of virtual accounting begins.
+   * @dev     Holder might owe more than they have funds available: it means that the holder is foreclosable.
+   *          Settlement would transfer all holder funds to the issuer, but not more.
+   *          Does nothing if the issuer holds the orb. Reverts if contract holds the orb.
+   *          Emits Settlement().
    */
   function settle() external onlyHolderHeld {
     _settle();
   }
 
+  /**
+   * @dev     Returns if the current orb holder has enough funds to cover Harberger tax until now.
+   *          Always true is issuer holds the orb.
+   * @return  bool  If the current holder is solvent.
+   */
   function _holderSolvent() internal view returns (bool) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
@@ -535,11 +596,25 @@ contract EricOrb is ERC721, Ownable {
     return _funds[holder] > _owedSinceLastSettlement();
   }
 
+  /**
+   * @dev     Calculates how much money orb holder owes orb issuer. This amount would be transferred between
+   *          accounts during settlement.
+   *          Owed amount can be higher than hodler's funds! It's important to check if holder has enough funds
+   *          before transferring.
+   * @return  bool  Wei orb holders owes orb issuer since the last settlement time.
+   */
   function _owedSinceLastSettlement() internal view returns (uint256) {
     uint256 secondsSinceLastSettlement = block.timestamp - _lastSettlementTime;
-    return (price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
+    return (_price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
   }
 
+  /**
+   * @dev     Executes the withdrawal for a given amount, does the actual value transfer from the contract
+   *          to user's wallet. The only function in the contract that sends value and has re-entrancy risk.
+   *          Does not check if the address is payable, as the Address library reverts if it is not.
+   *          Emits Withdrawal().
+   * @param   amount_  The value in wei to withdraw from the contract.
+   */
   function _withdraw(uint256 amount_) internal {
     if (_funds[_msgSender()] < amount_) {
       revert InsufficientFunds(_funds[_msgSender()], amount_);
@@ -552,15 +627,17 @@ contract EricOrb is ERC721, Ownable {
     Address.sendValue(payable(_msgSender()), amount_);
   }
 
+  /**
+   * @dev  See {settle()}.
+   */
   function _settle() internal {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
 
-    // Owner doesn't need to pay themselves
     if (owner() == holder) {
       return;
     }
 
-    // Should never be reached if contract holds the orb.
+    // Should never be reached if this contract holds the orb.
     assert(address(this) != holder);
 
     uint256 availableFunds = _funds[holder];
@@ -579,17 +656,54 @@ contract EricOrb is ERC721, Ownable {
   //  FUNCTIONS: PURCHASING
   ////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * @notice  Returns the current orb price, set by the holder. If the holder is solvent, the orb can be
+   *          purchased for this price at any time.
+   *          It is also the basis for Harberger tax calculations.
+   * @dev     Only meaningful if the {purchase()} function can be called, otherwise reverts.
+   * @return  uint256  Current orb price.
+   */
+  function price() external view onlyHolderHeld onlyHolderSolvent returns (uint256) {
+    return _price;
+  }
+
+  /**
+   * @notice  Sets the new purchase price for the orb. Harberger tax means the asset is always for sale.
+   *          The price can be set to zero, making foreclosure time to be never.
+   * @dev     Can only be called by a solvent holder.
+   *          Settles before adjusting the price, as the new price will change foreclosure time.
+   *          Does not check if the new price differs from the previous price: no risk.
+   *          Limits the price to MAX_PRICE to prevent potential overflows in math.
+   *          Emits NewPrice().
+   * @param   newPrice  New price for the orb.
+   */
   function setPrice(uint256 newPrice) external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
     _setPrice(newPrice);
   }
 
+  /**
+   * @notice  Purchasing is the mechanism to take over the orb. With Harberger tax, an orb can always be
+   *          purchased from its holder.
+   *          Purchasing is only allowed while the holder is solvent. If not, the orb has to be foreclosed and
+   *          re-auctioned.
+   *          Purchaser is required to have more funds than the price itself, but the exact amount is left for the
+   *          user interface implementation to calculate and send along.
+   *          Purchasing sends Sale Royalties part to the orb issuer, 10% by default.
+   * @dev     Requires to provide the current price as the first parameter to prevent front-running: without current
+   *          price requirement someone could purchase the orb ahead of someone else, set the price higher, and
+   *          profit from the purchase.
+   *          Does not modify last trigger time, unlike buying from the auction.
+   *          Does not allow purchasing from yourself.
+   *          Emits NewPrice() and Purchase().
+   * @param   currentPrice  Current price, to prevent front-running.
+   * @param   newPrice  New price to use after the purchase. Cannot be set to zero here to prevent errors, but can
+   *          be set to zero afterwards via {setPrice()}.
+   */
   function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent settles {
-    // require current price to prevent front-running
-    if (currentPrice != price) {
-      revert CurrentPriceIncorrect(currentPrice, price);
+    if (currentPrice != _price) {
+      revert CurrentPriceIncorrect(currentPrice, _price);
     }
 
-    // just to prevent errors, price can be set to 0 later
     if (newPrice == 0) {
       revert InvalidNewPrice(newPrice);
     }
@@ -603,16 +717,14 @@ contract EricOrb is ERC721, Ownable {
     _funds[_msgSender()] += msg.value;
     uint256 totalFunds = _funds[_msgSender()];
 
-    // requires more than price -- not specified how much more, expects UI to handle
-    // handle overflow?
-    if (totalFunds <= price) {
-      revert InsufficientFunds(totalFunds, price + 1);
+    if (totalFunds <= _price) {
+      revert InsufficientFunds(totalFunds, _price + 1);
     }
 
-    uint256 ownerRoyalties = (price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
-    uint256 currentOwnerShare = price - ownerRoyalties;
+    uint256 ownerRoyalties = (_price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
+    uint256 currentOwnerShare = _price - ownerRoyalties;
 
-    _funds[_msgSender()] -= price;
+    _funds[_msgSender()] -= _price;
     _funds[owner()] += ownerRoyalties;
     _funds[holder] += currentOwnerShare;
 
@@ -624,9 +736,16 @@ contract EricOrb is ERC721, Ownable {
     emit Purchase(holder, _msgSender());
   }
 
+  /**
+   * @dev  See {setPrice()}.
+   */
   function _setPrice(uint256 newPrice_) internal {
-    uint256 oldPrice = price;
-    price = newPrice_;
+    if (newPrice_ > MAX_PRICE) {
+      revert InvalidNewPrice(newPrice_);
+    }
+
+    uint256 oldPrice = _price;
+    _price = newPrice_;
 
     emit NewPrice(oldPrice, newPrice_);
   }
@@ -635,39 +754,62 @@ contract EricOrb is ERC721, Ownable {
   //  FUNCTIONS: FORECLOSURE
   ////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
+   *          Harberger tax and can be foreclosed.
+   * @dev     Only valid if someone, not the contract, holds the orb.
+   *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
+   * @return  uint256  Timestamp of the foreclosure time.
+   */
   function foreclosureTime() external view onlyHolderHeld returns (uint256) {
     return _foreclosureTime();
   }
 
+  /**
+   * @notice  Exit is a voluntary giving up of the orb. It's a combination of withdrawing all funds not owed to
+   *          the issuer since last settlement, and foreclosing yourself after.
+   *          Most useful if the issuer themselves hold the orb and want to re-auction it.
+   *          For any other holder, setting the price to zero would be more practical.
+   * @dev     Calls _withdraw(), which does value transfer from the contract.
+   *          Emits Foreclosure() and Withdrawal().
+   */
   function exit() external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
     _transfer(_msgSender(), address(this), ERIC_ORB_ID);
-    price = 0;
+    _price = 0;
 
     emit Foreclosure(_msgSender());
 
     _withdraw(_funds[_msgSender()]);
   }
 
+  /**
+   * @notice  Foreclose can be called by anyone after the orb holder runs out of funds to cover the Harberger tax.
+   *          It returns the orb to the contract, readying it for re-auction.
+   * @dev     Emits Foreclosure().
+   */
   function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     _transfer(holder, address(this), ERIC_ORB_ID);
-    price = 0;
+    _price = 0;
 
     emit Foreclosure(holder);
   }
 
+  /**
+   * @dev  See {foreclosureTime()}.
+   */
   function _foreclosureTime() internal view returns (uint256) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
       return INFINITY;
     }
 
-    if (price == 0) {
+    // Avoid division by zero.
+    if (_price == 0) {
       return INFINITY;
-      // avoid division by zero
     }
 
-    uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (price * HOLDER_TAX_NUMERATOR);
+    uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (_price * HOLDER_TAX_NUMERATOR);
     return _lastSettlementTime + remainingSeconds;
   }
 
@@ -675,6 +817,15 @@ contract EricOrb is ERC721, Ownable {
   //  FUNCTIONS: TRIGGERING AND RESPONDING
   ////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * @notice  Time remaining until the orb can be triggered again.
+   *          Returns zero if the cooldown has expired and the orb is ready.
+   * @dev     This function is only meaningful if the orb is not held by contract, and the holder is solvent.
+   *          Contract itself cannot trigger the orb, so the response would be meaningless.
+   *          Therefore, the function reverts if the orb is held by contract or the holder is insolvent and could
+   *          trigger the orb.
+   * @return  uint256  Time in seconds until the orb is ready to be triggered.
+   */
   function cooldownRemaining() external view onlyHolderHeld onlyHolderSolvent returns (uint256) {
     uint256 cooldownExpires = lastTriggerTime + COOLDOWN;
     if (block.timestamp >= cooldownExpires) {
@@ -684,6 +835,21 @@ contract EricOrb is ERC721, Ownable {
     }
   }
 
+  /**
+   * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit content hash,
+   *          and optionally cleartext as well, that represents a question to the orb issuer.
+   *          Cleartext is limited to one tweet length.
+   *          Puts the orb on cooldown.
+   *          The Orb can only be triggered by solvent holders.
+   * @dev     Content hash is keccak256 of the cleartext.
+   *          Timestamp is recorded together with the content hash.
+   *          Timestamp being more than zero means that the trigger exists.
+   *          triggersCount is used to track the id of the next trigger.
+   *          Emits Triggered().
+   * @param   contentHash  Required keccak256 hash of the cleartext.
+   * @param   cleartext  Cleartext. Empty string means that cleartext will not be recorded.
+   *          To submit empty cleartext, users can use {recordTriggerCleartext()} manually.
+   */
   function trigger(bytes32 contentHash, string memory cleartext) external onlyHolder onlyHolderHeld onlyHolderSolvent {
     if (block.timestamp < lastTriggerTime + COOLDOWN) {
       revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
@@ -714,12 +880,24 @@ contract EricOrb is ERC721, Ownable {
     emit Triggered(_msgSender(), triggerId, contentHash, block.timestamp);
   }
 
+  /**
+   * @notice  Function allows the holder to reveal cleartext later, either because it was challenged by the
+   *          issuer, or just for posterity. This function can also be used to reveal empty-string content hashes.
+   * @dev     Only holders can reveal cleartext on-chain. Anyone could potentially figure out the trigger cleartext
+   *          from the content hash via brute force, but publishing this on-chain is only allowed by the holder
+   *          themselves, introducing a reasonable privacy protection.
+   *          If the content hash is of a cleartext that is longer than maximum cleartext length, the contract will
+   *          never record this cleartext, as it is invalid.
+   *          Allows overwriting. Assuming no hash collisions, this poses no risk, just wastes holder gas.
+   * @param   triggerId  Triggred id, matching the one that was emitted when calling {trigger()}.
+   * @param   cleartext  Cleartext, limited to tweet length. Must match the content hash.
+   */
   function recordTriggerCleartext(
     uint256 triggerId,
     string memory cleartext
   ) external onlyHolder onlyHolderHeld onlyHolderSolvent {
     uint256 cleartextLength = bytes(cleartext).length;
-    // not requiring to be more than 0 -- content hash might be of an empty string
+
     if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
       revert CleartextTooLong(cleartextLength, MAX_CLEARTEXT_LENGTH);
     }
@@ -731,10 +909,17 @@ contract EricOrb is ERC721, Ownable {
       revert CleartextHashMismatch(cleartextHash, recordedContentHash);
     }
 
-    // allows overwriting; assuming no hash collisions, just wastes gas
     triggersCleartext[triggerId] = cleartext;
   }
 
+  /**
+   * @notice  The Orb issuer can use this function to respond to any existing trigger, no matter how long ago
+   *          it was made. A response to a trigger can only be written once. There is no way to record response
+   *          cleartext on-chain.
+   * @dev     Emits Responded().
+   * @param   triggerId  ID of a trigger to which the response is being made.
+   * @param   contentHash  keccak256 hash of the response text.
+   */
   function respond(uint256 triggerId, bytes32 contentHash) external onlyOwner {
     if (!_triggerExists(triggerId)) {
       revert TriggerNotFound(triggerId);
@@ -749,8 +934,17 @@ contract EricOrb is ERC721, Ownable {
     emit Responded(_msgSender(), triggerId, contentHash, block.timestamp);
   }
 
+  /**
+   * @notice  Orb holder can flag a response during Response Flagging Period, counting from when the response is made.
+   *          Flag indicates a "report", that the orb holder was not satisfied with the response provided.
+   *          This is meant to act as a social signal to future orb holders. It also increments flaggedResponsesCount,
+   *          allowing anyone to quickly look up how many responses were flagged.
+   * @dev     Only existing responses (with non-zero timestamps) can be flagged.
+   *          Responses can only be flagged by solvent holders to keep it consistent with {trigger()}.
+   *          Emits ResponseFlagged().
+   * @param   triggerId  ID of a trigger to which the response is being flagged.
+   */
   function flagResponse(uint256 triggerId) external onlyHolder onlyHolderHeld onlyHolderSolvent {
-    // solvency requirement is a weird one, but keeping it consistent with trigger()
     if (!_responseExists(triggerId)) {
       revert ResponseNotFound(triggerId);
     }
@@ -773,6 +967,11 @@ contract EricOrb is ERC721, Ownable {
     emit ResponseFlagged(_msgSender(), triggerId);
   }
 
+  /**
+   * @dev     Returns if a trigger exists, based on the timestamp being non-zero.
+   * @param   triggerId_  ID of a trigger to check the existance of.
+   * @return  bool  If a trigger exists or not.
+   */
   function _triggerExists(uint256 triggerId_) internal view returns (bool) {
     if (triggers[triggerId_].timestamp != 0) {
       return true;
@@ -780,6 +979,11 @@ contract EricOrb is ERC721, Ownable {
     return false;
   }
 
+  /**
+   * @dev     Returns if a response to a trigger exists, based on the timestamp of the response being non-zero.
+   * @param   triggerId_  ID of a trigger to which to check the existance of a response of.
+   * @return  bool  If a response to a trigger exists or not.
+   */
   function _responseExists(uint256 triggerId_) internal view returns (bool) {
     if (responses[triggerId_].timestamp != 0) {
       return true;
