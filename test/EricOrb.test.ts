@@ -390,6 +390,14 @@ describe("Eric's Orb", function () {
     it("Should adjust foreclosure date after price adjustment", async function () {
       expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year * 0.75)
     })
+    it("Should report maximum foreclosure date if the price is zero", async function () {
+      const beforeZeroPrice = await takeSnapshot()
+      expect(await orbUser.price()).to.be.eq(ethers.utils.parseEther("2"))
+      await expect(orbUser.setPrice(0)).to.emit(orbDeployer, "NewPrice").withArgs(defaultValue.mul(2), 0)
+      expect(await orbUser.foreclosureTime()).to.be.eq(ethers.constants.MaxUint256)
+      expect(await orbUser.price()).to.be.eq(0)
+      await beforeZeroPrice.restore()
+    })
     it("Should not allow anyone else to change the price", async function () {
       await expect(orbUser2.setPrice(defaultValue.mul(3))).to.revertedWith("not orb holder")
     })
@@ -651,7 +659,7 @@ describe("Eric's Orb", function () {
     })
     it("Should report custom foreclosure date if held by the contract owner", async function () {
       expect(await orbDeployer.ownerOf(0)).to.be.eq(deployer.address)
-      expect(await orbDeployer.foreclosureTime()).to.be.eq(0)
+      expect(await orbDeployer.foreclosureTime()).to.be.eq(ethers.constants.MaxUint256)
       expect(await orbDeployer.holderSolvent()).to.be.true
     })
 
