@@ -96,7 +96,7 @@ export default function () {
     expect(await orbUser2.fundsOf(user2.address)).to.be.eq(ethers.utils.parseEther("0.1"))
   })
   it("Should allow setting a new price when purchasing", async function () {
-    await afterfinalize.restore()
+    await afterFinalize.restore()
     expect(await orbUser2.price()).to.be.eq(defaultValue) // 1 ether
 
     await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.5)
@@ -108,27 +108,27 @@ export default function () {
     expect(await orbUser2.foreclosureTime()).to.be.eq(finalizeTimestamp + year * 1.5)
   })
   it("Should not allow purchasing from yourself", async function () {
-    await afterfinalize.restore()
+    await afterFinalize.restore()
     await expect(
       orbUser.purchase(defaultValue, defaultValue, { value: ethers.utils.parseEther("1.1") })
     ).to.be.revertedWithCustomError(orbDeployer, "AlreadyHolder")
   })
   it("Should not allow purchasing if the holder is insolvent", async function () {
-    await afterfinalize.restore()
+    await afterFinalize.restore()
     await time.setNextBlockTimestamp(finalizeTimestamp + year + 60 * 60) // 1 hour and 1 year
     await expect(
       orbUser2.purchase(defaultValue, defaultValue, { value: ethers.utils.parseEther("1.1") })
     ).to.be.revertedWithCustomError(orbDeployer, "HolderInsolvent")
   })
   it("Should allow the contract owner to purchase their own orb", async function () {
-    await afterfinalize.restore()
+    await afterFinalize.restore()
     expect(await orbDeployer.owner()).to.be.eq(deployer.address)
     await expect(orbDeployer.purchase(defaultValue, defaultValue, { value: ethers.utils.parseEther("1.1") }))
       .to.emit(orbDeployer, "Purchase")
       .withArgs(user.address, deployer.address)
   })
   it("Should not change the cooldown time", async function () {
-    await afterfinalize.restore()
+    await afterFinalize.restore()
     const lastTrigger = await orbDeployer.lastTriggerTime()
     await time.setNextBlockTimestamp(finalizeTimestamp + 3 * 24 * 60 * 60) // 3 days
     await expect(orbDeployer.purchase(defaultValue, defaultValue, { value: ethers.utils.parseEther("1.1") })).to.not.be
