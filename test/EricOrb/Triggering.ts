@@ -19,7 +19,7 @@ export default function () {
   let orbUser2: EricOrb
 
   let testSnapshot: SnapshotRestorer
-  let afterClose: SnapshotRestorer
+  let afterFinalize: SnapshotRestorer
 
   before(async () => {
     ;[deployer, user, user2] = await ethers.getSigners()
@@ -37,8 +37,8 @@ export default function () {
     await orbDeployer.startAuction()
     await orbUser.bid(ethers.utils.parseEther("1"), { value: ethers.utils.parseEther("1.1") })
     await time.increase(60 * 60 * 24 + 60)
-    await orbUser2.closeAuction()
-    afterClose = await takeSnapshot()
+    await orbUser2.finalizeAuction()
+    afterFinalize = await takeSnapshot()
   })
 
   after(async () => {
@@ -57,7 +57,7 @@ export default function () {
     expect(await orbUser.cooldownRemaining()).to.be.eq(0)
   })
   it("Should not allow orb triggering before the cooldown expires", async function () {
-    await afterClose.restore()
+    await afterFinalize.restore()
     await expect(orbUser.trigger(triggerData, "")).to.not.be.reverted
     await time.increase((await orbDeployer.COOLDOWN()).sub(60 * 60)) // 1 hour before cooldown expires
     await expect(orbUser.trigger(triggerData, "what is 42?")).to.be.revertedWithCustomError(
@@ -66,12 +66,12 @@ export default function () {
     )
   })
   it("Should not allow anyone but the holder to trigger the orb", async function () {
-    await afterClose.restore()
+    await afterFinalize.restore()
     expect(await orbUser.cooldownRemaining()).to.be.eq(0)
     await expect(orbUser2.trigger(triggerData, "")).to.be.revertedWithCustomError(orbDeployer, "NotHolder")
   })
   it("Should allow the holder to trigger the orb", async function () {
-    await afterClose.restore()
+    await afterFinalize.restore()
     expect(await orbUser.cooldownRemaining()).to.be.eq(0)
     const timestampBeforeTrigger = await time.latest()
     const triggerTimestamp = timestampBeforeTrigger + 60 * 60 // 1 hour later
