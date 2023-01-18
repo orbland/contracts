@@ -437,7 +437,6 @@ contract EricOrb is ERC721, Ownable {
   }
 
   /**
-   *          ERICTEST
    * @notice  Finalizes the Auction, transferring the winning bid to the issuer, and the orb to the winner.
    *          Sets lastTriggerTime so that the Orb could be triggered immediately.
    *          If no bids were made, resets the state to allow the auction to be started again later.
