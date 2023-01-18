@@ -19,7 +19,7 @@ export default function () {
   let orbUser2: EricOrb
 
   let testSnapshot: SnapshotRestorer
-  let beforeClose: SnapshotRestorer
+  let beforeFinalize: SnapshotRestorer
 
   before(async () => {
     ;[deployer, user, user2] = await ethers.getSigners()
@@ -58,8 +58,8 @@ export default function () {
     expect(await orbDeployer.balanceOf(orbDeployer.address)).to.be.eq(1)
     expect(await orbDeployer.ownerOf(69)).to.be.eq(orbDeployer.address)
 
-    await expect(orbUser2.closeAuction())
-      .to.emit(orbDeployer, "AuctionClosed")
+    await expect(orbUser2.finalizeAuction())
+      .to.emit(orbDeployer, "AuctionFinalized")
       .withArgs(ethers.constants.AddressZero, 0)
 
     expect(await orbDeployer.balanceOf(orbDeployer.address)).to.be.eq(1)
@@ -160,53 +160,53 @@ export default function () {
     expect(updatedEndTime > initEndTime).to.be.true
     expect(updatedEndTime > auctionStartTime + expectedAuctionDuration).to.be.true
   })
-  it("Should allow anyone to close the auction", async function () {
+  it("Should allow anyone to finalize the auction", async function () {
     await time.increase(31 * 60)
 
     expect(await orbUser2.auctionRunning()).to.be.eq(false)
-    beforeClose = await takeSnapshot()
-    await expect(orbUser2.closeAuction()).to.not.be.reverted
+    beforeFinalize = await takeSnapshot()
+    await expect(orbUser2.finalizeAuction()).to.not.be.reverted
   })
-  it("Should not allow starting the auction again until it is closed", async function () {
-    await beforeClose.restore()
+  it("Should not allow starting the auction again until it is finalized", async function () {
+    await beforeFinalize.restore()
     await expect(orbDeployer.startAuction()).to.be.revertedWithCustomError(orbDeployer, "AuctionRunning")
   })
   it("Should pay out the winning bid to the contract owner", async function () {
-    await beforeClose.restore()
+    await beforeFinalize.restore()
     const ownerFundsBefore = await orbDeployer.fundsOf(deployer.address)
     const winningBid = await orbDeployer.winningBid()
-    await expect(orbUser2.closeAuction()).to.not.be.reverted
+    await expect(orbUser2.finalizeAuction()).to.not.be.reverted
     const ownerFundsAfter = await orbDeployer.fundsOf(deployer.address)
     expect(ownerFundsBefore.add(winningBid)).to.eq(ownerFundsAfter)
   })
   it("Should transfer the orb to the winner", async function () {
-    await beforeClose.restore()
+    await beforeFinalize.restore()
     const winningBidder = await orbDeployer.winningBidder()
     expect(await orbDeployer.balanceOf(orbDeployer.address)).to.be.eq(1)
     expect(await orbDeployer.balanceOf(winningBidder)).to.be.eq(0)
     expect(await orbDeployer.ownerOf(69)).to.be.eq(orbDeployer.address)
 
-    await expect(orbUser2.closeAuction()).to.not.be.reverted
+    await expect(orbUser2.finalizeAuction()).to.not.be.reverted
 
     expect(await orbDeployer.balanceOf(orbDeployer.address)).to.be.eq(0)
     expect(await orbDeployer.balanceOf(winningBidder)).to.be.eq(1)
     expect(await orbDeployer.ownerOf(69)).to.be.eq(winningBidder)
   })
   it("Should set the price to the winning bid", async function () {
-    await beforeClose.restore()
+    await beforeFinalize.restore()
     const winningBid = await orbDeployer.winningBid()
     await expect(orbDeployer.price()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
 
-    await expect(orbUser2.closeAuction()).to.not.be.reverted
+    await expect(orbUser2.finalizeAuction()).to.not.be.reverted
 
     expect(await orbDeployer.price()).to.be.eq(winningBid)
     expect(await orbDeployer.winningBid()).to.be.eq(0)
   })
   it("Should allow the new holder to immediately trigger the orb", async function () {
-    await beforeClose.restore()
+    await beforeFinalize.restore()
     expect(await orbDeployer.lastTriggerTime()).to.be.eq(0)
 
-    await expect(orbUser2.closeAuction()).to.not.be.reverted
+    await expect(orbUser2.finalizeAuction()).to.not.be.reverted
 
     expect(await orbDeployer.lastTriggerTime()).to.be.greaterThan(0)
     await expect(orbUser.trigger(triggerData, "")).to.emit(orbDeployer, "Triggered")
@@ -219,6 +219,6 @@ export default function () {
     expect(await orbDeployer.winningBidder()).to.be.eq(ethers.constants.AddressZero)
   })
   it("Should not allow repeated closing of the auction", async function () {
-    await expect(orbUser2.closeAuction()).to.be.revertedWithCustomError(orbDeployer, "ContractDoesNotHoldOrb")
+    await expect(orbUser2.finalizeAuction()).to.be.revertedWithCustomError(orbDeployer, "ContractDoesNotHoldOrb")
   })
 }

@@ -19,10 +19,10 @@ export default function () {
   let orbUser2: EricOrb
 
   let testSnapshot: SnapshotRestorer
-  let afterClose: SnapshotRestorer
+  let afterFinalize: SnapshotRestorer
   let afterForeclosure: SnapshotRestorer
 
-  let closeTimestamp: number
+  let finalizeTimestamp: number
 
   before(async () => {
     ;[deployer, user, user2] = await ethers.getSigners()
@@ -40,9 +40,9 @@ export default function () {
     await orbDeployer.startAuction()
     await orbUser.bid(ethers.utils.parseEther("1"), { value: ethers.utils.parseEther("1.1") })
     await time.increase(60 * 60 * 24 + 60)
-    await orbUser2.closeAuction()
-    closeTimestamp = await time.latest()
-    afterClose = await takeSnapshot()
+    await orbUser2.finalizeAuction()
+    finalizeTimestamp = await time.latest()
+    afterFinalize = await takeSnapshot()
   })
 
   after(async () => {
@@ -54,7 +54,7 @@ export default function () {
     expect(await orbDeployer.ownerOf(69)).to.be.eq(user.address)
     expect(await orbUser.fundsOf(user.address)).to.be.equal(ethers.utils.parseEther("0.1"))
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.5)
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.5)
     const exitTx = await orbUser.exit()
     const exitReceipt = await exitTx.wait()
     const exitGasCost = exitReceipt.gasUsed.mul(exitReceipt.effectiveGasPrice)
@@ -68,21 +68,21 @@ export default function () {
     expect(balanceAfterExit).to.be.equal(balanceBeforeExit.add(ethers.utils.parseEther("0.05")).sub(exitGasCost))
   })
   it("Should not allow to deposit funds if the holder is insolvent", async function () {
-    await afterClose.restore()
-    await time.setNextBlockTimestamp(closeTimestamp + year + 60 * 60) // 1 year and 1 hour
+    await afterFinalize.restore()
+    await time.setNextBlockTimestamp(finalizeTimestamp + year + 60 * 60) // 1 year and 1 hour
     await expect(orbUser.deposit({ value: ethers.utils.parseEther("0.1") })).to.be.revertedWithCustomError(
       orbDeployer,
       "HolderInsolvent"
     )
   })
   it("Should not allow to exit if the holder is insolvent", async function () {
-    await afterClose.restore()
-    await time.setNextBlockTimestamp(closeTimestamp + year + 60 * 60) // 1 year and 1 hour
+    await afterFinalize.restore()
+    await time.setNextBlockTimestamp(finalizeTimestamp + year + 60 * 60) // 1 year and 1 hour
     await expect(orbUser.exit()).to.be.revertedWithCustomError(orbDeployer, "HolderInsolvent")
   })
   it("Should allow anyone to foreclose an insolvent holder", async function () {
-    await afterClose.restore()
-    await time.setNextBlockTimestamp(closeTimestamp + year + 60 * 60) // 1 year and 1 hour
+    await afterFinalize.restore()
+    await time.setNextBlockTimestamp(finalizeTimestamp + year + 60 * 60) // 1 year and 1 hour
     await expect(orbUser2.foreclose()).to.emit(orbDeployer, "Foreclosure").withArgs(user.address)
     expect(await orbUser.fundsOf(user.address)).to.be.eq(0)
     expect(await orbUser.ownerOf(69)).to.be.eq(orbDeployer.address)
@@ -90,30 +90,30 @@ export default function () {
     await expect(orbUser.holderSolvent()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
   })
   it("Should not allow to foreclose a solvent holder", async function () {
-    await afterClose.restore()
-    await time.setNextBlockTimestamp(closeTimestamp + year - 60 * 60) // 1 year - 1 hour
+    await afterFinalize.restore()
+    await time.setNextBlockTimestamp(finalizeTimestamp + year - 60 * 60) // 1 year - 1 hour
     await expect(orbUser2.foreclose()).to.be.revertedWithCustomError(orbDeployer, "HolderSolvent")
     expect(await orbUser.ownerOf(69)).to.be.eq(user.address)
     expect(await orbUser.price()).to.be.greaterThan(0)
     expect(await orbUser.holderSolvent()).to.be.true
   })
   it("Should not allow to foreclose the contract owner", async function () {
-    await afterClose.restore()
+    await afterFinalize.restore()
     await expect(
       orbDeployer.purchase(defaultValue, defaultValue, { value: defaultValue.add(ethers.utils.parseEther("0.1")) })
     ).to.not.be.reverted
     await expect(orbDeployer.setPrice(ethers.utils.parseEther("100"))).to.not.be.reverted
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 100) // 100 years
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 100) // 100 years
     await expect(orbUser.foreclose()).to.be.revertedWithCustomError(orbDeployer, "HolderSolvent")
   })
   it("Should not do anything when settling when held by contract owner", async function () {
     await expect(orbUser.settle()).to.not.emit(orbDeployer, "Settlement")
   })
   it("Should allow the contract owner to restart the auction after foreclosure", async function () {
-    await afterClose.restore()
+    await afterFinalize.restore()
 
-    await time.setNextBlockTimestamp(closeTimestamp + year + 60 * 60) // 1 year and 1 hour
+    await time.setNextBlockTimestamp(finalizeTimestamp + year + 60 * 60) // 1 year and 1 hour
     await expect(orbUser2.foreclose()).to.emit(orbDeployer, "Foreclosure").withArgs(user.address)
     afterForeclosure = await takeSnapshot()
     await expect(orbDeployer.startAuction()).to.emit(orbDeployer, "AuctionStarted")

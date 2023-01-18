@@ -48,7 +48,7 @@ export default function () {
     await expect(orbUser.bid(defaultValue)).to.be.revertedWithCustomError(orbDeployer, "AuctionNotRunning")
   })
   it("Should not allow closing the auction", async function () {
-    await expect(orbUser.closeAuction()).to.be.revertedWithCustomError(orbDeployer, "AuctionNotStarted")
+    await expect(orbUser.finalizeAuction()).to.be.revertedWithCustomError(orbDeployer, "AuctionNotStarted")
   })
   it("Should allow deposits", async function () {
     await expect(orbUser.deposit({ value: defaultValue })).to.not.be.reverted
