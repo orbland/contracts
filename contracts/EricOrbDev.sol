@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
  *          the Orb smart contract per year in order to maintain the Orb ownership. This amount is accounted for
  *          per second, and user funds need to be topped up before the foreclosure time to maintain ownership.
  */
-contract EricOrb is ERC721, Ownable {
+contract EricOrbDev is ERC721, Ownable {
   ////////////////////////////////////////////////////////////////////////////////
   //  EVENTS
   ////////////////////////////////////////////////////////////////////////////////
