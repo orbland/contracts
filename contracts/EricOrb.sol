@@ -130,7 +130,7 @@ contract EricOrb is ERC721, Ownable {
   // STATE
 
   // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
-  mapping(address => uint256) internal _funds;
+  mapping(address => uint256) public fundsOf;
 
   // Price of the Orb. No need for mapping, as only one token is very minted.
   // Shouldn't be useful is orb is held by the contract.
@@ -269,7 +269,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev  Ensures that the caller has funds on the contract. Prevents zero-value withdrawals.
    */
   modifier hasFunds() {
-    if (_funds[msg.sender] == 0) {
+    if (fundsOf[msg.sender] == 0) {
       revert NoFunds();
     }
     _;
@@ -413,7 +413,7 @@ contract EricOrb is ERC721, Ownable {
    * @param   amount  The value to bid.
    */
   function bid(uint256 amount) external payable onlyDuringAuction {
-    uint256 totalFunds = _funds[msg.sender] + msg.value;
+    uint256 totalFunds = fundsOf[msg.sender]+ msg.value;
 
     if (amount < minimumBid()) {
       revert InsufficientBid(amount, minimumBid());
@@ -423,8 +423,8 @@ contract EricOrb is ERC721, Ownable {
       revert InsufficientFunds(totalFunds, fundsRequiredToBid(amount));
     }
 
-    _funds[msg.sender] = totalFunds;
     winningBidder = msg.sender;
+    fundsOf[msg.sender] = totalFunds;
     winningBid = amount;
 
     emit NewBid(msg.sender, amount);
@@ -450,8 +450,8 @@ contract EricOrb is ERC721, Ownable {
 
     if (winningBidder != address(0)) {
       _setPrice(winningBid);
-      _funds[winningBidder] -= _price;
-      _funds[owner()] += _price;
+      fundsOf[winningBidder] -= _price;
+      fundsOf[owner()] += _price;
 
 
       _lastSettlementTime = block.timestamp;
@@ -475,32 +475,19 @@ contract EricOrb is ERC721, Ownable {
   ////////////////////////////////////////////////////////////////////////////////
 
   /**
-   * @notice  Returns funds deposited on the contract by the given address.
-   * @param   user  Address to return funds of.
-   * @return  uint256  Address funds.
-   */
-  function fundsOf(address user) public view returns (uint256) {
-    if (user == address(0)) {
-      revert InvalidAddress(address(0));
-    }
-
-    return _funds[user];
-  }
-
-  /**
    * @notice  Returns funds for an address on this contract, freely available to withdraw.
    *          Accounts for owed Harberger tax, so can be used to display an actual effective balance.
-   * @dev     The only addresses where this mismatches with {fundsOf()} is the issuer and the holder.
+   * @dev     The only addresses where this mismatches with {fundsOf[]} is the issuer and the holder.
    * @param   user  Address to return effective funds of.
    * @return  uint256  Address effective funds.
    */
   function effectiveFundsOf(address user) external view returns (uint256) {
-    uint256 unadjustedFunds = fundsOf(user);
+    uint256 unadjustedFunds = fundsOf[user];
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
 
     if (user == owner() || user == holder) {
       uint256 owedFunds = _owedSinceLastSettlement();
-      uint256 holderFunds = fundsOf(holder);
+      uint256 holderFunds = fundsOf[holder];
       uint256 transferableToOwner = holderFunds <= owedFunds ? holderFunds : owedFunds;
 
       if (user == owner()) {
@@ -545,7 +532,7 @@ contract EricOrb is ERC721, Ownable {
       revert HolderInsolvent();
     }
 
-    _funds[msg.sender] += msg.value;
+    fundsOf[msg.sender] += msg.value;
     emit Deposit(msg.sender, msg.value);
   }
 
@@ -555,7 +542,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev     Not allowed for the winning auction bidder.
    */
   function withdrawAll() external notWinningBidder settlesIfHolder hasFunds {
-    _withdraw(_funds[msg.sender]);
+    _withdraw(fundsOf[msg.sender]);
   }
 
   /**
@@ -592,7 +579,7 @@ contract EricOrb is ERC721, Ownable {
     if (owner() == holder) {
       return true;
     }
-    return _funds[holder] > _owedSinceLastSettlement();
+    return fundsOf[holder] > _owedSinceLastSettlement();
   }
 
   /**
@@ -615,11 +602,11 @@ contract EricOrb is ERC721, Ownable {
    * @param   amount_  The value in wei to withdraw from the contract.
    */
   function _withdraw(uint256 amount_) internal {
-    if (_funds[msg.sender] < amount_) {
-      revert InsufficientFunds(_funds[msg.sender], amount_);
+    if (fundsOf[msg.sender] < amount_) {
+      revert InsufficientFunds(fundsOf[msg.sender], amount_);
     }
 
-    _funds[msg.sender] -= amount_;
+    fundsOf[msg.sender] -= amount_;
 
     emit Withdrawal(msg.sender, amount_);
 
@@ -639,12 +626,12 @@ contract EricOrb is ERC721, Ownable {
     // Should never be reached if this contract holds the orb.
     assert(address(this) != holder);
 
-    uint256 availableFunds = _funds[holder];
+    uint256 availableFunds = fundsOf[holder];
     uint256 owedFunds = _owedSinceLastSettlement();
     uint256 transferableToOwner = availableFunds <= owedFunds ? availableFunds : owedFunds;
 
-    _funds[holder] -= transferableToOwner;
-    _funds[owner()] += transferableToOwner;
+    fundsOf[holder] -= transferableToOwner;
+    fundsOf[owner()] += transferableToOwner;
 
     _lastSettlementTime = block.timestamp;
 
@@ -709,8 +696,8 @@ contract EricOrb is ERC721, Ownable {
       revert AlreadyHolder();
     }
 
-    _funds[msg.sender] += msg.value;
-    uint256 totalFunds = _funds[msg.sender];
+    fundsOf[msg.sender] += msg.value;
+    uint256 totalFunds = fundsOf[msg.sender];
 
     if (totalFunds <= _price) {
       revert InsufficientFunds(totalFunds, _price + 1);
@@ -719,9 +706,9 @@ contract EricOrb is ERC721, Ownable {
     uint256 ownerRoyalties = (_price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
     uint256 currentOwnerShare = _price - ownerRoyalties;
 
-    _funds[msg.sender] -= _price;
-    _funds[owner()] += ownerRoyalties;
-    _funds[holder] += currentOwnerShare;
+    fundsOf[msg.sender] -= _price;
+    fundsOf[owner()] += ownerRoyalties;
+    fundsOf[holder] += currentOwnerShare;
 
 
     _lastSettlementTime = block.timestamp;
@@ -776,7 +763,7 @@ contract EricOrb is ERC721, Ownable {
     emit Foreclosure(msg.sender);
 
     _transfer(msg.sender, address(this), ERIC_ORB_ID);
-    _withdraw(_funds[msg.sender]);
+    _withdraw(fundsOf[msg.sender]);
   }
 
   /**
@@ -805,7 +792,7 @@ contract EricOrb is ERC721, Ownable {
       return INFINITY;
     }
 
-    uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (_price * HOLDER_TAX_NUMERATOR);
+    uint256 remainingSeconds = (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (_price * HOLDER_TAX_NUMERATOR);
     return _lastSettlementTime + remainingSeconds;
   }
 
