@@ -136,7 +136,7 @@ contract EricOrb is ERC721, Ownable {
   // Shouldn't be useful is orb is held by the contract.
   uint256 public price;
   // Last time orb holder's funds were settled.
-  // Shouldn't be useful is orb is held by the contract.
+  // Shouldn't bt useful is orb is held by the contract.
   uint256 public lastSettlementTime;
 
   // Auction State Variables
@@ -281,7 +281,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev  Ensures that the current orb holder has enough funds to cover Harberger tax until now.
    */
   modifier onlyHolderSolvent() {
-    if (!_holderSolvent()) {
+    if (!holderSolvent()) {
       revert HolderInsolvent();
     }
     _;
@@ -291,7 +291,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev  Ensures that the current orb holder has run out of funds to cover Harberger tax.
    */
   modifier onlyHolderInsolvent() {
-    if (_holderSolvent()) {
+    if (holderSolvent()) {
       revert HolderSolvent();
     }
     _;
@@ -510,23 +510,13 @@ contract EricOrb is ERC721, Ownable {
   }
 
   /**
-   * @notice  Returns if the current orb holder has enough funds to cover Harberger tax until now.
-   *          Always true is issuer holds the orb.
-   * @dev     Reverts if orb is held by the contract, contract cannot be solvent or insolvent.
-   * @return  bool  If the current holder is solvent.
-   */
-  function holderSolvent() external view onlyHolderHeld returns (bool) {
-    return _holderSolvent();
-  }
-
-  /**
    * @notice  Allows depositing funds on the contract. Not allowed for insolvent holders.
    * @dev     Deposits are not allowed for insolvent holders to prevent cheating via front-running.
    *          If the user becomes insolvent, the orb will always be returned to the contract as the next step.
    *          Emits Deposit().
    */
   function deposit() external payable {
-    if (msg.sender == ERC721.ownerOf(ERIC_ORB_ID) && !_holderSolvent()) {
+    if (msg.sender == ERC721.ownerOf(ERIC_ORB_ID) && !holderSolvent()) {
       revert HolderInsolvent();
     }
 
@@ -572,7 +562,7 @@ contract EricOrb is ERC721, Ownable {
    *          Always true is issuer holds the orb.
    * @return  bool  If the current holder is solvent.
    */
-  function _holderSolvent() internal view returns (bool) {
+  function holderSolvent() public view returns (bool) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
       return true;

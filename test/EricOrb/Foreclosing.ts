@@ -87,6 +87,7 @@ export default function () {
     expect(await orbUser.fundsOf(user.address)).to.be.eq(0)
     expect(await orbUser.ownerOf(69)).to.be.eq(orbDeployer.address)
     await expect(orbUser.holderSolvent()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
+    await expect(orbUser.price()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
   })
   it("Should not allow to foreclose a solvent holder", async function () {
     await afterFinalize.restore()
