@@ -769,11 +769,11 @@ contract EricOrb is ERC721, Ownable {
    *          Emits Foreclosure() and Withdrawal().
    */
   function exit() external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
-    _transfer(msg.sender, address(this), ERIC_ORB_ID);
     _price = 0;
 
     emit Foreclosure(msg.sender);
 
+    _transfer(msg.sender, address(this), ERIC_ORB_ID);
     _withdraw(_funds[msg.sender]);
   }
 
