@@ -704,10 +704,6 @@ contract EricOrb is ERC721, Ownable {
       revert CurrentPriceIncorrect(currentPrice, _price);
     }
 
-    if (newPrice == 0) {
-      revert InvalidNewPrice(newPrice);
-    }
-
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
 
     if (_msgSender() == holder) {
