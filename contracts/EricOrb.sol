@@ -723,12 +723,14 @@ contract EricOrb is ERC721, Ownable {
     _funds[owner()] += ownerRoyalties;
     _funds[holder] += currentOwnerShare;
 
-    _transfer(holder, msg.sender, ERIC_ORB_ID);
+
     _lastSettlementTime = block.timestamp;
 
     _setPrice(newPrice);
 
     emit Purchase(holder, msg.sender);
+
+    _transfer(holder, msg.sender, ERIC_ORB_ID);
   }
 
   /**
