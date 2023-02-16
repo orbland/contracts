@@ -373,7 +373,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev     STARTING_PRICE if no bids were made, otherwise previous bid increased by MINIMUM_BID_STEP.
    * @return  uint256  Minimum bid required for {bid()}.
    */
-  function minimumBid() public view onlyDuringAuction returns (uint256) {
+  function minimumBid() public view returns (uint256) {
     if (winningBid == 0) {
       return STARTING_PRICE;
     }
