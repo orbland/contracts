@@ -370,7 +370,9 @@ contract EricOrb is ERC721, Ownable {
     if (winningBid == 0) {
       return STARTING_PRICE;
     } else {
-      return winningBid + MINIMUM_BID_STEP;
+        unchecked {
+            return winningBid + MINIMUM_BID_STEP;
+        }
     }
   }
 
