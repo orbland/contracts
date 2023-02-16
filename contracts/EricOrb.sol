@@ -745,9 +745,12 @@ contract EricOrb is ERC721, Ownable {
     emit Foreclosure(holder);
     _transferOrb(holder, address(this));
   }
-
   /**
-   * @dev  See {foreclosureTime()}.
+   * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
+   *          Harberger tax and can be foreclosed.
+   * @dev     Only valid if someone, not the contract, holds the orb.
+   *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
+   * @return  uint256  Timestamp of the foreclosure time.
    */
   function foreclosureTime() public view returns (uint256) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
