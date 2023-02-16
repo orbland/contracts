@@ -161,10 +161,8 @@ contract EricOrb is ERC721, Ownable {
 
   // Last Trigger Time: when the orb was last triggered. Used together with Cooldown constant.
   uint256 public lastTriggerTime;
-  // Mapping for Triggers (Orb Invocations): triggerId to HashTime struct.
-  mapping(uint256 => HashTime) public triggers;
-  // Additional mapping for Trigger Cleartexts. Providing cleartexts is optional.
-  mapping(uint256 => string) public triggersCleartext;
+  // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
+  mapping(uint256 => bytes32) public triggers;
   // Count of triggers made. Used to calculate triggerId of the next trigger.
   uint256 public triggersCount = 0;
   // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
@@ -858,7 +856,7 @@ contract EricOrb is ERC721, Ownable {
       revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
     }
 
-    triggers[triggersCount] = HashTime(contentHash, block.timestamp);
+    triggers[triggersCount] = contentHash;
 
     lastTriggerTime = block.timestamp;
 
@@ -880,21 +878,19 @@ contract EricOrb is ERC721, Ownable {
   function recordTriggerCleartext(
     uint256 triggerId,
     string memory cleartext
-  ) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+  ) external view onlyHolder onlyHolderHeld onlyHolderSolvent {
     uint256 cleartextLength = bytes(cleartext).length;
 
     if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
       revert CleartextTooLong(cleartextLength, MAX_CLEARTEXT_LENGTH);
     }
 
-    bytes32 recordedContentHash = triggers[triggerId].contentHash;
+    bytes32 recordedContentHash = triggers[triggerId];
     bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
 
     if (recordedContentHash != cleartextHash) {
       revert CleartextHashMismatch(cleartextHash, recordedContentHash);
     }
-
-    triggersCleartext[triggerId] = cleartext;
   }
 
   /**
@@ -950,6 +946,15 @@ contract EricOrb is ERC721, Ownable {
     flaggedResponsesCount += 1;
 
     emit ResponseFlagged(msg.sender, triggerId);
+  }
+
+  /**
+   * @dev     Returns if a trigger exists, based on the timestamp being non-zero.
+   * @param   triggerId_  ID of a trigger to check the existance of.
+   * @return  bool  If a trigger exists or not.
+   */
+  function _triggerExists(uint256 triggerId_) internal view returns (bool) {
+      return triggerId_ < triggersCount;
   }
 
   /**
