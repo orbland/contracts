@@ -921,7 +921,7 @@ contract EricOrb is ERC721, Ownable {
    * @param   contentHash  keccak256 hash of the response text.
    */
   function respond(uint256 triggerId, bytes32 contentHash) external onlyOwner {
-    if (!_triggerExists(triggerId)) {
+    if (triggerId >= triggersCount) {
       revert TriggerNotFound(triggerId);
     }
 
@@ -965,18 +965,6 @@ contract EricOrb is ERC721, Ownable {
     flaggedResponsesCount += 1;
 
     emit ResponseFlagged(_msgSender(), triggerId);
-  }
-
-  /**
-   * @dev     Returns if a trigger exists, based on the timestamp being non-zero.
-   * @param   triggerId_  ID of a trigger to check the existance of.
-   * @return  bool  If a trigger exists or not.
-   */
-  function _triggerExists(uint256 triggerId_) internal view returns (bool) {
-    if (triggers[triggerId_].timestamp != 0) {
-      return true;
-    }
-    return false;
   }
 
   /**
