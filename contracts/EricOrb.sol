@@ -137,7 +137,7 @@ contract EricOrb is ERC721, Ownable {
   uint256 internal _price;
   // Last time orb holder's funds were settled.
   // Shouldn't be useful is orb is held by the contract.
-  uint256 internal _lastSettlementTime;
+  uint256 public lastSettlementTime;
 
   // Auction State Variables
   // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
@@ -454,7 +454,7 @@ contract EricOrb is ERC721, Ownable {
       fundsOf[owner()] += _price;
 
 
-      _lastSettlementTime = block.timestamp;
+      lastSettlementTime = block.timestamp;
       lastTriggerTime = block.timestamp - COOLDOWN;
 
       emit AuctionFinalized(winningBidder, winningBid);
@@ -499,16 +499,6 @@ contract EricOrb is ERC721, Ownable {
     }
 
     return unadjustedFunds;
-  }
-
-  /**
-   * @notice  Returns the last time funds were settled from orb holder to orb issuer. Can be used to
-   *          calculate effective funds of the holder or the issuer in real time.
-   * @dev     Reverts if orb is held by the contract, as settlements are meaningless in that state.
-   * @return  uint256  Timestamp of the last settlement.
-   */
-  function lastSettlementTime() public view onlyHolderHeld returns (uint256) {
-    return _lastSettlementTime;
   }
 
   /**
@@ -590,7 +580,7 @@ contract EricOrb is ERC721, Ownable {
    * @return  bool  Wei orb holders owes orb issuer since the last settlement time.
    */
   function _owedSinceLastSettlement() internal view returns (uint256) {
-    uint256 secondsSinceLastSettlement = block.timestamp - _lastSettlementTime;
+    uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime;
     return (_price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
   }
 
@@ -633,7 +623,7 @@ contract EricOrb is ERC721, Ownable {
     fundsOf[holder] -= transferableToOwner;
     fundsOf[owner()] += transferableToOwner;
 
-    _lastSettlementTime = block.timestamp;
+    lastSettlementTime = block.timestamp;
 
     emit Settlement(holder, owner(), transferableToOwner);
   }
@@ -710,8 +700,7 @@ contract EricOrb is ERC721, Ownable {
     fundsOf[owner()] += ownerRoyalties;
     fundsOf[holder] += currentOwnerShare;
 
-
-    _lastSettlementTime = block.timestamp;
+    lastSettlementTime = block.timestamp;
 
     _setPrice(newPrice);
 
@@ -793,7 +782,7 @@ contract EricOrb is ERC721, Ownable {
     }
 
     uint256 remainingSeconds = (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (_price * HOLDER_TAX_NUMERATOR);
-    return _lastSettlementTime + remainingSeconds;
+    return lastSettlementTime + remainingSeconds;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
