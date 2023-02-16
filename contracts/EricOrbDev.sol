@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @title   Eric's Orb [DEV VERSION] - Harberger Tax NFT with auction and on-chain triggers and responses
+ * @title   Eric's Orb - Harberger Tax NFT with auction and on-chain triggers and responses
  * @author  Jonas Lekevicius, Eric Wall
  * @dev     Supports ERC-721 interface, does not support token transfers.
  *          Uses {Ownable}'s {owner()} to identify the issuer of the Orb.
@@ -29,7 +29,7 @@ contract EricOrbDev is ERC721, Ownable {
   event AuctionStarted(uint256 startTime, uint256 endTime);
   event NewBid(address indexed from, uint256 price);
   event UpdatedAuctionEnd(uint256 endTime);
-  event AuctionClosed(address indexed winner, uint256 price);
+  event AuctionFinalized(address indexed winner, uint256 price);
 
   // Fund Management, Holding and Purchasing Events
   event Deposit(address indexed sender, uint256 amount);
@@ -93,9 +93,9 @@ contract EricOrbDev is ERC721, Ownable {
 
   // Public Constants
   // Cooldown: how often Orb can be triggered.
-  uint256 public constant COOLDOWN = 5 minutes;
+  uint256 public constant COOLDOWN = 7 days;
   // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
-  uint256 public constant RESPONSE_FLAGGING_PERIOD = 5 minutes;
+  uint256 public constant RESPONSE_FLAGGING_PERIOD = 7 days;
   // Maximum length for trigger cleartext content; tweet length.
   uint256 public constant MAX_CLEARTEXT_LENGTH = 280;
 
@@ -147,7 +147,7 @@ contract EricOrbDev is ERC721, Ownable {
   // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
   address public winningBidder;
   // Winning Bid: highest current bid. 0 not during the auction and before first bid.
-  // Note: user has to deposit more than just the bid to ensure solvency after auction is closed.
+  // Note: user has to deposit more than just the bid to ensure solvency after auction is finalized.
   uint256 public winningBid;
 
   // Trigger and Response State Variables
@@ -245,7 +245,7 @@ contract EricOrbDev is ERC721, Ownable {
 
   /**
    * @dev  Ensures that an auction is currently not running.
-   *       Can be multiple states: auction not started, auction over but not closed, or auction closed.
+   *       Can be multiple states: auction not started, auction over but not finalized, or auction finalized.
    */
   modifier notDuringAuction() {
     if (auctionRunning()) {
@@ -388,8 +388,8 @@ contract EricOrbDev is ERC721, Ownable {
 
   /**
    * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at lest MINIMUM_AUCTION_DURATION.
-   * @dev     Prevents repeated starts by checking the endTime. Important to set endTime to 0 after auction is closed.
-   *          Also, resets winningBidder and winningBid. Should not be necessary, as {closeAuction()} also does that.
+   * @dev     Prevents repeated starts by checking the endTime. Important to set endTime to 0 after auction is finalized.
+   *          Also, resets winningBidder and winningBid. Should not be necessary, as {finalizeAuction()} also does that.
    *          Emits AuctionStarted().
    */
   function startAuction() external onlyOwner onlyContractHeld notDuringAuction {
@@ -437,14 +437,14 @@ contract EricOrbDev is ERC721, Ownable {
   }
 
   /**
-   * @notice  Closes the Auction, transferring the winning bid to the issuer, and the orb to the winner.
+   * @notice  Finalizes the Auction, transferring the winning bid to the issuer, and the orb to the winner.
    *          Sets lastTriggerTime so that the Orb could be triggered immediately.
    *          If no bids were made, resets the state to allow the auction to be started again later.
    * @dev     Critical state transition function. Called after endTime, but only if it's not 0.
    *          Can be called by anyone, although probably will be called by the issuer or the winner.
-   *          Emits NewPrice() and AuctionClosed().
+   *          Emits NewPrice() and AuctionFinalized().
    */
-  function closeAuction() external notDuringAuction onlyContractHeld {
+  function finalizeAuction() external notDuringAuction onlyContractHeld {
     if (endTime == 0) {
       revert AuctionNotStarted();
     }
@@ -459,12 +459,12 @@ contract EricOrbDev is ERC721, Ownable {
       _lastSettlementTime = block.timestamp;
       lastTriggerTime = block.timestamp - COOLDOWN;
 
-      emit AuctionClosed(winningBidder, winningBid);
+      emit AuctionFinalized(winningBidder, winningBid);
 
       winningBidder = address(0);
       winningBid = 0;
     } else {
-      emit AuctionClosed(winningBidder, winningBid);
+      emit AuctionFinalized(winningBidder, winningBid);
     }
 
     startTime = 0;

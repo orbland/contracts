@@ -20,11 +20,11 @@ export default function () {
   let orbUser2: EricOrb
 
   let testSnapshot: SnapshotRestorer
-  let afterClose: SnapshotRestorer
+  let afterFinalize: SnapshotRestorer
   let beforeDeposit: SnapshotRestorer
   let beforeWithdrawal: SnapshotRestorer
 
-  let closeTimestamp: number
+  let finalizeTimestamp: number
 
   before(async () => {
     ;[deployer, user, user2] = await ethers.getSigners()
@@ -42,7 +42,7 @@ export default function () {
     await orbDeployer.startAuction()
     await orbUser.bid(ethers.utils.parseEther("1"), { value: ethers.utils.parseEther("1.1") })
     await time.increase(60 * 60 * 24 + 60)
-    // await orbUser2.closeAuction()
+    // await orbUser2.finalizeAuction()
   })
 
   after(async () => {
@@ -50,12 +50,12 @@ export default function () {
   })
 
   it("Should correctly report the foreclosure date", async function () {
-    await expect(orbUser2.closeAuction()).to.not.be.reverted
-    closeTimestamp = await time.latest()
-    afterClose = await takeSnapshot()
+    await expect(orbUser2.finalizeAuction()).to.not.be.reverted
+    finalizeTimestamp = await time.latest()
+    afterFinalize = await takeSnapshot()
     expect(await orbUser.price()).to.be.eq(ethers.utils.parseEther("1"))
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year)
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year)
   })
   it("Should not allow any transfers", async function () {
     await expect(orbUser.transferFrom(user.address, user2.address, 0)).to.be.revertedWithCustomError(
@@ -77,9 +77,9 @@ export default function () {
   it("Should allow the holder to change the price", async function () {
     expect(await orbUser.price()).to.be.eq(ethers.utils.parseEther("1"))
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year)
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year)
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.5)
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.5)
     await expect(orbUser.setPrice(defaultValue.mul(2)))
       .to.emit(orbDeployer, "NewPrice")
       .withArgs(defaultValue, defaultValue.mul(2))
@@ -93,7 +93,7 @@ export default function () {
     )
   })
   it("Should adjust foreclosure date after price adjustment", async function () {
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year * 0.75)
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year * 0.75)
   })
   it("Should report maximum foreclosure date if the price is zero", async function () {
     const beforeZeroPrice = await takeSnapshot()
@@ -107,7 +107,7 @@ export default function () {
     await expect(orbUser2.setPrice(defaultValue.mul(3))).to.revertedWithCustomError(orbDeployer, "NotHolder")
   })
   it("Should correctly report effective funds", async function () {
-    await afterClose.restore()
+    await afterFinalize.restore()
     await time.increase(year * 0.25)
 
     await expect(orbUser.fundsOf(ethers.constants.AddressZero)).to.be.revertedWithCustomError(
@@ -121,7 +121,7 @@ export default function () {
     expect(await orbUser.effectiveFundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.075"))
     expect(await orbUser.effectiveFundsOf(deployer.address)).to.be.eq(ethers.utils.parseEther("0.025").add(ownerFunds))
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.5)
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.5)
     await expect(orbUser2.settle()).to.emit(orbDeployer, "Settlement")
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.05"))
     expect(await orbUser.fundsOf(deployer.address)).to.be.eq(ownerFunds.add(ethers.utils.parseEther("0.05")))
@@ -133,15 +133,15 @@ export default function () {
     expect(await orbUser.lastSettlementTime()).to.be.eq(await time.latest())
   })
   it("Should allow anyone to settle what holder owes", async function () {
-    await afterClose.restore()
-    const expectedForeclosureTime = closeTimestamp + year
+    await afterFinalize.restore()
+    const expectedForeclosureTime = finalizeTimestamp + year
     await time.increase(year * 0.25)
 
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
     expect(await orbUser.foreclosureTime()).to.be.eq(expectedForeclosureTime)
     const ownerFunds = await orbUser.fundsOf(deployer.address)
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.5)
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.5)
     await expect(orbUser2.settle()).to.emit(orbDeployer, "Settlement")
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.05"))
     expect(await orbUser.fundsOf(deployer.address)).to.be.eq(ownerFunds.add(ethers.utils.parseEther("0.05")))
@@ -151,14 +151,14 @@ export default function () {
     beforeDeposit = await takeSnapshot()
 
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.05"))
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year)
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year)
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.75) // nine months
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.75) // nine months
     await expect(orbUser.deposit({ value: ethers.utils.parseEther("0.05") })).to.emit(orbDeployer, "Deposit")
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
   })
   it("Should push foreclosure date after deposit", async function () {
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year * 1.5) // 18 months
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year * 1.5) // 18 months
 
     await beforeDeposit.restore()
   })
@@ -166,17 +166,17 @@ export default function () {
     beforeWithdrawal = await takeSnapshot()
 
     // Full withdrawal
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.75) // nine months
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.75) // nine months
     await expect(orbUser.withdrawAll())
       .to.emit(orbDeployer, "Withdrawal")
       .withArgs(user.address, ethers.utils.parseEther("0.025"))
     expect(await orbUser.fundsOf(user.address)).to.be.eq(0)
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year * 0.75) // now, nine months
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year * 0.75) // now, nine months
     expect(await orbUser.holderSolvent()).to.be.eq(false)
     expect(await orbUser.ownerOf(69)).to.be.eq(user.address) // still holding
 
     await beforeWithdrawal.restore()
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.75) // nine months
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.75) // nine months
     await expect(orbUser.withdraw(ethers.utils.parseEther("0.0125")))
       .to.emit(orbDeployer, "Withdrawal")
       .withArgs(user.address, ethers.utils.parseEther("0.0125"))
@@ -184,9 +184,9 @@ export default function () {
   })
   it("Should pull foreclosure date after withdrawal", async function () {
     await beforeWithdrawal.restore()
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year)
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year)
 
-    await time.setNextBlockTimestamp(closeTimestamp + year * 0.75) // nine months
+    await time.setNextBlockTimestamp(finalizeTimestamp + year * 0.75) // nine months
     await expect(orbUser.withdraw(ethers.utils.parseEther("0.0125")))
       .to.emit(orbDeployer, "Withdrawal")
       .withArgs(user.address, ethers.utils.parseEther("0.0125"))
@@ -194,6 +194,6 @@ export default function () {
     expect(await orbUser.holderSolvent()).to.be.eq(true)
     expect(await orbUser.ownerOf(69)).to.be.eq(user.address) // still holding
 
-    expect(await orbUser.foreclosureTime()).to.be.eq(closeTimestamp + year * 0.875)
+    expect(await orbUser.foreclosureTime()).to.be.eq(finalizeTimestamp + year * 0.875)
   })
 }
