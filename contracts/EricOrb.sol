@@ -718,17 +718,6 @@ contract EricOrb is ERC721, Ownable {
   ////////////////////////////////////////////////////////////////////////////////
 
   /**
-   * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
-   *          Harberger tax and can be foreclosed.
-   * @dev     Only valid if someone, not the contract, holds the orb.
-   *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
-   * @return  uint256  Timestamp of the foreclosure time.
-   */
-  function foreclosureTime() external view onlyHolderHeld returns (uint256) {
-    return _foreclosureTime();
-  }
-
-  /**
    * @notice  Exit is a voluntary giving up of the orb. It's a combination of withdrawing all funds not owed to
    *          the issuer since last settlement, and foreclosing yourself after.
    *          Most useful if the issuer themselves hold the orb and want to re-auction it.
@@ -760,7 +749,7 @@ contract EricOrb is ERC721, Ownable {
   /**
    * @dev  See {foreclosureTime()}.
    */
-  function _foreclosureTime() internal view returns (uint256) {
+  function foreclosureTime() public view returns (uint256) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
       return INFINITY;

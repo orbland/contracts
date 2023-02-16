@@ -107,9 +107,6 @@ export default function () {
     expect(await orbDeployer.winningBidder()).to.be.eq(ethers.constants.AddressZero)
     expect(await orbDeployer.winningBid()).to.be.eq(0)
   })
-  it("Should not return foreclosure-related information", async function () {
-    await expect(orbDeployer.foreclosureTime()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
-  })
   it("Should not have any triggers set", async function () {
     const firstTrigger = await orbDeployer.triggers(0)
     expect(firstTrigger.timestamp).to.be.eq(0)
