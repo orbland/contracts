@@ -134,7 +134,7 @@ contract EricOrb is ERC721, Ownable {
 
   // Price of the Orb. No need for mapping, as only one token is very minted.
   // Shouldn't be useful is orb is held by the contract.
-  uint256 internal _price;
+  uint256 public price;
   // Last time orb holder's funds were settled.
   // Shouldn't be useful is orb is held by the contract.
   uint256 public lastSettlementTime;
@@ -450,9 +450,8 @@ contract EricOrb is ERC721, Ownable {
 
     if (winningBidder != address(0)) {
       _setPrice(winningBid);
-      fundsOf[winningBidder] -= _price;
-      fundsOf[owner()] += _price;
-
+      fundsOf[winningBidder] -= price;
+      fundsOf[owner()] += price;
 
       lastSettlementTime = block.timestamp;
       lastTriggerTime = block.timestamp - COOLDOWN;
@@ -581,7 +580,7 @@ contract EricOrb is ERC721, Ownable {
    */
   function _owedSinceLastSettlement() internal view returns (uint256) {
     uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime;
-    return (_price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
+    return (price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
   }
 
   /**
@@ -633,17 +632,6 @@ contract EricOrb is ERC721, Ownable {
   ////////////////////////////////////////////////////////////////////////////////
 
   /**
-   * @notice  Returns the current orb price, set by the holder. If the holder is solvent, the orb can be
-   *          purchased for this price at any time.
-   *          It is also the basis for Harberger tax calculations.
-   * @dev     Only meaningful if the {purchase()} function can be called, otherwise reverts.
-   * @return  uint256  Current orb price.
-   */
-  function price() external view onlyHolderHeld onlyHolderSolvent returns (uint256) {
-    return _price;
-  }
-
-  /**
    * @notice  Sets the new purchase price for the orb. Harberger tax means the asset is always for sale.
    *          The price can be set to zero, making foreclosure time to be never.
    * @dev     Can only be called by a solvent holder.
@@ -676,8 +664,8 @@ contract EricOrb is ERC721, Ownable {
    *          be set to zero afterwards via {setPrice()}.
    */
   function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent settles {
-    if (currentPrice != _price) {
-      revert CurrentPriceIncorrect(currentPrice, _price);
+    if (currentPrice != price) {
+      revert CurrentPriceIncorrect(currentPrice, price);
     }
 
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
@@ -689,14 +677,14 @@ contract EricOrb is ERC721, Ownable {
     fundsOf[msg.sender] += msg.value;
     uint256 totalFunds = fundsOf[msg.sender];
 
-    if (totalFunds <= _price) {
-      revert InsufficientFunds(totalFunds, _price + 1);
+    if (totalFunds <= price) {
+      revert InsufficientFunds(totalFunds, price + 1);
     }
 
-    uint256 ownerRoyalties = (_price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
-    uint256 currentOwnerShare = _price - ownerRoyalties;
+    uint256 ownerRoyalties = (price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
+    uint256 currentOwnerShare = price - ownerRoyalties;
 
-    fundsOf[msg.sender] -= _price;
+    fundsOf[msg.sender] -= price;
     fundsOf[owner()] += ownerRoyalties;
     fundsOf[holder] += currentOwnerShare;
 
@@ -717,8 +705,8 @@ contract EricOrb is ERC721, Ownable {
       revert InvalidNewPrice(newPrice_);
     }
 
-    uint256 oldPrice = _price;
-    _price = newPrice_;
+    uint256 oldPrice = price;
+    price = newPrice_;
 
     emit NewPrice(oldPrice, newPrice_);
   }
@@ -747,7 +735,7 @@ contract EricOrb is ERC721, Ownable {
    *          Emits Foreclosure() and Withdrawal().
    */
   function exit() external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
-    _price = 0;
+    price = 0;
 
     emit Foreclosure(msg.sender);
 
@@ -762,7 +750,9 @@ contract EricOrb is ERC721, Ownable {
    */
   function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
-    _price = 0;
+
+    price = 0;
+
     emit Foreclosure(holder);
     _transfer(holder, address(this), ERIC_ORB_ID);
   }
@@ -777,11 +767,11 @@ contract EricOrb is ERC721, Ownable {
     }
 
     // Avoid division by zero.
-    if (_price == 0) {
+    if (price == 0) {
       return INFINITY;
     }
 
-    uint256 remainingSeconds = (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (_price * HOLDER_TAX_NUMERATOR);
+    uint256 remainingSeconds = (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (price * HOLDER_TAX_NUMERATOR);
     return lastSettlementTime + remainingSeconds;
   }
 
