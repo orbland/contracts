@@ -453,7 +453,6 @@ contract EricOrb is ERC721, Ownable {
       _funds[winningBidder] -= _price;
       _funds[owner()] += _price;
 
-      _transfer(address(this), winningBidder, ERIC_ORB_ID);
 
       _lastSettlementTime = block.timestamp;
       lastTriggerTime = block.timestamp - COOLDOWN;
@@ -462,6 +461,7 @@ contract EricOrb is ERC721, Ownable {
 
       winningBidder = address(0);
       winningBid = 0;
+      _transfer(address(this), winningBidder, ERIC_ORB_ID);
     } else {
       emit AuctionFinalized(winningBidder, winningBid);
     }
