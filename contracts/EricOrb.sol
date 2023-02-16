@@ -752,7 +752,7 @@ contract EricOrb is ERC721, Ownable {
    *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
    * @return  uint256  Timestamp of the foreclosure time.
    */
-  function foreclosureTime() public view returns (uint256) {
+  function foreclosureTime() external view returns (uint256) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
       return INFINITY;
