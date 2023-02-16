@@ -832,6 +832,16 @@ contract EricOrb is ERC721, Ownable {
     }
   }
 
+    /// @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
+    /// @param  cleartext  Required cleartext.
+    function trigger(string memory cleartext) external {
+        uint256 length = bytes(cleartext).length;
+        if (length > MAX_CLEARTEXT_LENGTH) {
+            revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
+        }
+        trigger(keccak256(abi.encodePacked(cleartext)));
+    }
+
   /**
    * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit content hash,
    *          that represents a question to the orb issuer.
