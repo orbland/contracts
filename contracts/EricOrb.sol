@@ -773,11 +773,9 @@ contract EricOrb is ERC721, Ownable {
    *          Returns zero if the cooldown has expired and the orb is ready.
    * @dev     This function is only meaningful if the orb is not held by contract, and the holder is solvent.
    *          Contract itself cannot trigger the orb, so the response would be meaningless.
-   *          Therefore, the function reverts if the orb is held by contract or the holder is insolvent and could
-   *          trigger the orb.
    * @return  uint256  Time in seconds until the orb is ready to be triggered.
    */
-  function cooldownRemaining() external view onlyHolderHeld onlyHolderSolvent returns (uint256) {
+  function cooldownRemaining() external view returns (uint256) {
     uint256 cooldownExpires = lastTriggerTime + COOLDOWN;
     if (block.timestamp >= cooldownExpires) {
       return 0;
