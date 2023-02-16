@@ -130,14 +130,14 @@ contract EricOrb is ERC721, Ownable {
   // STATE
 
   // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
-  mapping(address => uint256) private _funds;
+  mapping(address => uint256) internal _funds;
 
   // Price of the Orb. No need for mapping, as only one token is very minted.
   // Shouldn't be useful is orb is held by the contract.
-  uint256 private _price;
+  uint256 internal _price;
   // Last time orb holder's funds were settled.
   // Shouldn't be useful is orb is held by the contract.
-  uint256 private _lastSettlementTime;
+  uint256 internal _lastSettlementTime;
 
   // Auction State Variables
   // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
