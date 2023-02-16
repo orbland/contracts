@@ -459,9 +459,9 @@ contract EricOrb is ERC721, Ownable {
 
       emit AuctionFinalized(winningBidder, winningBid);
 
+      _transfer(address(this), winningBidder, ERIC_ORB_ID);
       winningBidder = address(0);
       winningBid = 0;
-      _transfer(address(this), winningBidder, ERIC_ORB_ID);
     } else {
       emit AuctionFinalized(winningBidder, winningBid);
     }
