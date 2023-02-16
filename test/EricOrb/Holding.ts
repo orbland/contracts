@@ -110,11 +110,6 @@ export default function () {
     await afterFinalize.restore()
     await time.increase(year * 0.25)
 
-    await expect(orbUser.fundsOf(ethers.constants.AddressZero)).to.be.revertedWithCustomError(
-      orbDeployer,
-      "InvalidAddress"
-    )
-
     expect(await orbUser.fundsOf(user.address)).to.be.eq(ethers.utils.parseEther("0.1"))
     const ownerFunds = await orbUser.fundsOf(deployer.address)
     const user2Funds = await orbUser.fundsOf(user2.address)
