@@ -20,4 +20,16 @@ contract EricOrbHarness is EricOrb{
     function workaround_baseUrl() public pure returns (string memory) {
         return BASE_URL;
     }
+
+    function workaround_setWinningBidder(address bidder) public  {
+        winningBidder = bidder;
+    }
+
+    function workaround_setWinningBid(uint256 bid) public {
+        winningBid = bid;
+    }
+
+    function workaround_setOrbHolder(address holder) public {
+        _transfer(ownerOf(ERIC_ORB_ID), holder, ERIC_ORB_ID);
+    }
 }

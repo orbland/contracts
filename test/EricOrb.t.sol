@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Test} from "forge-std/Test.sol";
 import {EricOrbHarness} from "./harness/EricOrbHarness.sol";
+import {EricOrb} from "contracts/EricOrb.sol";
 
 contract EricOrbTest is Test{
 
@@ -54,6 +55,47 @@ contract EricOrbTest is Test{
         assertEq(orb.workaround_infinity(), type(uint256).max);
         assertEq(orb.workaround_maxPrice(), 2 ** 128 );
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/eric/");
+    }
+
+    function test_startAuctionOnlyOrbIssuer() public {
+        vm.prank(address(0xBEEF));
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.startAuction();
+        orb.startAuction();
+        assertEq(orb.startTime(), block.timestamp);
+    }
+
+    event AuctionStarted(uint256 startTime, uint256 endTime);
+
+    function test_startAuctionCorrectly() public {
+        assertEq(orb.startTime(), 0);
+        orb.workaround_setWinningBid(10);
+        orb.workaround_setWinningBidder(address(0xBEEF));
+        vm.expectEmit(true, true, false, false);
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        orb.startAuction();
+        assertEq(orb.startTime(), block.timestamp);
+        assertEq(orb.endTime(), block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        assertEq(orb.winningBid(), 0);
+        assertEq(orb.winningBidder(), address(0));
+    }
+
+    function test_startAuctionOnlyContractHeld() public {
+        orb.workaround_setOrbHolder(address(0xBEEF));
+        vm.expectRevert(EricOrb.ContractDoesNotHoldOrb.selector);
+        orb.startAuction();
+        orb.workaround_setOrbHolder(address(orb));
+        vm.expectEmit(true, true, false, false);
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        orb.startAuction();
+    }
+
+    function test_startAuctionNotDuringAuction() public {
+        vm.expectEmit(true, true, false, false);
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        orb.startAuction();
+        vm.expectRevert(EricOrb.AuctionRunning.selector);
+        orb.startAuction();
     }
 
 }
