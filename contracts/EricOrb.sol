@@ -384,8 +384,7 @@ contract EricOrb is ERC721, Ownable {
    * @return  uint256  Total funds required to satisfy the bid of `amount`.
    */
   function fundsRequiredToBid(uint256 amount) public pure returns (uint256) {
-    uint256 requiredDeposit = (amount * HOLDER_TAX_NUMERATOR) / FEE_DENOMINATOR;
-    return amount + requiredDeposit;
+    return amount + (amount * HOLDER_TAX_NUMERATOR) / FEE_DENOMINATOR;
   }
 
   /**
