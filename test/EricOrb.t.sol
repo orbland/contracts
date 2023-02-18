@@ -57,6 +57,18 @@ contract EricOrbTest is Test{
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/eric/");
     }
 
+    function test_transfers() public {
+        address newOwner = address(0xBEEF);
+        uint256 id = orb.workaround_orbId();
+        vm.expectRevert(EricOrb.TransferringNotSupported.selector);
+        orb.transferFrom(address(this), newOwner, id);
+        vm.expectRevert(EricOrb.TransferringNotSupported.selector);
+        orb.safeTransferFrom(address(this), newOwner, id);
+        vm.expectRevert(EricOrb.TransferringNotSupported.selector);
+        orb.safeTransferFrom(address(this), newOwner, id, bytes(""));
+
+    }
+
     function test_startAuctionOnlyOrbIssuer() public {
         vm.prank(address(0xBEEF));
         vm.expectRevert("Ownable: caller is not the owner");
@@ -96,6 +108,18 @@ contract EricOrbTest is Test{
         orb.startAuction();
         vm.expectRevert(EricOrb.AuctionRunning.selector);
         orb.startAuction();
+    }
+
+    function test_bidOnlyDuringAuction() public {
+        uint256 bidAmount = 0.6 ether;
+        address user = address(0xBEEF);
+        vm.deal(user, 1 ether);
+        vm.expectRevert(EricOrb.AuctionNotRunning.selector);
+        orb.bid{value: 1 ether}(bidAmount);
+        orb.startAuction();
+        assertEq(orb.winningBid(), 0 ether);
+        orb.bid{value: 1 ether}(bidAmount);
+        assertEq(orb.winningBid(), bidAmount);
     }
 
 }
