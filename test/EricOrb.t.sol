@@ -9,8 +9,18 @@ contract EricOrbTest is Test{
 
     EricOrbHarness orb;
 
+    address user;
+
     function setUp() public {
         orb = new EricOrbHarness();
+        user = address(0xBEEF);
+    }
+
+    function prankAndBid(address bidder, uint256 bidAmount) internal {
+        uint256 finalAmount = orb.fundsRequiredToBid(bidAmount);
+        vm.deal(bidder, finalAmount);
+        vm.prank(bidder);
+        orb.bid{value: finalAmount}(bidAmount);
     }
 
     // Test that the initial state is correct
@@ -66,8 +76,21 @@ contract EricOrbTest is Test{
         orb.safeTransferFrom(address(this), newOwner, id);
         vm.expectRevert(EricOrb.TransferringNotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, id, bytes(""));
-
     }
+
+    function test_minimumBid() public {
+        uint256 bidAmount = 0.6 ether;
+        orb.startAuction();
+        assertEq(orb.minimumBid(), orb.STARTING_PRICE());
+        prankAndBid(user, bidAmount);
+        assertEq(orb.minimumBid(), bidAmount + orb.MINIMUM_BID_STEP());
+    }
+
+    function test_fundsRequiredToBid(uint256 amount) public {
+        amount = bound(amount, 0, type(uint224).max);
+        assertEq(orb.fundsRequiredToBid(amount), amount + (amount * 1_000 / 10_000));
+    }
+
 
     function test_startAuctionOnlyOrbIssuer() public {
         vm.prank(address(0xBEEF));
@@ -112,8 +135,6 @@ contract EricOrbTest is Test{
 
     function test_bidOnlyDuringAuction() public {
         uint256 bidAmount = 0.6 ether;
-        address user = address(0xBEEF);
-        vm.deal(user, 1 ether);
         vm.expectRevert(EricOrb.AuctionNotRunning.selector);
         orb.bid{value: 1 ether}(bidAmount);
         orb.startAuction();
