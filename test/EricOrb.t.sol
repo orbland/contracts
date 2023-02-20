@@ -238,6 +238,10 @@ contract EricOrbTest is Test {
             assertEq(orb.fundsOf(user), fundsOfUser[user]);
             assertEq(address(orb).balance, contractBalance);
         }
+        vm.expectEmit(true, false, false, true);
+        emit AuctionClosed(orb.winningBidder(), orb.winningBid());
+        vm.warp(orb.endTime() + 1);
+        orb.closeAuction();
     }
 
     function test_bidExtendsAuction() public {
