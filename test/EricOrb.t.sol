@@ -67,7 +67,7 @@ contract EricOrbTest is Test {
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/eric/");
     }
 
-    function test_transfers() public {
+    function test_transfersRevert() public {
         address newOwner = address(0xBEEF);
         uint256 id = orb.workaround_orbId();
         vm.expectRevert(EricOrb.TransferringNotSupported.selector);
@@ -258,4 +258,76 @@ contract EricOrbTest is Test {
         // change because block.timestamp + BID_AUCTION_EXTENSION + 50 >  endTime
         assertEq(orb.endTime(), endTime + 50);
     }
+
+    event AuctionClosed(address indexed winner, uint256 price);
+
+    function test_closeAuctionRevertsDuringAuction() public {
+        orb.startAuction();
+        vm.expectRevert(EricOrb.AuctionRunning.selector);
+        orb.closeAuction();
+
+        vm.warp(orb.endTime() + 1);
+        vm.expectEmit(true, false, false, true);
+        emit AuctionClosed(address(0), 0);
+        orb.closeAuction();
+    }
+
+    function test_closeAuctionRevertsIfAuctionNotStarted() public {
+        vm.expectRevert(EricOrb.AuctionNotStarted.selector);
+        orb.closeAuction();
+        orb.startAuction();
+        // endTime != 0
+        assertEq(orb.endTime(), block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        vm.expectRevert(EricOrb.AuctionRunning.selector);
+        orb.closeAuction();
+
+    }
+
+    function test_closeAuctionWithoutWinner() public {
+        orb.startAuction();
+        vm.warp(orb.endTime() + 1);
+        vm.expectEmit(true, false, false, true);
+        emit AuctionClosed(address(0), 0);
+        orb.closeAuction();
+        assertEq(orb.endTime(), 0);
+        assertEq(orb.startTime(), 0);
+        assertEq(orb.winningBid(), 0);
+        assertEq(orb.winningBidder(), address(0));
+    }
+
+    function test_closeAuctionWithWinner() public {
+        orb.startAuction();
+        uint256 amount = orb.minimumBid();
+        uint256 funds = orb.fundsRequiredToBid(amount);
+        // Bid `amount` and transfer `funds` to the contract
+        prankAndBid(user, amount);
+        vm.warp(orb.endTime() + 1);
+
+        // Assert storage before
+        assertEq(orb.winningBidder(), user);
+        assertEq(orb.winningBid(), amount);
+        assertEq(orb.fundsOf(user), funds);
+        assertEq(orb.fundsOf(address(orb)), 0);
+
+        vm.expectEmit(true, false, false, true);
+        emit AuctionClosed(user, amount);
+
+        orb.closeAuction();
+
+        // Assert storage after
+        // storage that is reset
+        assertEq(orb.endTime(), 0);
+        assertEq(orb.startTime(), 0);
+        assertEq(orb.winningBid(), 0);
+        assertEq(orb.winningBidder(), address(0));
+
+        // storage that persists
+        assertEq(address(orb).balance, funds);
+        assertEq(orb.fundsOf(address(this)), amount);
+        assertEq(orb.ownerOf(orb.workaround_orbId()), user);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(orb.lastTriggerTime(), block.timestamp - orb.COOLDOWN());
+        assertEq(orb.fundsOf(user), funds - amount);
+    }
+
 }
