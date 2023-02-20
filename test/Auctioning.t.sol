@@ -271,6 +271,7 @@ contract OrbAuction is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(orb.lastTriggerTime(), block.timestamp - orb.COOLDOWN());
         assertEq(orb.fundsOf(user), funds - amount);
+        assertEq(orb.price(), amount);
     }
 
 }
