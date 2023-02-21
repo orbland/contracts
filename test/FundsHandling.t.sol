@@ -158,12 +158,22 @@ contract FundsHandling is EricOrbTestBase {
 
     event Settlement(address indexed holder,address indexed owner, uint256 amount);
 
-    function test_withdrawSettlesFirst() public {
+    function test_withdrawSettlesFirstIfHolder() public {
         assertEq(orb.fundsOf(user),0);
         // winning bid  = 1 ether
         uint256 bidAmount = 10 ether;
+        uint256 smallBidAmount = 0.5 ether;
         uint256 withdrawAmount = 0.1 ether;
-        makeHolderAndWarp(bidAmount);
+
+        orb.startAuction();
+        // user2 bids
+        prankAndBid(user2, smallBidAmount);
+        // user1 bids and becomes the winning bidder
+        prankAndBid(user, bidAmount);
+        vm.warp(orb.endTime() + 1);
+        orb.closeAuction();
+
+        vm.warp(block.timestamp + 30 days);
 
         // ownerEffective = ownerFunds + transferableToOwner
         // userEffective = userFunds - transferableToOwner
@@ -172,6 +182,7 @@ contract FundsHandling is EricOrbTestBase {
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
         uint256 transferableToOwner = ownerEffective - ownerFunds;
+        uint256 startingBalance = user.balance;
 
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, owner, transferableToOwner);
@@ -180,9 +191,21 @@ contract FundsHandling is EricOrbTestBase {
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(user.balance, startingBalance + withdrawAmount);
+
+        // move ahead 10 days;
+        vm.warp(block.timestamp + 10 days);
+
+        // not holder
+        vm.prank(user2);
+        startingBalance = user2.balance;
+        orb.withdraw(withdrawAmount);
+        assertEq(orb.fundsOf(user2), orb.fundsRequiredToBid(smallBidAmount) - withdrawAmount);
+        assertEq(user2.balance, startingBalance + withdrawAmount);
+
     }
 
-    function testFuzz_withdrawSettlesFirst(uint256 bidAmount, uint256 withdrawAmount) public {
+    function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user),0);
         // winning bid  = 1 ether
         bidAmount = bound(bidAmount, orb.STARTING_PRICE(), orb.workaround_maxPrice());
@@ -195,15 +218,24 @@ contract FundsHandling is EricOrbTestBase {
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
         uint256 transferableToOwner = ownerEffective - ownerFunds;
+        uint256 startingBalance = user.balance;
 
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, owner, transferableToOwner);
         vm.prank(user);
-        withdrawAmount = bound(withdrawAmount, 0, userEffective);
+        withdrawAmount = bound(withdrawAmount, 0, userEffective - 1);
         orb.withdraw(withdrawAmount);
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(user.balance, startingBalance + withdrawAmount);
+
+        vm.prank(user);
+        orb.withdrawAll();
+        assertEq(orb.fundsOf(user), 0);
+        assertEq(orb.fundsOf(owner), ownerEffective);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(user.balance, startingBalance + userEffective);
     }
 
 
