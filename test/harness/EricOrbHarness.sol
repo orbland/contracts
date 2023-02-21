@@ -32,4 +32,9 @@ contract EricOrbHarness is EricOrb{
     function workaround_setOrbHolder(address holder) public {
         _transfer(ownerOf(ERIC_ORB_ID), holder, ERIC_ORB_ID);
     }
+
+    function workaround_owedSinceLastSettlement() public view returns (uint256) {
+        return _owedSinceLastSettlement();
+    }
+
 }
