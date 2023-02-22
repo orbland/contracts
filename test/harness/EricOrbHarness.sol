@@ -37,4 +37,9 @@ contract EricOrbHarness is EricOrb{
         return _owedSinceLastSettlement();
     }
 
+    // assume that _lastSettlement is internal
+    function workaround_lastSettlementTime() public view returns (uint256) {
+        return _lastSettlementTime;
+    }
+
 }

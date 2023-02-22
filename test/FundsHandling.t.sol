@@ -222,6 +222,7 @@ contract FundsHandling is EricOrbTestBase {
 
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, owner, transferableToOwner);
+
         vm.prank(user);
         withdrawAmount = bound(withdrawAmount, 0, userEffective - 1);
         orb.withdraw(withdrawAmount);
@@ -238,6 +239,52 @@ contract FundsHandling is EricOrbTestBase {
         assertEq(user.balance, startingBalance + userEffective);
     }
 
+
+    function test_settleOnlyIfHolderHeld() public {
+        vm.expectRevert(EricOrb.ContractHoldsOrb.selector);
+        orb.settle();
+        assertEq(orb.workaround_lastSettlementTime(), 0);
+        makeHolderAndWarp(1 ether);
+        orb.settle();
+        assertEq(orb.workaround_lastSettlementTime(), block.timestamp);
+    }
+
+    function testFuzz_settleCorrect(uint96 bid, uint96 time) public {
+        uint256 amount = bound(bid, orb.STARTING_PRICE(), orb.workaround_maxPrice());
+        // warp ahead a random amount of time
+        // remain under 1 year in total, so solvent
+        uint256 timeOffset = bound(time, 0, 300 days);
+        vm.warp(block.timestamp + timeOffset);
+        assertEq(orb.fundsOf(user), 0);
+        assertEq(orb.fundsOf(owner),0);
+        assertEq(orb.workaround_lastSettlementTime(),0);
+        // it warps 30 days by default
+        makeHolderAndWarp(amount);
+
+        uint256 userEffective = orb.effectiveFundsOf(user);
+        uint256 ownerEffective = orb.effectiveFundsOf(owner);
+        uint256 startingBalance = user.balance;
+
+        orb.settle();
+        assertEq(orb.fundsOf(user), userEffective);
+        assertEq(orb.fundsOf(owner), ownerEffective);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(user.balance, startingBalance);
+
+        timeOffset = bound(time, block.timestamp + 340 days, type(uint96).max);
+        vm.warp(timeOffset);
+
+        // user is no longer solvent
+        // the user can't pay the full owed feeds, so they
+        // pay what they can
+        uint256 transferable = orb.fundsOf(user);
+        orb.settle();
+        assertEq(orb.fundsOf(user), 0);
+        // ownerEffective is from the last time it settled
+        assertEq(orb.fundsOf(owner), transferable + ownerEffective);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(user.balance, startingBalance);
+    }
 
 }
 
