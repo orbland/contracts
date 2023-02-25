@@ -246,6 +246,9 @@ contract Bid is EricOrbTestBase {
 
     event AuctionClosed(address indexed winner, uint256 price);
 
+
+    //TODO: This test failed once, so it's flakey. Will need to revisit and see why it failed
+    // output: https://gist.github.com/odyslam/6a98e75297485db2cdd1734c96b89be1
     function testFuzz_bidSetsCorrectState(address[16] memory users, uint128[16] memory amounts) public {
         orb.startAuction();
         uint256 contractBalance;
@@ -493,7 +496,8 @@ contract Deposit is EricOrbTestBase {
 }
 
 contract Withdraw is EricOrbTestBase {
-    event Withdrawl(address indexed user, uint256 amount);
+
+    event Withdrawal(address indexed recipient, uint256 amount);
 
     function test_withdrawRevertsIfWinningBidder() public {
         uint256 bidAmount = 1 ether;
@@ -552,8 +556,10 @@ contract Withdraw is EricOrbTestBase {
 
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, owner, transferableToOwner);
+
         vm.prank(user);
         orb.withdraw(withdrawAmount);
+
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
@@ -603,9 +609,25 @@ contract Withdraw is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, startingBalance + userEffective);
     }
+
+    function test_withdrawRevertsIfInsufficientFunds() public {
+        vm.startPrank(user);
+        orb.deposit{value: 1 ether}();
+        assertEq(orb.fundsOf(user), 1 ether);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientFunds.selector, 1 ether, 1 ether + 1));
+        orb.withdraw(1 ether + 1);
+        assertEq(orb.fundsOf(user), 1 ether);
+        vm.expectEmit(true, false, false, true);
+        emit Withdrawal(user, 1 ether);
+        orb.withdraw(1 ether);
+        assertEq(orb.fundsOf(user), 0);
+    }
 }
 
 contract Settle is EricOrbTestBase {
+
+    event Settlement(address indexed holder, address indexed owner, uint256 amount);
+
     function test_settleOnlyIfHolderHeld() public {
         vm.expectRevert(EricOrb.ContractHoldsOrb.selector);
         orb.settle();
@@ -651,6 +673,13 @@ contract Settle is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, startingBalance);
     }
+
+    function test_settleReturnsIfOwner() public {
+        orb.workaround_setOrbHolder(owner);
+        orb.workaround_settle();
+        assertEq(orb.workaround_lastSettlementTime(), 0);
+    }
+
 }
 
 
@@ -693,6 +722,64 @@ contract OwedSinceLastSettlement is EricOrbTestBase {
         // calculation done off-solidity to verify precision with another environment
         assertEq(orb.workaround_owedSinceLastSettlement(), 9_040_721_990_740_740_740);
     }
+}
+
+contract SetPrice is EricOrbTestBase {
+
+
+    function test_setPriceRevertsIfNotHolder() public {
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(winningBid);
+        vm.expectRevert(EricOrb.NotHolder.selector);
+        vm.prank(user2);
+        orb.setPrice(1 ether);
+        assertEq(orb.price(), 10 ether);
+
+        vm.prank(user);
+        orb.setPrice(1 ether);
+        assertEq(orb.price(), 1 ether);
+    }
+
+    function test_setPriceRevertsIfHolderInsolvent() public {
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(winningBid);
+        vm.warp(block.timestamp + 600 days);
+        vm.startPrank(user);
+        vm.expectRevert(EricOrb.HolderInsolvent.selector);
+        orb.setPrice(1 ether);
+
+        // As the user can't deposit funds to become solvent again
+        // we modify a variable to trick the contract
+        orb.workaround_setLastSettlementTime(block.timestamp);
+        orb.setPrice(2 ether);
+        assertEq(orb.price(), 2 ether);
+    }
+
+    function test_setPriceSettlesBefore() public {
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(winningBid);
+        vm.prank(user);
+        orb.setPrice(2 ether);
+        assertEq(orb.price(), 2 ether);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+    }
+
+    event NewPrice(uint256 oldPrice, uint256 newPrice);
+
+    function test_setPriceRevertsIfMaxPrice() public {
+        uint256 maxPrice = orb.workaround_maxPrice();
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(winningBid);
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.InvalidNewPrice.selector, maxPrice + 1));
+        orb.setPrice(maxPrice + 1 );
+
+        vm.expectEmit(false, false, false, true);
+        emit NewPrice(10 ether, maxPrice);
+        orb.setPrice(maxPrice);
+    }
 
 }
+
+
 

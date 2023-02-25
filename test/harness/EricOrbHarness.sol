@@ -54,4 +54,8 @@ contract EricOrbHarness is EricOrb{
         return _holderSolvent();
     }
 
+    function workaround_settle() public {
+        _settle();
+    }
+
 }
