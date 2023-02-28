@@ -651,7 +651,7 @@ contract EricOrb is ERC721, Ownable {
    *          Emits NewPrice().
    * @param   newPrice  New price for the orb.
    */
-  function setPrice(uint256 newPrice) external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
+  function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent settles {
     _setPrice(newPrice);
   }
 
@@ -747,8 +747,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev     Calls _withdraw(), which does value transfer from the contract.
    *          Emits Foreclosure() and Withdrawal().
    */
-  function exit() external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
-<<<<<<< HEAD
+  function exit() external onlyHolder onlyHolderSolvent settles {
     price = 0;
 
     emit Foreclosure(msg.sender);
@@ -906,7 +905,7 @@ contract EricOrb is ERC721, Ownable {
    *          Emits ResponseFlagged().
    * @param   triggerId  ID of a trigger to which the response is being flagged.
    */
-  function flagResponse(uint256 triggerId) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+  function flagResponse(uint256 triggerId) external onlyHolder onlyHolderSolvent {
     if (!_responseExists(triggerId)) {
       revert ResponseNotFound(triggerId);
     }
