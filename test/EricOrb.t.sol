@@ -259,43 +259,43 @@ contract EricOrbTest is Test {
         assertEq(orb.endTime(), endTime + 50);
     }
 
-    event AuctionClosed(address indexed winner, uint256 price);
+    event AuctionFinalized(address indexed winner, uint256 price);
 
-    function test_closeAuctionRevertsDuringAuction() public {
+    function test_finalizeAuctionRevertsDuringAuction() public {
         orb.startAuction();
         vm.expectRevert(EricOrb.AuctionRunning.selector);
-        orb.closeAuction();
+        orb.finalizeAuction();
 
         vm.warp(orb.endTime() + 1);
         vm.expectEmit(true, false, false, true);
-        emit AuctionClosed(address(0), 0);
-        orb.closeAuction();
+        emit AuctionFinalized(address(0), 0);
+        orb.finalizeAuction();
     }
 
-    function test_closeAuctionRevertsIfAuctionNotStarted() public {
+    function test_finalizeAuctionRevertsIfAuctionNotStarted() public {
         vm.expectRevert(EricOrb.AuctionNotStarted.selector);
-        orb.closeAuction();
+        orb.finalizeAuction();
         orb.startAuction();
         // endTime != 0
         assertEq(orb.endTime(), block.timestamp + orb.MINIMUM_AUCTION_DURATION());
         vm.expectRevert(EricOrb.AuctionRunning.selector);
-        orb.closeAuction();
+        orb.finalizeAuction();
 
     }
 
-    function test_closeAuctionWithoutWinner() public {
+    function test_finalizeAuctionWithoutWinner() public {
         orb.startAuction();
         vm.warp(orb.endTime() + 1);
         vm.expectEmit(true, false, false, true);
-        emit AuctionClosed(address(0), 0);
-        orb.closeAuction();
+        emit AuctionFinalized(address(0), 0);
+        orb.finalizeAuction();
         assertEq(orb.endTime(), 0);
         assertEq(orb.startTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
     }
 
-    function test_closeAuctionWithWinner() public {
+    function test_finalizeAuctionWithWinner() public {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
         uint256 funds = orb.fundsRequiredToBid(amount);
@@ -310,9 +310,9 @@ contract EricOrbTest is Test {
         assertEq(orb.fundsOf(address(orb)), 0);
 
         vm.expectEmit(true, false, false, true);
-        emit AuctionClosed(user, amount);
+        emit AuctionFinalized(user, amount);
 
-        orb.closeAuction();
+        orb.finalizeAuction();
 
         // Assert storage after
         // storage that is reset
