@@ -443,7 +443,7 @@ contract EricOrb is ERC721, Ownable {
    *          Can be called by anyone, although probably will be called by the issuer or the winner.
    *          Emits NewPrice() and AuctionFinalized().
    */
-  function finalizeAuction() external notDuringAuction onlyContractHeld {
+  function finalizeAuction() external notDuringAuction {
     if (endTime == 0) {
       revert AuctionNotStarted();
     }
