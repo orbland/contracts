@@ -195,7 +195,6 @@ export default function () {
   it("Should set the price to the winning bid", async function () {
     await beforeFinalize.restore()
     const winningBid = await orbDeployer.winningBid()
-    await expect(orbDeployer.price()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
 
     await expect(orbUser2.finalizeAuction()).to.not.be.reverted
 

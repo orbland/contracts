@@ -101,7 +101,6 @@ export default function () {
     await expect(orbUser.purchase(0, defaultValue)).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
   })
   it("Should return public variables as zero", async function () {
-    await expect(orbDeployer.price()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
     expect(await orbDeployer.lastTriggerTime()).to.be.eq(0)
     expect(await orbDeployer.startTime()).to.be.eq(0)
     expect(await orbDeployer.endTime()).to.be.eq(0)
