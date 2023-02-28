@@ -453,13 +453,13 @@ contract EricOrb is ERC721, Ownable {
       _funds[winningBidder] -= _price;
       _funds[owner()] += _price;
 
-      _transfer(address(this), winningBidder, ERIC_ORB_ID);
 
       _lastSettlementTime = block.timestamp;
       lastTriggerTime = block.timestamp - COOLDOWN;
 
       emit AuctionFinalized(winningBidder, winningBid);
 
+      _transfer(address(this), winningBidder, ERIC_ORB_ID);
       winningBidder = address(0);
       winningBid = 0;
     } else {
@@ -723,12 +723,14 @@ contract EricOrb is ERC721, Ownable {
     _funds[owner()] += ownerRoyalties;
     _funds[holder] += currentOwnerShare;
 
-    _transfer(holder, msg.sender, ERIC_ORB_ID);
+
     _lastSettlementTime = block.timestamp;
 
     _setPrice(newPrice);
 
     emit Purchase(holder, msg.sender);
+
+    _transfer(holder, msg.sender, ERIC_ORB_ID);
   }
 
   /**
@@ -769,11 +771,11 @@ contract EricOrb is ERC721, Ownable {
    *          Emits Foreclosure() and Withdrawal().
    */
   function exit() external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
-    _transfer(msg.sender, address(this), ERIC_ORB_ID);
     _price = 0;
 
     emit Foreclosure(msg.sender);
 
+    _transfer(msg.sender, address(this), ERIC_ORB_ID);
     _withdraw(_funds[msg.sender]);
   }
 
@@ -784,10 +786,9 @@ contract EricOrb is ERC721, Ownable {
    */
   function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
-    _transfer(holder, address(this), ERIC_ORB_ID);
     _price = 0;
-
     emit Foreclosure(holder);
+    _transfer(holder, address(this), ERIC_ORB_ID);
   }
 
   /**
