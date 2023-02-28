@@ -667,6 +667,9 @@ contract EricOrb is ERC721, Ownable {
     if (currentPrice != price) {
       revert CurrentPriceIncorrect(currentPrice, price);
     }
+    if (newPrice == 0) {
+      revert InvalidNewPrice(newPrice);
+    }
 
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
 
@@ -677,14 +680,14 @@ contract EricOrb is ERC721, Ownable {
     fundsOf[msg.sender] += msg.value;
     uint256 totalFunds = fundsOf[msg.sender];
 
-    if (totalFunds <= price) {
-      revert InsufficientFunds(totalFunds, price + 1);
+    if (totalFunds <= currentPrice) {
+      revert InsufficientFunds(totalFunds, currentPrice + 1);
     }
 
-    uint256 ownerRoyalties = (price * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
-    uint256 currentOwnerShare = price - ownerRoyalties;
+    uint256 ownerRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
+    uint256 currentOwnerShare = currentPrice - ownerRoyalties;
 
-    fundsOf[msg.sender] -= price;
+    fundsOf[msg.sender] -= currentPrice;
     fundsOf[owner()] += ownerRoyalties;
     fundsOf[holder] += currentOwnerShare;
 
