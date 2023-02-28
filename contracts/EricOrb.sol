@@ -136,7 +136,7 @@ contract EricOrb is ERC721, Ownable {
   // Shouldn't be useful is orb is held by the contract.
   uint256 public price;
   // Last time orb holder's funds were settled.
-  // Shouldn't bt useful is orb is held by the contract.
+  // Shouldn't be useful is orb is held by the contract.
   uint256 public lastSettlementTime;
 
   // Auction State Variables
@@ -266,16 +266,6 @@ contract EricOrb is ERC721, Ownable {
   }
 
   // FUNDS-RELATED MODIFIERS
-
-  /**
-   * @dev  Ensures that the caller has funds on the contract. Prevents zero-value withdrawals.
-   */
-  modifier hasFunds() {
-    if (fundsOf[msg.sender] == 0) {
-      revert NoFunds();
-    }
-    _;
-  }
 
   /**
    * @dev  Ensures that the current orb holder has enough funds to cover Harberger tax until now.
@@ -529,7 +519,7 @@ contract EricOrb is ERC721, Ownable {
    *          Not recommended for current orb holders, they should call exit() to take out their funds.
    * @dev     Not allowed for the winning auction bidder.
    */
-  function withdrawAll() external notWinningBidder settlesIfHolder hasFunds {
+  function withdrawAll() external notWinningBidder settlesIfHolder {
     _withdraw(fundsOf[msg.sender]);
   }
 
@@ -538,7 +528,7 @@ contract EricOrb is ERC721, Ownable {
    *          For current orb holders, reduces the time until foreclosure.
    * @dev     Not allowed for the winning auction bidder.
    */
-  function withdraw(uint256 amount) external notWinningBidder settlesIfHolder hasFunds {
+  function withdraw(uint256 amount) external notWinningBidder settlesIfHolder {
     _withdraw(amount);
   }
 

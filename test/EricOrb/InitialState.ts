@@ -84,9 +84,6 @@ export default function () {
       balanceBeforeWithdrawals.add(totalExpectedWithdrawal).sub(gasSpentPartialWithdrawal).sub(gasSpentFullWithdrawal)
     )
   })
-  it("Should not allow withdrawals for users with no funds", async function () {
-    await expect(orbUser2.withdrawAll()).to.be.revertedWithCustomError(orbDeployer, "NoFunds")
-  })
   it("Should not allow withdrawals for more than deposited", async function () {
     await expect(orbUser.deposit({ value: defaultValue }))
       .to.emit(orbDeployer, "Deposit")
