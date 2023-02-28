@@ -367,7 +367,8 @@ contract EricOrb is ERC721, Ownable {
   function minimumBid() public view onlyDuringAuction returns (uint256) {
     if (winningBid == 0) {
       return STARTING_PRICE;
-    } else {
+    }
+    else {
         unchecked {
             return winningBid + MINIMUM_BID_STEP;
         }
@@ -412,8 +413,7 @@ contract EricOrb is ERC721, Ownable {
    * @param   amount  The value to bid.
    */
   function bid(uint256 amount) external payable onlyDuringAuction {
-    uint256 currentFunds = _funds[msg.sender];
-    uint256 totalFunds = currentFunds + msg.value;
+    uint256 totalFunds = _funds[msg.sender] + msg.value;
 
     if (amount < minimumBid()) {
       revert InsufficientBid(amount, minimumBid());
