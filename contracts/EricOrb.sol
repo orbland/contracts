@@ -163,6 +163,8 @@ contract EricOrb is ERC721, Ownable {
   uint256 public lastTriggerTime;
   // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
   mapping(uint256 => bytes32) public triggers;
+  // Holder Receive Time: When an address != address(this) received the Orb.
+  uint256 public holderReceiveTime;
   // Count of triggers made. Used to calculate triggerId of the next trigger.
   uint256 public triggersCount = 0;
   // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
@@ -345,6 +347,13 @@ contract EricOrb is ERC721, Ownable {
     revert TransferringNotSupported();
   }
 
+  function _transferOrb(address oldAddress, address newAddress) internal {
+      _transfer(oldAddress, newAddress, ERIC_ORB_ID);
+      if (newAddress != address(this)) {
+          holderReceiveTime = block.timestamp;
+      }
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   //  FUNCTIONS: AUCTION
   ////////////////////////////////////////////////////////////////////////////////
@@ -454,11 +463,12 @@ contract EricOrb is ERC721, Ownable {
       fundsOf[owner()] += price;
 
       lastSettlementTime = block.timestamp;
+
       lastTriggerTime = block.timestamp - COOLDOWN;
 
       emit AuctionFinalized(winningBidder, winningBid);
 
-      _transfer(address(this), winningBidder, ERIC_ORB_ID);
+      _transferOrb(address(this), winningBidder);
       winningBidder = address(0);
       winningBid = 0;
     } else {
@@ -697,7 +707,7 @@ contract EricOrb is ERC721, Ownable {
 
     emit Purchase(holder, msg.sender);
 
-    _transfer(holder, msg.sender, ERIC_ORB_ID);
+    _transferOrb(holder, msg.sender);
   }
 
   /**
@@ -738,11 +748,12 @@ contract EricOrb is ERC721, Ownable {
    *          Emits Foreclosure() and Withdrawal().
    */
   function exit() external onlyHolder onlyHolderHeld onlyHolderSolvent settles {
+<<<<<<< HEAD
     price = 0;
 
     emit Foreclosure(msg.sender);
 
-    _transfer(msg.sender, address(this), ERIC_ORB_ID);
+    _transferOrb(msg.sender, address(this));
     _withdraw(fundsOf[msg.sender]);
   }
 
@@ -757,7 +768,7 @@ contract EricOrb is ERC721, Ownable {
     price = 0;
 
     emit Foreclosure(holder);
-    _transfer(holder, address(this), ERIC_ORB_ID);
+    _transferOrb(holder, address(this));
   }
 
   /**
@@ -900,7 +911,13 @@ contract EricOrb is ERC721, Ownable {
       revert ResponseNotFound(triggerId);
     }
 
-    if (block.timestamp - responses[triggerId].timestamp > RESPONSE_FLAGGING_PERIOD) {
+    // Response Flagging Period starts counting from when the response is made.
+    uint256 responseTime = responses[triggerId].timestamp;
+    if (
+        (block.timestamp - responseTime > RESPONSE_FLAGGING_PERIOD)
+        || holderReceiveTime > responseTime
+       )
+    {
       revert FlaggingPeriodExpired(
         triggerId,
         block.timestamp - responses[triggerId].timestamp,
