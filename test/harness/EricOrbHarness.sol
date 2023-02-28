@@ -58,4 +58,8 @@ contract EricOrbHarness is EricOrb{
         _settle();
     }
 
+    function workaround_foreclosureTime() public returns (uint256){
+        return _foreclosureTime();
+    }
+
 }

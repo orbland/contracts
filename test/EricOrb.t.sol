@@ -968,6 +968,7 @@ contract Exit is EricOrbTestBase {
 
   event Foreclosure(address indexed from);
   event Withdrawal(address indexed recipient, uint256 amount);
+
     function test_succeedsCorrectly() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user);
@@ -985,9 +986,65 @@ contract Exit is EricOrbTestBase {
 
 }
 contract Foreclose is EricOrbTestBase {
+    function test_revertsIfNotHolderHeld() public {
+        vm.expectRevert(EricOrb.ContractHoldsOrb.selector);
+        vm.prank(user2);
+        orb.foreclose();
 
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(user, winningBid);
+        vm.warp(block.timestamp + 100000 days);
+        vm.prank(user2);
+        orb.foreclose();
+        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+    }
+
+    event Foreclosure(address indexed from);
+
+    function test_revertsifHolderSolvent() public {
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(user, winningBid);
+        vm.expectRevert(EricOrb.HolderSolvent.selector);
+        orb.foreclose();
+        vm.warp(block.timestamp + 10000 days);
+        vm.expectEmit(true,false, false, false);
+        emit Foreclosure(user);
+        orb.foreclose();
+    }
+
+    function test_succeeds() public {
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(user, winningBid);
+        vm.warp(block.timestamp + 10000 days);
+        vm.expectEmit(true,false, false, false);
+        emit Foreclosure(user);
+        assertEq(orb.ownerOf(orb.workaround_orbId()), user);
+        orb.foreclose();
+        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+        // TODO: check price = 0
+    }
 }
-contract ForeclosureTime is EricOrbTestBase {}
+contract ForeclosureTime is EricOrbTestBase {
+    function test_returnsInfinityIfOwner() public {
+        assertEq(orb.workaround_foreclosureTime(), type(uint256).max);
+    }
+
+    function  test_returnsInfinityIfPriceZero() public {
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(user, winningBid);
+        orb.workaround_setPrice(0);
+        assertEq(orb.workaround_foreclosureTime(), type(uint256).max);
+    }
+    function test_correctCalculation() public {
+        // uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR)
+        //                             / (_price * HOLDER_TAX_NUMERATOR);
+        uint256 winningBid = 10 ether;
+        makeHolderAndWarp(user, winningBid);
+        uint256 remaining = orb.fundsOf(user) * 365 days * 10_000 / (winningBid * 1_000);
+        uint256 lastSettlementTime = block.timestamp - 30 days;
+        assertEq(orb.workaround_foreclosureTime(), remaining + lastSettlementTime);
+    }
+}
 contract Trigger is EricOrbTestBase {}
 contract RecordTriggerCleartext is EricOrbTestBase {}
 contract Respond is EricOrbTestBase {}
