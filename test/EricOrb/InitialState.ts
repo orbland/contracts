@@ -84,9 +84,6 @@ export default function () {
       balanceBeforeWithdrawals.add(totalExpectedWithdrawal).sub(gasSpentPartialWithdrawal).sub(gasSpentFullWithdrawal)
     )
   })
-  it("Should not allow withdrawals for users with no funds", async function () {
-    await expect(orbUser2.withdrawAll()).to.be.revertedWithCustomError(orbDeployer, "NoFunds")
-  })
   it("Should not allow withdrawals for more than deposited", async function () {
     await expect(orbUser.deposit({ value: defaultValue }))
       .to.emit(orbDeployer, "Deposit")
@@ -106,9 +103,6 @@ export default function () {
     expect(await orbDeployer.endTime()).to.be.eq(0)
     expect(await orbDeployer.winningBidder()).to.be.eq(ethers.constants.AddressZero)
     expect(await orbDeployer.winningBid()).to.be.eq(0)
-  })
-  it("Should not return foreclosure-related information", async function () {
-    await expect(orbDeployer.foreclosureTime()).to.be.revertedWithCustomError(orbDeployer, "ContractHoldsOrb")
   })
   it("Should not have any triggers set", async function () {
     const firstTrigger = await orbDeployer.triggers(0)

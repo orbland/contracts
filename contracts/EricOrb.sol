@@ -268,20 +268,10 @@ contract EricOrb is ERC721, Ownable {
   // FUNDS-RELATED MODIFIERS
 
   /**
-   * @dev  Ensures that the caller has funds on the contract. Prevents zero-value withdrawals.
-   */
-  modifier hasFunds() {
-    if (fundsOf[msg.sender] == 0) {
-      revert NoFunds();
-    }
-    _;
-  }
-
-  /**
    * @dev  Ensures that the current orb holder has enough funds to cover Harberger tax until now.
    */
   modifier onlyHolderSolvent() {
-    if (!_holderSolvent()) {
+    if (!holderSolvent()) {
       revert HolderInsolvent();
     }
     _;
@@ -291,7 +281,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev  Ensures that the current orb holder has run out of funds to cover Harberger tax.
    */
   modifier onlyHolderInsolvent() {
-    if (_holderSolvent()) {
+    if (holderSolvent()) {
       revert HolderSolvent();
     }
     _;
@@ -373,7 +363,7 @@ contract EricOrb is ERC721, Ownable {
    * @dev     STARTING_PRICE if no bids were made, otherwise previous bid increased by MINIMUM_BID_STEP.
    * @return  uint256  Minimum bid required for {bid()}.
    */
-  function minimumBid() public view onlyDuringAuction returns (uint256) {
+  function minimumBid() public view returns (uint256) {
     if (winningBid == 0) {
       return STARTING_PRICE;
     }
@@ -463,7 +453,6 @@ contract EricOrb is ERC721, Ownable {
       fundsOf[owner()] += price;
 
       lastSettlementTime = block.timestamp;
-
       lastTriggerTime = block.timestamp - COOLDOWN;
 
       emit AuctionFinalized(winningBidder, winningBid);
@@ -511,23 +500,13 @@ contract EricOrb is ERC721, Ownable {
   }
 
   /**
-   * @notice  Returns if the current orb holder has enough funds to cover Harberger tax until now.
-   *          Always true is issuer holds the orb.
-   * @dev     Reverts if orb is held by the contract, contract cannot be solvent or insolvent.
-   * @return  bool  If the current holder is solvent.
-   */
-  function holderSolvent() external view onlyHolderHeld returns (bool) {
-    return _holderSolvent();
-  }
-
-  /**
    * @notice  Allows depositing funds on the contract. Not allowed for insolvent holders.
    * @dev     Deposits are not allowed for insolvent holders to prevent cheating via front-running.
    *          If the user becomes insolvent, the orb will always be returned to the contract as the next step.
    *          Emits Deposit().
    */
   function deposit() external payable {
-    if (msg.sender == ERC721.ownerOf(ERIC_ORB_ID) && !_holderSolvent()) {
+    if (msg.sender == ERC721.ownerOf(ERIC_ORB_ID) && !holderSolvent()) {
       revert HolderInsolvent();
     }
 
@@ -540,7 +519,7 @@ contract EricOrb is ERC721, Ownable {
    *          Not recommended for current orb holders, they should call exit() to take out their funds.
    * @dev     Not allowed for the winning auction bidder.
    */
-  function withdrawAll() external notWinningBidder settlesIfHolder hasFunds {
+  function withdrawAll() external notWinningBidder settlesIfHolder {
     _withdraw(fundsOf[msg.sender]);
   }
 
@@ -549,7 +528,7 @@ contract EricOrb is ERC721, Ownable {
    *          For current orb holders, reduces the time until foreclosure.
    * @dev     Not allowed for the winning auction bidder.
    */
-  function withdraw(uint256 amount) external notWinningBidder settlesIfHolder hasFunds {
+  function withdraw(uint256 amount) external notWinningBidder settlesIfHolder {
     _withdraw(amount);
   }
 
@@ -573,7 +552,7 @@ contract EricOrb is ERC721, Ownable {
    *          Always true is issuer holds the orb.
    * @return  bool  If the current holder is solvent.
    */
-  function _holderSolvent() internal view returns (bool) {
+  function holderSolvent() public view returns (bool) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
       return true;
@@ -729,17 +708,6 @@ contract EricOrb is ERC721, Ownable {
   ////////////////////////////////////////////////////////////////////////////////
 
   /**
-   * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
-   *          Harberger tax and can be foreclosed.
-   * @dev     Only valid if someone, not the contract, holds the orb.
-   *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
-   * @return  uint256  Timestamp of the foreclosure time.
-   */
-  function foreclosureTime() external view onlyHolderHeld returns (uint256) {
-    return _foreclosureTime();
-  }
-
-  /**
    * @notice  Exit is a voluntary giving up of the orb. It's a combination of withdrawing all funds not owed to
    *          the issuer since last settlement, and foreclosing yourself after.
    *          Most useful if the issuer themselves hold the orb and want to re-auction it.
@@ -763,17 +731,18 @@ contract EricOrb is ERC721, Ownable {
    */
   function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
-
     price = 0;
-
     emit Foreclosure(holder);
     _transferOrb(holder, address(this));
   }
-
   /**
-   * @dev  See {foreclosureTime()}.
+   * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
+   *          Harberger tax and can be foreclosed.
+   * @dev     Only valid if someone, not the contract, holds the orb.
+   *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
+   * @return  uint256  Timestamp of the foreclosure time.
    */
-  function _foreclosureTime() internal view returns (uint256) {
+  function foreclosureTime() external view returns (uint256) {
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
     if (owner() == holder) {
       return INFINITY;
@@ -797,11 +766,9 @@ contract EricOrb is ERC721, Ownable {
    *          Returns zero if the cooldown has expired and the orb is ready.
    * @dev     This function is only meaningful if the orb is not held by contract, and the holder is solvent.
    *          Contract itself cannot trigger the orb, so the response would be meaningless.
-   *          Therefore, the function reverts if the orb is held by contract or the holder is insolvent and could
-   *          trigger the orb.
    * @return  uint256  Time in seconds until the orb is ready to be triggered.
    */
-  function cooldownRemaining() external view onlyHolderHeld onlyHolderSolvent returns (uint256) {
+  function cooldownRemaining() external view returns (uint256) {
     uint256 cooldownExpires = lastTriggerTime + COOLDOWN;
     if (block.timestamp >= cooldownExpires) {
       return 0;
