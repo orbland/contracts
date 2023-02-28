@@ -161,10 +161,8 @@ contract EricOrb is ERC721, Ownable {
 
   // Last Trigger Time: when the orb was last triggered. Used together with Cooldown constant.
   uint256 public lastTriggerTime;
-  // Mapping for Triggers (Orb Invocations): triggerId to HashTime struct.
-  mapping(uint256 => HashTime) public triggers;
-  // Additional mapping for Trigger Cleartexts. Providing cleartexts is optional.
-  mapping(uint256 => string) public triggersCleartext;
+  // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
+  mapping(uint256 => bytes32) public triggers;
   // Count of triggers made. Used to calculate triggerId of the next trigger.
   uint256 public triggersCount = 0;
   // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
@@ -832,49 +830,37 @@ contract EricOrb is ERC721, Ownable {
     }
   }
 
+    /// @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
+    /// @param  cleartext  Required cleartext.
+    function triggerText(string memory cleartext) external {
+        uint256 length = bytes(cleartext).length;
+        if (length > MAX_CLEARTEXT_LENGTH) {
+            revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
+        }
+        triggerHash(keccak256(abi.encodePacked(cleartext)));
+    }
+
   /**
    * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit content hash,
-   *          and optionally cleartext as well, that represents a question to the orb issuer.
-   *          Cleartext is limited to one tweet length.
+   *          that represents a question to the orb issuer.
    *          Puts the orb on cooldown.
    *          The Orb can only be triggered by solvent holders.
-   * @dev     Content hash is keccak256 of the cleartext.
-   *          Timestamp is recorded together with the content hash.
+   * @dev     Timestamp is recorded together with the content hash.
    *          Timestamp being more than zero means that the trigger exists.
    *          triggersCount is used to track the id of the next trigger.
    *          Emits Triggered().
    * @param   contentHash  Required keccak256 hash of the cleartext.
-   * @param   cleartext  Cleartext. Empty string means that cleartext will not be recorded.
-   *          To submit empty cleartext, users can use {recordTriggerCleartext()} manually.
    */
-  function trigger(bytes32 contentHash, string memory cleartext) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+  function triggerHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
     if (block.timestamp < lastTriggerTime + COOLDOWN) {
       revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
     }
 
-    uint256 cleartextLength = bytes(cleartext).length;
-
-    if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
-      revert CleartextTooLong(cleartextLength, MAX_CLEARTEXT_LENGTH);
-    }
-
-    uint256 triggerId = triggersCount;
-
-    if (cleartextLength > 0) {
-      bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
-      if (contentHash != cleartextHash) {
-        revert CleartextHashMismatch(cleartextHash, contentHash);
-      }
-
-      triggersCleartext[triggerId] = cleartext;
-    }
-
-    triggers[triggerId] = HashTime(contentHash, block.timestamp);
-    triggersCount += 1;
+    triggers[triggersCount] = contentHash;
 
     lastTriggerTime = block.timestamp;
 
-    emit Triggered(msg.sender, triggerId, contentHash, block.timestamp);
+    emit Triggered(msg.sender, triggersCount++, contentHash, block.timestamp);
   }
 
   /**
@@ -892,21 +878,19 @@ contract EricOrb is ERC721, Ownable {
   function recordTriggerCleartext(
     uint256 triggerId,
     string memory cleartext
-  ) external onlyHolder onlyHolderHeld onlyHolderSolvent {
+  ) external view onlyHolder onlyHolderHeld onlyHolderSolvent {
     uint256 cleartextLength = bytes(cleartext).length;
 
     if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
       revert CleartextTooLong(cleartextLength, MAX_CLEARTEXT_LENGTH);
     }
 
-    bytes32 recordedContentHash = triggers[triggerId].contentHash;
+    bytes32 recordedContentHash = triggers[triggerId];
     bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
 
     if (recordedContentHash != cleartextHash) {
       revert CleartextHashMismatch(cleartextHash, recordedContentHash);
     }
-
-    triggersCleartext[triggerId] = cleartext;
   }
 
   /**
@@ -962,6 +946,15 @@ contract EricOrb is ERC721, Ownable {
     flaggedResponsesCount += 1;
 
     emit ResponseFlagged(msg.sender, triggerId);
+  }
+
+  /**
+   * @dev     Returns if a trigger exists, based on the timestamp being non-zero.
+   * @param   triggerId_  ID of a trigger to check the existance of.
+   * @return  bool  If a trigger exists or not.
+   */
+  function _triggerExists(uint256 triggerId_) internal view returns (bool) {
+      return triggerId_ < triggersCount;
   }
 
   /**
