@@ -1,3 +1,8 @@
 {
-  "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "solidity.remappings": [
+        "@openzeppelin/=./node_modules/@openzeppelin",
+        "forge-std/=./lib/forge-std/src/"
+    ],
+    "solidity.formatter": "forge"
 }
