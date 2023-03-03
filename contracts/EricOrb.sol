@@ -813,11 +813,13 @@ contract EricOrb is ERC721, Ownable {
       revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
     }
 
-    triggers[triggersCount] = contentHash;
+        uint256 triggerId = triggersCount;
 
+        triggers[triggerId] = contentHash;
     lastTriggerTime = block.timestamp;
+        triggersCount += 1;
 
-    emit Triggered(msg.sender, triggersCount++, contentHash, block.timestamp);
+        emit Triggered(msg.sender, triggerId, contentHash, block.timestamp);
   }
 
   /**
