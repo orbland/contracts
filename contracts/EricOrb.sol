@@ -655,15 +655,17 @@ contract EricOrb is ERC721, Ownable {
    *          Does not allow purchasing from yourself.
    *          Emits NewPrice() and Purchase().
    * @param   currentPrice  Current price, to prevent front-running.
-   * @param   newPrice  New price to use after the purchase. Cannot be set to zero here to prevent errors, but can
-   *          be set to zero afterwards via {setPrice()}.
+     * @param   newPrice  New price to use after the purchase.
    */
-  function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent settles {
+    function purchase(uint256 currentPrice, uint256 newPrice)
+        external
+        payable
+        onlyHolderHeld
+        onlyHolderSolvent
+        settles
+    {
     if (currentPrice != price) {
       revert CurrentPriceIncorrect(currentPrice, price);
-    }
-    if (newPrice == 0) {
-      revert InvalidNewPrice(newPrice);
     }
 
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
