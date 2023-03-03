@@ -785,14 +785,16 @@ contract EricOrb is ERC721, Ownable {
     }
   }
 
-    /// @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
-    /// @param  cleartext  Required cleartext.
-    function triggerText(string memory cleartext) external {
+    /**
+     * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
+     * @param   cleartext  Required cleartext.
+     */
+    function triggerWithCleartext(string memory cleartext) external {
         uint256 length = bytes(cleartext).length;
         if (length > MAX_CLEARTEXT_LENGTH) {
             revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
         }
-        triggerHash(keccak256(abi.encodePacked(cleartext)));
+        triggerWithHash(keccak256(abi.encodePacked(cleartext)));
     }
 
   /**
@@ -806,7 +808,7 @@ contract EricOrb is ERC721, Ownable {
    *          Emits Triggered().
    * @param   contentHash  Required keccak256 hash of the cleartext.
    */
-  function triggerHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
+    function triggerWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
     if (block.timestamp < lastTriggerTime + COOLDOWN) {
       revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
     }
