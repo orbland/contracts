@@ -834,10 +834,12 @@ contract EricOrb is ERC721, Ownable {
    * @param   triggerId  Triggred id, matching the one that was emitted when calling {trigger()}.
    * @param   cleartext  Cleartext, limited to tweet length. Must match the content hash.
    */
-  function recordTriggerCleartext(
-    uint256 triggerId,
-    string memory cleartext
-  ) external view onlyHolder onlyHolderHeld onlyHolderSolvent {
+    function recordTriggerCleartext(uint256 triggerId, string memory cleartext)
+        external
+        view
+        onlyHolder
+        onlyHolderSolvent
+    {
     uint256 cleartextLength = bytes(cleartext).length;
 
     if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
