@@ -338,6 +338,11 @@ contract EricOrb is ERC721, Ownable {
     revert TransferringNotSupported();
   }
 
+    /**
+     * @notice  Transfers the ERC-20 token to the new address.
+     *          If the new owner is not this contract (an actual user), updateds holderReceiveTime.
+     *          holderReceiveTime is used to limit response flagging window.
+     */
   function _transferOrb(address oldAddress, address newAddress) internal {
       _transfer(oldAddress, newAddress, ERIC_ORB_ID);
       if (newAddress != address(this)) {
