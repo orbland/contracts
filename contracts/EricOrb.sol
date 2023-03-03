@@ -489,7 +489,7 @@ contract EricOrb is ERC721, Ownable {
     uint256 unadjustedFunds = fundsOf[user];
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
 
-    if (user == owner() || user == holder) {
+        if ((user == owner() || user == holder) && owner() != holder) {
       uint256 owedFunds = _owedSinceLastSettlement();
       uint256 holderFunds = fundsOf[holder];
       uint256 transferableToOwner = holderFunds <= owedFunds ? holderFunds : owedFunds;
