@@ -428,8 +428,8 @@ contract EricOrb is ERC721, Ownable {
       revert InsufficientFunds(totalFunds, fundsRequiredToBid(amount));
     }
 
-    winningBidder = msg.sender;
     fundsOf[msg.sender] = totalFunds;
+        winningBidder = msg.sender;
     winningBid = amount;
 
     emit NewBid(msg.sender, amount);
