@@ -29,7 +29,24 @@ contract EricOrbHarness is EricOrb{
         winningBid = bid;
     }
 
-    function workaround_setOrbHolder(address holder) public {
-        _transfer(ownerOf(ERIC_ORB_ID), holder, ERIC_ORB_ID);
+    function workaround_setPrice(uint256 _price) public {
+        price = _price;
     }
+
+    function workaround_setLastSettlementTime(uint256 time) public {
+        lastSettlementTime = time;
+    }
+
+    function workaround_setOrbHolder(address holder) public {
+        _transferOrb(ownerOf(ERIC_ORB_ID), holder);
+    }
+
+    function workaround_owedSinceLastSettlement() public view returns (uint256) {
+        return _owedSinceLastSettlement();
+    }
+
+    function workaround_settle() public {
+        _settle();
+    }
+
 }
