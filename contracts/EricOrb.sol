@@ -199,7 +199,8 @@ contract EricOrb is ERC721, Ownable {
 
   /**
    * @dev  Ensures that the caller owns the orb.
-   *       Should only be used in conjuction with {onlyHolderHeld}, otherwise does not make sense.
+     *       Should only be used in conjuction with {onlyHolderHeld} or on external functions,
+     *       otherwise does not make sense.
    */
   modifier onlyHolder() {
     if (msg.sender != ERC721.ownerOf(ERIC_ORB_ID)) {
