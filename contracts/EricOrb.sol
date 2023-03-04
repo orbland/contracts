@@ -902,7 +902,7 @@ contract EricOrb is ERC721, Ownable {
             );
         }
 
-        if (responseFlagged[triggerId] == true) {
+        if (responseFlagged[triggerId]) {
             revert ResponseAlreadyFlagged(triggerId);
         }
 
