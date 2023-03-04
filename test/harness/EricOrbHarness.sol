@@ -3,8 +3,7 @@ pragma solidity ^0.8.17;
 
 import {EricOrb} from "contracts/EricOrb.sol";
 
-contract EricOrbHarness is EricOrb{
-
+contract EricOrbHarness is EricOrb {
     function workaround_orbId() public pure returns (uint256) {
         return ERIC_ORB_ID;
     }
@@ -21,7 +20,7 @@ contract EricOrbHarness is EricOrb{
         return BASE_URL;
     }
 
-    function workaround_setWinningBidder(address bidder) public  {
+    function workaround_setWinningBidder(address bidder) public {
         winningBidder = bidder;
     }
 
@@ -48,5 +47,4 @@ contract EricOrbHarness is EricOrb{
     function workaround_settle() public {
         _settle();
     }
-
 }

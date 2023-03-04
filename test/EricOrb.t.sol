@@ -6,14 +6,15 @@ import {EricOrbHarness} from "./harness/EricOrbHarness.sol";
 import {EricOrb} from "contracts/EricOrb.sol";
 import {console} from "forge-std/console.sol";
 
+/* solhint-disable func-name-mixedcase */
 contract EricOrbTestBase is Test {
-    EricOrbHarness orb;
+    EricOrbHarness internal orb;
 
-    address user;
-    address user2;
-    address owner;
+    address internal user;
+    address internal user2;
+    address internal owner;
 
-    uint256 startingBalance;
+    uint256 internal startingBalance;
 
     function setUp() public {
         orb = new EricOrbHarness();
@@ -41,7 +42,7 @@ contract EricOrbTestBase is Test {
     }
 }
 
-contract InitialState is EricOrbTestBase {
+contract InitialStateTest is EricOrbTestBase {
     // Test that the initial state is correct
     function test_initialState() public {
         assertEq(address(orb), orb.ownerOf(orb.workaround_orbId()));
@@ -87,7 +88,7 @@ contract InitialState is EricOrbTestBase {
     }
 }
 
-contract TransfersRevert is EricOrbTestBase {
+contract TransfersRevertTest is EricOrbTestBase {
     function test_transfersRevert() public {
         address newOwner = address(0xBEEF);
         uint256 id = orb.workaround_orbId();
@@ -100,7 +101,7 @@ contract TransfersRevert is EricOrbTestBase {
     }
 }
 
-contract MinimumBid is EricOrbTestBase {
+contract MinimumBidTest is EricOrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
         orb.startAuction();
@@ -110,14 +111,14 @@ contract MinimumBid is EricOrbTestBase {
     }
 }
 
-contract FundsRequiredToBid is EricOrbTestBase {
+contract FundsRequiredToBidTest is EricOrbTestBase {
     function test_fundsRequiredToBidReturnsCorrectValues(uint256 amount) public {
         amount = bound(amount, 0, type(uint224).max);
-        assertEq(orb.fundsRequiredToBid(amount), amount + (amount * 1_000 / 10_000));
+        assertEq(orb.fundsRequiredToBid(amount), amount + ((amount * 1_000) / 10_000));
     }
 }
 
-contract StartAuction is EricOrbTestBase {
+contract StartAuctionTest is EricOrbTestBase {
     function test_startAuctionOnlyOrbIssuer() public {
         vm.prank(address(0xBEEF));
         vm.expectRevert("Ownable: caller is not the owner");
@@ -160,7 +161,7 @@ contract StartAuction is EricOrbTestBase {
     }
 }
 
-contract Bid is EricOrbTestBase {
+contract BidTest is EricOrbTestBase {
     function test_bidOnlyDuringAuction() public {
         uint256 bidAmount = 0.6 ether;
         uint256 finalAmount = orb.fundsRequiredToBid(bidAmount);
@@ -243,10 +244,9 @@ contract Bid is EricOrbTestBase {
         assertEq(orb.endTime(), endTime);
     }
 
-    mapping(address => uint256) fundsOfUser;
+    mapping(address => uint256) internal fundsOfUser;
 
     event AuctionFinalized(address indexed winner, uint256 price);
-
 
     //TODO: This test failed once, so it's flakey. Will need to revisit and see why it failed
     // output: https://gist.github.com/odyslam/6a98e75297485db2cdd1734c96b89be1
@@ -298,7 +298,7 @@ contract Bid is EricOrbTestBase {
     }
 }
 
-contract CloseAuction is EricOrbTestBase {
+contract FinalizeAuctionTest is EricOrbTestBase {
     event AuctionFinalized(address indexed winner, uint256 price);
 
     function test_finalizeAuctionRevertsDuringAuction() public {
@@ -371,7 +371,7 @@ contract CloseAuction is EricOrbTestBase {
     }
 }
 
-contract EffectiveFundsOf is EricOrbTestBase {
+contract EffectiveFundsOfTest is EricOrbTestBase {
     function test_effectiveFundsCorrectCalculation() public {
         uint256 amount1 = 1 ether;
         uint256 amount2 = 0.5 ether;
@@ -433,7 +433,7 @@ contract EffectiveFundsOf is EricOrbTestBase {
     }
 }
 
-contract Deposit is EricOrbTestBase {
+contract DepositTest is EricOrbTestBase {
     event Deposit(address indexed user, uint256 amount);
 
     function test_depositRandomUser() public {
@@ -515,8 +515,7 @@ contract Deposit is EricOrbTestBase {
     }
 }
 
-contract Withdraw is EricOrbTestBase {
-
+contract WithdrawTest is EricOrbTestBase {
     event Withdrawal(address indexed recipient, uint256 amount);
 
     function test_withdrawRevertsIfWinningBidder() public {
@@ -567,12 +566,11 @@ contract Withdraw is EricOrbTestBase {
 
         // ownerEffective = ownerFunds + transferableToOwner
         // userEffective = userFunds - transferableToOwner
-        uint256 userFunds = orb.fundsOf(user);
         uint256 ownerFunds = orb.fundsOf(owner);
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
         uint256 transferableToOwner = ownerEffective - ownerFunds;
-        uint256 startingBalance = user.balance;
+        uint256 initialBalance = user.balance;
 
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, owner, transferableToOwner);
@@ -583,17 +581,17 @@ contract Withdraw is EricOrbTestBase {
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(user.balance, startingBalance + withdrawAmount);
+        assertEq(user.balance, initialBalance + withdrawAmount);
 
         // move ahead 10 days;
         vm.warp(block.timestamp + 10 days);
 
         // not holder
         vm.prank(user2);
-        startingBalance = user2.balance;
+        initialBalance = user2.balance;
         orb.withdraw(withdrawAmount);
         assertEq(orb.fundsOf(user2), orb.fundsRequiredToBid(smallBidAmount) - withdrawAmount);
-        assertEq(user2.balance, startingBalance + withdrawAmount);
+        assertEq(user2.balance, initialBalance + withdrawAmount);
     }
 
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
@@ -604,12 +602,11 @@ contract Withdraw is EricOrbTestBase {
 
         // ownerEffective = ownerFunds + transferableToOwner
         // userEffective = userFunds - transferableToOwner
-        uint256 userFunds = orb.fundsOf(user);
         uint256 ownerFunds = orb.fundsOf(owner);
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
         uint256 transferableToOwner = ownerEffective - ownerFunds;
-        uint256 startingBalance = user.balance;
+        uint256 initialBalance = user.balance;
 
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, owner, transferableToOwner);
@@ -620,14 +617,14 @@ contract Withdraw is EricOrbTestBase {
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(user.balance, startingBalance + withdrawAmount);
+        assertEq(user.balance, initialBalance + withdrawAmount);
 
         vm.prank(user);
         orb.withdrawAll();
         assertEq(orb.fundsOf(user), 0);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(user.balance, startingBalance + userEffective);
+        assertEq(user.balance, initialBalance + userEffective);
     }
 
     function test_withdrawRevertsIfInsufficientFunds() public {
@@ -644,8 +641,7 @@ contract Withdraw is EricOrbTestBase {
     }
 }
 
-contract Settle is EricOrbTestBase {
-
+contract SettleTest is EricOrbTestBase {
     event Settlement(address indexed holder, address indexed owner, uint256 amount);
 
     function test_settleOnlyIfHolderHeld() public {
@@ -671,13 +667,13 @@ contract Settle is EricOrbTestBase {
 
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
-        uint256 startingBalance = user.balance;
+        uint256 initialBalance = user.balance;
 
         orb.settle();
         assertEq(orb.fundsOf(user), userEffective);
         assertEq(orb.fundsOf(owner), ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(user.balance, startingBalance);
+        assertEq(user.balance, initialBalance);
 
         timeOffset = bound(time, block.timestamp + 340 days, type(uint96).max);
         vm.warp(timeOffset);
@@ -691,7 +687,7 @@ contract Settle is EricOrbTestBase {
         // ownerEffective is from the last time it settled
         assertEq(orb.fundsOf(owner), transferable + ownerEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(user.balance, startingBalance);
+        assertEq(user.balance, initialBalance);
     }
 
     function test_settleReturnsIfOwner() public {
@@ -699,11 +695,9 @@ contract Settle is EricOrbTestBase {
         orb.workaround_settle();
         assertEq(orb.lastSettlementTime(), 0);
     }
-
 }
 
-
-contract HolderSolvent is EricOrbTestBase {
+contract HolderSolventTest is EricOrbTestBase {
     function test_holderSolventCorrectIfNotOwner() public {
         assertEq(orb.fundsOf(user), 0);
         assertEq(orb.fundsOf(owner), 0);
@@ -724,7 +718,7 @@ contract HolderSolvent is EricOrbTestBase {
     }
 }
 
-contract OwedSinceLastSettlement is EricOrbTestBase {
+contract OwedSinceLastSettlementTest is EricOrbTestBase {
     function test_owedSinceLastSettlementCorrectMath() public {
         // _lastSettlementTime = 0
         // secondsSinceLastSettlement = block.timestamp - _lastSettlementTime
@@ -744,9 +738,7 @@ contract OwedSinceLastSettlement is EricOrbTestBase {
     }
 }
 
-contract SetPrice is EricOrbTestBase {
-
-
+contract SetPriceTest is EricOrbTestBase {
     function test_setPriceRevertsIfNotHolder() public {
         uint256 winningBid = 10 ether;
         makeHolderAndWarp(user, winningBid);
@@ -792,17 +784,15 @@ contract SetPrice is EricOrbTestBase {
         makeHolderAndWarp(user, winningBid);
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(EricOrb.InvalidNewPrice.selector, maxPrice + 1));
-        orb.setPrice(maxPrice + 1 );
+        orb.setPrice(maxPrice + 1);
 
         vm.expectEmit(false, false, false, true);
         emit NewPrice(10 ether, maxPrice);
         orb.setPrice(maxPrice);
     }
-
 }
 
-contract Purchase is EricOrbTestBase {
-
+contract PurchaseTest is EricOrbTestBase {
     function test_revertsIfHeldByContract() public {
         vm.prank(user);
         vm.expectRevert(EricOrb.ContractHoldsOrb.selector);
@@ -842,9 +832,9 @@ contract Purchase is EricOrbTestBase {
 
     function test_revertsIfInsufficientFunds() public {
         makeHolderAndWarp(user, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientFunds.selector, 1 ether, 1 ether + 1));
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
         vm.prank(user2);
-        orb.purchase{value: 1 ether}(1 ether, 3 ether);
+        orb.purchase{value: 1 ether - 1}(1 ether, 3 ether);
     }
 
     event Purchase(address indexed from, address indexed to);
@@ -857,7 +847,6 @@ contract Purchase is EricOrbTestBase {
         uint256 newPrice = 3 ether;
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
-        uint256 finalPrice = bidAmount + purchaseAmount;
         // bidAmount will be the `_price` of the Orb
         makeHolderAndWarp(user, bidAmount);
         orb.settle();
@@ -879,7 +868,7 @@ contract Purchase is EricOrbTestBase {
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
         orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
-        uint256 ownerRoyalties = (bidAmount * 1000 / 10000);
+        uint256 ownerRoyalties = ((bidAmount * 1000) / 10000);
         assertEq(orb.fundsOf(owner), ownerBefore + ownerRoyalties);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - ownerRoyalties));
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
@@ -895,7 +884,7 @@ contract Purchase is EricOrbTestBase {
         vm.deal(user2, buyPrice);
         /// Break up the amount between depositing and purchasing to test more scenarios
         uint256 purchaseAmount = buyPrice - diff;
-        uint256 depositAmount =  diff;
+        uint256 depositAmount = diff;
         // bidAmount will be the `_price` of the Orb
         makeHolderAndWarp(user, bidAmount);
         orb.settle();
@@ -918,7 +907,7 @@ contract Purchase is EricOrbTestBase {
         // that the user transfers when calling `purchase()`
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         orb.purchase{value: purchaseAmount}(bidAmount, newPrice);
-        uint256 ownerRoyalties = (bidAmount * 1000 / 10000);
+        uint256 ownerRoyalties = ((bidAmount * 1000) / 10000);
         assertEq(orb.fundsOf(owner), ownerBefore + ownerRoyalties);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - ownerRoyalties));
         // User2 transfered buyPrice to the contract
@@ -929,10 +918,9 @@ contract Purchase is EricOrbTestBase {
         assertEq(orb.fundsOf(user2), buyPrice - bidAmount);
         assertEq(orb.price(), newPrice);
     }
-
 }
-contract Exit is EricOrbTestBase {
 
+contract ExitTest is EricOrbTestBase {
     function test_revertsIfNotHolder() public {
         uint256 winningBid = 10 ether;
         makeHolderAndWarp(user, winningBid);
@@ -966,14 +954,14 @@ contract Exit is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
-  event Foreclosure(address indexed from);
-  event Withdrawal(address indexed recipient, uint256 amount);
+    event Foreclosure(address indexed from);
+    event Withdrawal(address indexed recipient, uint256 amount);
 
     function test_succeedsCorrectly() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
-        vm.expectEmit(true,false, false, false);
+        vm.expectEmit(true, false, false, false);
         emit Foreclosure(user);
         vm.expectEmit(true, false, false, true);
         uint256 effectiveFunds = orb.effectiveFundsOf(user);
@@ -983,9 +971,9 @@ contract Exit is EricOrbTestBase {
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
         // TODO: test for _price after the audit PRs are merged
     }
-
 }
-contract Foreclose is EricOrbTestBase {
+
+contract ForecloseTest is EricOrbTestBase {
     function test_revertsIfNotHolderHeld() public {
         vm.expectRevert(EricOrb.ContractHoldsOrb.selector);
         vm.prank(user2);
@@ -1007,7 +995,7 @@ contract Foreclose is EricOrbTestBase {
         vm.expectRevert(EricOrb.HolderSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
-        vm.expectEmit(true,false, false, false);
+        vm.expectEmit(true, false, false, false);
         emit Foreclosure(user);
         orb.foreclose();
     }
@@ -1016,7 +1004,7 @@ contract Foreclose is EricOrbTestBase {
         uint256 winningBid = 10 ether;
         makeHolderAndWarp(user, winningBid);
         vm.warp(block.timestamp + 10000 days);
-        vm.expectEmit(true,false, false, false);
+        vm.expectEmit(true, false, false, false);
         emit Foreclosure(user);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         orb.foreclose();
@@ -1024,31 +1012,26 @@ contract Foreclose is EricOrbTestBase {
         // TODO: check price = 0
     }
 }
-contract ForeclosureTime is EricOrbTestBase {
+
+contract ForeclosureTimeTest is EricOrbTestBase {
     function test_returnsInfinityIfOwner() public {
         assertEq(orb.foreclosureTime(), type(uint256).max);
     }
 
-    function  test_returnsInfinityIfPriceZero() public {
+    function test_returnsInfinityIfPriceZero() public {
         uint256 winningBid = 10 ether;
         makeHolderAndWarp(user, winningBid);
         orb.workaround_setPrice(0);
         assertEq(orb.foreclosureTime(), type(uint256).max);
     }
+
     function test_correctCalculation() public {
         // uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR)
         //                             / (_price * HOLDER_TAX_NUMERATOR);
         uint256 winningBid = 10 ether;
         makeHolderAndWarp(user, winningBid);
-        uint256 remaining = orb.fundsOf(user) * 365 days * 10_000 / (winningBid * 1_000);
+        uint256 remaining = (orb.fundsOf(user) * 365 days * 10_000) / (winningBid * 1_000);
         uint256 lastSettlementTime = block.timestamp - 30 days;
         assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
     }
 }
-contract Trigger is EricOrbTestBase {}
-contract RecordTriggerCleartext is EricOrbTestBase {}
-contract Respond is EricOrbTestBase {}
-contract FlagResponse is EricOrbTestBase {}
-
-
-
