@@ -52,7 +52,6 @@ contract EricOrb is ERC721, Ownable {
     error TransferringNotSupported();
 
     // Authorization Errors
-    error InvalidAddress(address invalidAddress);
     error AlreadyHolder();
     error NotHolder();
     error ContractHoldsOrb();
@@ -61,7 +60,6 @@ contract EricOrb is ERC721, Ownable {
     // Funds-Related Authorization Errors
     error HolderSolvent();
     error HolderInsolvent();
-    error NoFunds();
     error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
 
     // Auction Errors
@@ -910,15 +908,6 @@ contract EricOrb is ERC721, Ownable {
         flaggedResponsesCount += 1;
 
         emit ResponseFlagged(msg.sender, triggerId);
-    }
-
-    /**
-     * @dev     Returns if a trigger exists, based on the timestamp being non-zero.
-     * @param   triggerId_  ID of a trigger to check the existance of.
-     * @return  bool  If a trigger exists or not.
-     */
-    function _triggerExists(uint256 triggerId_) internal view returns (bool) {
-        return triggerId_ < triggersCount;
     }
 
     /**
