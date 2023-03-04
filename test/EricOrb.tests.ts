@@ -14,23 +14,23 @@ import foreclosingTests from "./EricOrb/Foreclosing"
 import erc721Tests from "./EricOrb/ERC721"
 
 describe("Eric's Orb", function () {
-  let deployer: SignerWithAddress
-  let orbDeployer: EricOrb
+    let deployer: SignerWithAddress
+    let orbDeployer: EricOrb
 
-  before(async () => {
-    ;[deployer] = await ethers.getSigners()
+    before(async () => {
+        ;[deployer] = await ethers.getSigners()
 
-    const EricOrb = new EricOrb__factory(deployer)
-    orbDeployer = await EricOrb.deploy()
+        const EricOrb = new EricOrb__factory(deployer)
+        orbDeployer = await EricOrb.deploy()
 
-    await orbDeployer.deployed()
-  })
+        await orbDeployer.deployed()
+    })
 
-  describe("Initial State", initialStateTests)
-  describe("Auction", auctionTests)
-  describe("Holding", holdingTests)
-  describe("Triggering and Responding", triggeringTests)
-  describe("Purchasing", purchasingTests)
-  describe("Exiting and Foreclosing", foreclosingTests)
-  describe("ERC-721", erc721Tests)
+    describe("Initial State", initialStateTests)
+    describe("Auction", auctionTests)
+    describe("Holding", holdingTests)
+    describe("Triggering and Responding", triggeringTests)
+    describe("Purchasing", purchasingTests)
+    describe("Exiting and Foreclosing", foreclosingTests)
+    describe("ERC-721", erc721Tests)
 })

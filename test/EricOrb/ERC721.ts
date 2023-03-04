@@ -9,32 +9,32 @@ import { takeSnapshot, SnapshotRestorer } from "@nomicfoundation/hardhat-network
 import { EricOrb__factory, EricOrb } from "../../typechain-types/index"
 
 export default function () {
-  let deployer: SignerWithAddress
-  let user: SignerWithAddress
+    let deployer: SignerWithAddress
+    let user: SignerWithAddress
 
-  let orbDeployer: EricOrb
-  let orbUser: EricOrb
+    let orbDeployer: EricOrb
+    let orbUser: EricOrb
 
-  let testSnapshot: SnapshotRestorer
+    let testSnapshot: SnapshotRestorer
 
-  before(async () => {
-    ;[deployer, user] = await ethers.getSigners()
+    before(async () => {
+        ;[deployer, user] = await ethers.getSigners()
 
-    const EricOrb = new EricOrb__factory(deployer)
-    orbDeployer = await EricOrb.deploy()
+        const EricOrb = new EricOrb__factory(deployer)
+        orbDeployer = await EricOrb.deploy()
 
-    orbUser = orbDeployer.connect(user)
+        orbUser = orbDeployer.connect(user)
 
-    await orbDeployer.deployed()
+        await orbDeployer.deployed()
 
-    testSnapshot = await takeSnapshot()
-  })
+        testSnapshot = await takeSnapshot()
+    })
 
-  after(async () => {
-    await testSnapshot.restore()
-  })
+    after(async () => {
+        await testSnapshot.restore()
+    })
 
-  it("Should return a correct token URI", async function () {
-    expect(await orbUser.tokenURI(69)).to.be.eq("https://static.orb.land/eric/69")
-  })
+    it("Should return a correct token URI", async function () {
+        expect(await orbUser.tokenURI(69)).to.be.eq("https://static.orb.land/eric/69")
+    })
 }

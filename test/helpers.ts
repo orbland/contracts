@@ -9,5 +9,5 @@ export const triggerData = keccak256(toUtf8Bytes("what is 42?"))
 export const defaultValue = ethers.utils.parseEther("1")
 
 export const logDate = (name: string, timestamp: number) => {
-  console.log(name, new Date(timestamp * 1000))
+    console.log(name, new Date(timestamp * 1000))
 }
