@@ -1,3 +1,3 @@
 module.exports = {
-    skipFiles: ['EricOrbDev.sol', 'HarbergerTaxERC.sol']
+    skipFiles: ['EricOrbDev.sol']
 };
