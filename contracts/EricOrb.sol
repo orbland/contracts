@@ -199,7 +199,8 @@ contract EricOrb is ERC721, Ownable {
 
   /**
    * @dev  Ensures that the caller owns the orb.
-   *       Should only be used in conjuction with {onlyHolderHeld}, otherwise does not make sense.
+     *       Should only be used in conjuction with {onlyHolderHeld} or on external functions,
+     *       otherwise does not make sense.
    */
   modifier onlyHolder() {
     if (msg.sender != ERC721.ownerOf(ERIC_ORB_ID)) {
@@ -337,6 +338,11 @@ contract EricOrb is ERC721, Ownable {
     revert TransferringNotSupported();
   }
 
+    /**
+     * @notice  Transfers the ERC-20 token to the new address.
+     *          If the new owner is not this contract (an actual user), updateds holderReceiveTime.
+     *          holderReceiveTime is used to limit response flagging window.
+     */
   function _transferOrb(address oldAddress, address newAddress) internal {
       _transfer(oldAddress, newAddress, ERIC_ORB_ID);
       if (newAddress != address(this)) {
@@ -422,8 +428,8 @@ contract EricOrb is ERC721, Ownable {
       revert InsufficientFunds(totalFunds, fundsRequiredToBid(amount));
     }
 
-    winningBidder = msg.sender;
     fundsOf[msg.sender] = totalFunds;
+        winningBidder = msg.sender;
     winningBid = amount;
 
     emit NewBid(msg.sender, amount);
@@ -483,7 +489,7 @@ contract EricOrb is ERC721, Ownable {
     uint256 unadjustedFunds = fundsOf[user];
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
 
-    if (user == owner() || user == holder) {
+        if ((user == owner() || user == holder) && owner() != holder) {
       uint256 owedFunds = _owedSinceLastSettlement();
       uint256 holderFunds = fundsOf[holder];
       uint256 transferableToOwner = holderFunds <= owedFunds ? holderFunds : owedFunds;
@@ -649,15 +655,17 @@ contract EricOrb is ERC721, Ownable {
    *          Does not allow purchasing from yourself.
    *          Emits NewPrice() and Purchase().
    * @param   currentPrice  Current price, to prevent front-running.
-   * @param   newPrice  New price to use after the purchase. Cannot be set to zero here to prevent errors, but can
-   *          be set to zero afterwards via {setPrice()}.
+     * @param   newPrice  New price to use after the purchase.
    */
-  function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent settles {
+    function purchase(uint256 currentPrice, uint256 newPrice)
+        external
+        payable
+        onlyHolderHeld
+        onlyHolderSolvent
+        settles
+    {
     if (currentPrice != price) {
       revert CurrentPriceIncorrect(currentPrice, price);
-    }
-    if (newPrice == 0) {
-      revert InvalidNewPrice(newPrice);
     }
 
     address holder = ERC721.ownerOf(ERIC_ORB_ID);
@@ -669,8 +677,8 @@ contract EricOrb is ERC721, Ownable {
     fundsOf[msg.sender] += msg.value;
     uint256 totalFunds = fundsOf[msg.sender];
 
-    if (totalFunds <= currentPrice) {
-      revert InsufficientFunds(totalFunds, currentPrice + 1);
+        if (totalFunds < currentPrice) {
+            revert InsufficientFunds(totalFunds, currentPrice);
     }
 
     uint256 ownerRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
@@ -777,14 +785,16 @@ contract EricOrb is ERC721, Ownable {
     }
   }
 
-    /// @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
-    /// @param  cleartext  Required cleartext.
-    function triggerText(string memory cleartext) external {
+    /**
+     * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
+     * @param   cleartext  Required cleartext.
+     */
+    function triggerWithCleartext(string memory cleartext) external {
         uint256 length = bytes(cleartext).length;
         if (length > MAX_CLEARTEXT_LENGTH) {
             revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
         }
-        triggerHash(keccak256(abi.encodePacked(cleartext)));
+        triggerWithHash(keccak256(abi.encodePacked(cleartext)));
     }
 
   /**
@@ -798,16 +808,18 @@ contract EricOrb is ERC721, Ownable {
    *          Emits Triggered().
    * @param   contentHash  Required keccak256 hash of the cleartext.
    */
-  function triggerHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
+    function triggerWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
     if (block.timestamp < lastTriggerTime + COOLDOWN) {
       revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
     }
 
-    triggers[triggersCount] = contentHash;
+        uint256 triggerId = triggersCount;
 
+        triggers[triggerId] = contentHash;
     lastTriggerTime = block.timestamp;
+        triggersCount += 1;
 
-    emit Triggered(msg.sender, triggersCount++, contentHash, block.timestamp);
+        emit Triggered(msg.sender, triggerId, contentHash, block.timestamp);
   }
 
   /**
@@ -822,10 +834,12 @@ contract EricOrb is ERC721, Ownable {
    * @param   triggerId  Triggred id, matching the one that was emitted when calling {trigger()}.
    * @param   cleartext  Cleartext, limited to tweet length. Must match the content hash.
    */
-  function recordTriggerCleartext(
-    uint256 triggerId,
-    string memory cleartext
-  ) external view onlyHolder onlyHolderHeld onlyHolderSolvent {
+    function recordTriggerCleartext(uint256 triggerId, string memory cleartext)
+        external
+        view
+        onlyHolder
+        onlyHolderSolvent
+    {
     uint256 cleartextLength = bytes(cleartext).length;
 
     if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
