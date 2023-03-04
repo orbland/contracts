@@ -5,6 +5,12 @@ Eric's Orb (the proto-orb) contract. Auction + Harberger taxed ownership.
 ### Usage
 
 ```shell
-yarn install
-yarn hardhat test --typecheck
+forge test
+```
+
+### Run Local Node
+
+```shell
+make anvil
+make deploy-anvil contract=EricOrbDev # in another terminal
 ```
