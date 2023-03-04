@@ -566,7 +566,6 @@ contract WithdrawTest is EricOrbTestBase {
 
         // ownerEffective = ownerFunds + transferableToOwner
         // userEffective = userFunds - transferableToOwner
-        // uint256 userFunds = orb.fundsOf(user);
         uint256 ownerFunds = orb.fundsOf(owner);
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
@@ -603,7 +602,6 @@ contract WithdrawTest is EricOrbTestBase {
 
         // ownerEffective = ownerFunds + transferableToOwner
         // userEffective = userFunds - transferableToOwner
-        // uint256 userFunds = orb.fundsOf(user);
         uint256 ownerFunds = orb.fundsOf(owner);
         uint256 userEffective = orb.effectiveFundsOf(user);
         uint256 ownerEffective = orb.effectiveFundsOf(owner);
@@ -849,7 +847,6 @@ contract PurchaseTest is EricOrbTestBase {
         uint256 newPrice = 3 ether;
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
-        // uint256 finalPrice = bidAmount + purchaseAmount;
         // bidAmount will be the `_price` of the Orb
         makeHolderAndWarp(user, bidAmount);
         orb.settle();
@@ -1038,11 +1035,3 @@ contract ForeclosureTimeTest is EricOrbTestBase {
         assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
     }
 }
-
-// contract TriggerTest is EricOrbTestBase {}
-
-// contract RecordTriggerCleartextTest is EricOrbTestBase {}
-
-// contract RespondTest is EricOrbTestBase {}
-
-// contract FlagResponseTest is EricOrbTestBase {}
