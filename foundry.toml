@@ -1,8 +1,8 @@
 [profile.default]
 solc_version = '0.8.17' # Version of solc that we use
 remappings = [ # Libraries that we use from node_modules and are used by the smart contracts
-  "@openzeppelin/=node_modules/@openzeppelin/",
-  "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/=node_modules/@openzeppelin/",
+    "forge-std/=lib/forge-std/src/",
 ]
 optimizer = true # Enable or disable the solc optimizer
 optimizer_runs = 999999 # The number of optimizer runs
