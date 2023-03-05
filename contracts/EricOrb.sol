@@ -80,7 +80,7 @@ contract EricOrb is ERC721, Ownable {
     error TriggerNotFound(uint256 triggerId);
     error ResponseNotFound(uint256 triggerId);
     error ResponseExists(uint256 triggerId);
-    error FlaggingPeriodExpired(uint256 triggerId, uint256 timeSinceResponse, uint256 flaggingPeriodDuration);
+    error FlaggingPeriodExpired(uint256 triggerId, uint256 currentTimeValue, uint256 timeValueLimit);
     error ResponseAlreadyFlagged(uint256 triggerId);
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -893,12 +893,12 @@ contract EricOrb is ERC721, Ownable {
 
         // Response Flagging Period starts counting from when the response is made.
         uint256 responseTime = responses[triggerId].timestamp;
-        if ((block.timestamp - responseTime > RESPONSE_FLAGGING_PERIOD) || holderReceiveTime > responseTime) {
-            revert FlaggingPeriodExpired(
-                triggerId, block.timestamp - responses[triggerId].timestamp, RESPONSE_FLAGGING_PERIOD
-            );
+        if (block.timestamp - responseTime > RESPONSE_FLAGGING_PERIOD) {
+            revert FlaggingPeriodExpired(triggerId, block.timestamp - responseTime, RESPONSE_FLAGGING_PERIOD);
         }
-
+        if (holderReceiveTime > responseTime) {
+            revert FlaggingPeriodExpired(triggerId, holderReceiveTime, responseTime);
+        }
         if (responseFlagged[triggerId]) {
             revert ResponseAlreadyFlagged(triggerId);
         }
