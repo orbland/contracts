@@ -21,7 +21,7 @@ test :; forge test
 
 snapshot :; forge snapshot
 
-slither :; slither ./contracts --exclude-dependencies --exclude timestamp --solc-remaps @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/ --filter-paths node_modules
+slither :; slither ./contracts --exclude-dependencies --exclude timestamp,solc-version --solc-remaps @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/ --filter-paths node_modules
 
 format :; forge fmt
 
