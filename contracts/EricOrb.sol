@@ -159,12 +159,12 @@ contract EricOrb is ERC721, Ownable {
         uint256 timestamp;
     }
 
+    // Holder Receive Time: When the orb was last transferred, except to this contract.
+    uint256 public holderReceiveTime;
     // Last Trigger Time: when the orb was last triggered. Used together with Cooldown constant.
     uint256 public lastTriggerTime;
     // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
     mapping(uint256 => bytes32) public triggers;
-    // Holder Receive Time: When an address != address(this) received the Orb.
-    uint256 public holderReceiveTime;
     // Count of triggers made. Used to calculate triggerId of the next trigger.
     uint256 public triggersCount = 0;
     // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
