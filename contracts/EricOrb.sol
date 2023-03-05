@@ -340,7 +340,7 @@ contract EricOrb is ERC721, Ownable {
 
     /**
      * @notice  Transfers the ERC-20 token to the new address.
-     *          If the new owner is not this contract (an actual user), updateds holderReceiveTime.
+     *          If the new owner is not this contract (an actual user), updates holderReceiveTime.
      *          holderReceiveTime is used to limit response flagging window.
      */
     function _transferOrb(address oldAddress, address newAddress) internal {
@@ -805,8 +805,7 @@ contract EricOrb is ERC721, Ownable {
      *          that represents a question to the orb issuer.
      *          Puts the orb on cooldown.
      *          The Orb can only be triggered by solvent holders.
-     * @dev     Timestamp is recorded together with the content hash.
-     *          Timestamp being more than zero means that the trigger exists.
+     * @dev     Content hash is keccak256 of the cleartext.
      *          triggersCount is used to track the id of the next trigger.
      *          Emits Triggered().
      * @param   contentHash  Required keccak256 hash of the cleartext.
