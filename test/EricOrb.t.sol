@@ -1187,5 +1187,75 @@ contract RecordTriggerCleartext is EricOrbTestBase {
 }
 contract Respond is EricOrbTestBase {
 
+    event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+
+    function test_revertWhen_notOwner() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext= "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.respond(0, response);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, true);
+        emit Responded(owner, 0, response, block.timestamp);
+        orb.respond(0, response);
+    }
+
+    function test_revertWhen_triggerIdIncorrect() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext= "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.TriggerNotFound.selector, 1));
+        orb.respond(1, response);
+
+        vm.prank(owner);
+        orb.respond(0, response);
+    }
+
+
+    function test_revertWhen_responseAlreadyExists() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext= "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        orb.respond(0, response);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.ResponseExists.selector, 0));
+        orb.respond(0, response);
+    }
+
+    function test_success() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext= "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, true);
+        emit Responded(owner, 0, response, block.timestamp);
+        orb.respond(0, response);
+        (bytes32 hash, uint256 time) = orb.responses(0);
+        assertEq(hash, response);
+        assertEq(time, block.timestamp);
+    }
+
 }
 contract FlagResponse is EricOrbTestBase {}
