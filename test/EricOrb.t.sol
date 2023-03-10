@@ -246,28 +246,26 @@ contract BidTest is EricOrbTestBase {
 
     event AuctionFinalized(address indexed winner, uint256 price);
 
-    //TODO: This test failed once, so it's flakey. Will need to revisit and see why it failed
-    // output: https://gist.github.com/odyslam/6a98e75297485db2cdd1734c96b89be1
-    function testFuzz_bidSetsCorrectState(address[16] memory users, uint128[16] memory amounts) public {
+    function testFuzz_bidSetsCorrectState(address[16] memory bidders, uint128[16] memory amounts) public {
         orb.startAuction();
         uint256 contractBalance;
         for (uint256 i = 1; i < 16; i++) {
             uint256 amount = bound(amounts[i], orb.minimumBid(), orb.minimumBid() + 1_000_000_000);
-            user = users[i];
-            vm.assume(user != address(0));
+            address bidder = bidders[i];
+            vm.assume(bidder != address(0) && bidder != address(orb));
 
             uint256 funds = orb.fundsRequiredToBid(amount);
 
-            fundsOfUser[user] += funds;
+            fundsOfUser[bidder] += funds;
 
             vm.expectEmit(true, false, false, true);
-            emit NewBid(user, amount);
-            prankAndBid(user, amount);
+            emit NewBid(bidder, amount);
+            prankAndBid(bidder, amount);
             contractBalance += funds;
 
             assertEq(orb.winningBid(), amount);
-            assertEq(orb.winningBidder(), user);
-            assertEq(orb.fundsOf(user), fundsOfUser[user]);
+            assertEq(orb.winningBidder(), bidder);
+            assertEq(orb.fundsOf(bidder), fundsOfUser[bidder]);
             assertEq(address(orb).balance, contractBalance);
         }
         vm.expectEmit(true, false, false, true);
@@ -1007,7 +1005,7 @@ contract ForecloseTest is EricOrbTestBase {
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         orb.foreclose();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
-        // TODO: check price = 0
+        assertEq(orb.price(), 0);
     }
 }
 
