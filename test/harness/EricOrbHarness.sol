@@ -6,7 +6,8 @@ import {EricOrb} from "src/EricOrb.sol";
 /* solhint-disable func-name-mixedcase */
 contract EricOrbHarness is
     EricOrb(
-        7 days // cooldown
+        7 days, // cooldown
+        7 days // responseFlaggingPeriod
     )
 {
     function workaround_orbId() public pure returns (uint256) {

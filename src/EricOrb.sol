@@ -87,13 +87,13 @@ contract EricOrb is ERC721, Ownable {
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////
 
-    // CONSTANTS
+    // CONSTANTS AND IMMUTABLES
 
     // Public Constants
     // Cooldown: how often Orb can be triggered.
     uint256 public immutable cooldown;
     // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
-    uint256 public constant RESPONSE_FLAGGING_PERIOD = 7 days;
+    uint256 public immutable responseFlaggingPeriod;
     // Maximum length for trigger cleartext content; tweet length.
     uint256 public constant MAX_CLEARTEXT_LENGTH = 280;
 
@@ -181,8 +181,9 @@ contract EricOrb is ERC721, Ownable {
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
      */
-    constructor(uint256 cooldown_) ERC721("Eric's Orb", "ORB") {
+    constructor(uint256 cooldown_, uint256 responseFlaggingPeriod_) ERC721("Eric's Orb", "ORB") {
         cooldown = cooldown_;
+        responseFlaggingPeriod = responseFlaggingPeriod_;
 
         _safeMint(address(this), ERIC_ORB_ID);
     }
@@ -895,8 +896,8 @@ contract EricOrb is ERC721, Ownable {
 
         // Response Flagging Period starts counting from when the response is made.
         uint256 responseTime = responses[triggerId].timestamp;
-        if (block.timestamp - responseTime > RESPONSE_FLAGGING_PERIOD) {
-            revert FlaggingPeriodExpired(triggerId, block.timestamp - responseTime, RESPONSE_FLAGGING_PERIOD);
+        if (block.timestamp - responseTime > responseFlaggingPeriod) {
+            revert FlaggingPeriodExpired(triggerId, block.timestamp - responseTime, responseFlaggingPeriod);
         }
         if (holderReceiveTime >= responseTime) {
             revert FlaggingPeriodExpired(triggerId, holderReceiveTime, responseTime);
