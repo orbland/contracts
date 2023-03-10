@@ -896,7 +896,7 @@ contract EricOrb is ERC721, Ownable {
         if (block.timestamp - responseTime > RESPONSE_FLAGGING_PERIOD) {
             revert FlaggingPeriodExpired(triggerId, block.timestamp - responseTime, RESPONSE_FLAGGING_PERIOD);
         }
-        if (holderReceiveTime > responseTime) {
+        if (holderReceiveTime >= responseTime) {
             revert FlaggingPeriodExpired(triggerId, holderReceiveTime, responseTime);
         }
         if (responseFlagged[triggerId]) {
