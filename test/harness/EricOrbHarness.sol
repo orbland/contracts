@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {EricOrb} from "contracts/EricOrb.sol";
+import {EricOrb} from "src/EricOrb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract EricOrbHarness is EricOrb {

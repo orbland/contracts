@@ -15,7 +15,4 @@ block_timestamp = 1622400000 # Timestamp for tests (non-zero)
 ignored_error_codes = [2462]
 libs = ["node_modules", "lib"]
 
-src = 'contracts'
-test = 'test'
-out = 'out'
 ffi = false

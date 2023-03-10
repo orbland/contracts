@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Test} from "forge-std/Test.sol";
 import {EricOrbHarness} from "./harness/EricOrbHarness.sol";
-import {EricOrb} from "contracts/EricOrb.sol";
+import {EricOrb} from "src/EricOrb.sol";
 import {console} from "forge-std/console.sol";
 
 /* solhint-disable func-name-mixedcase */
