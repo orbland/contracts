@@ -64,7 +64,6 @@ contract InitialStateTest is EricOrbTestBase {
     }
 
     function test_constants() public {
-        assertEq(orb.COOLDOWN(), 7 days);
         assertEq(orb.RESPONSE_FLAGGING_PERIOD(), 7 days);
         assertEq(orb.MAX_CLEARTEXT_LENGTH(), 280);
 
@@ -362,7 +361,7 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         assertEq(orb.fundsOf(address(this)), amount);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(orb.lastTriggerTime(), block.timestamp - orb.COOLDOWN());
+        assertEq(orb.lastTriggerTime(), block.timestamp - orb.cooldown());
         assertEq(orb.fundsOf(user), funds - amount);
         assertEq(orb.price(), amount);
     }
@@ -1086,12 +1085,12 @@ contract TriggerWthHashTest is EricOrbTestBase {
         vm.warp(block.timestamp + 1 days);
         vm.expectRevert(
             abi.encodeWithSelector(
-                EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.COOLDOWN() - block.timestamp
+                EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.cooldown() - block.timestamp
             )
         );
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(1), bytes32(0));
-        vm.warp(block.timestamp + orb.COOLDOWN() - 1 days + 1);
+        vm.warp(block.timestamp + orb.cooldown() - 1 days + 1);
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(1), hash);
     }
@@ -1147,7 +1146,7 @@ contract RecordTriggerCleartext is EricOrbTestBase {
         vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextTooLong.selector, length, max));
         orb.recordTriggerCleartext(0, cleartext);
 
-        vm.warp(block.timestamp + orb.COOLDOWN() + 1);
+        vm.warp(block.timestamp + orb.cooldown() + 1);
         cleartext = "this is a cleartext";
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         orb.recordTriggerCleartext(1, cleartext);
@@ -1338,7 +1337,7 @@ contract FlagResponseTest is EricOrbTestBase {
         );
         orb.flagResponse(0);
 
-        vm.warp(block.timestamp + orb.COOLDOWN());
+        vm.warp(block.timestamp + orb.cooldown());
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         vm.stopPrank();
         vm.prank(owner);

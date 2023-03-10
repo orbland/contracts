@@ -91,7 +91,7 @@ contract EricOrb is ERC721, Ownable {
 
     // Public Constants
     // Cooldown: how often Orb can be triggered.
-    uint256 public constant COOLDOWN = 7 days;
+    uint256 public immutable cooldown;
     // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
     uint256 public constant RESPONSE_FLAGGING_PERIOD = 7 days;
     // Maximum length for trigger cleartext content; tweet length.
@@ -181,7 +181,9 @@ contract EricOrb is ERC721, Ownable {
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
      */
-    constructor() ERC721("Eric's Orb", "ORB") {
+    constructor(uint256 cooldown_) ERC721("Eric's Orb", "ORB") {
+        cooldown = cooldown_;
+
         _safeMint(address(this), ERIC_ORB_ID);
     }
 
@@ -458,7 +460,7 @@ contract EricOrb is ERC721, Ownable {
             fundsOf[owner()] += price;
 
             lastSettlementTime = block.timestamp;
-            lastTriggerTime = block.timestamp - COOLDOWN;
+            lastTriggerTime = block.timestamp - cooldown;
 
             emit AuctionFinalized(winningBidder, winningBid);
 
@@ -778,7 +780,7 @@ contract EricOrb is ERC721, Ownable {
      * @return  uint256  Time in seconds until the orb is ready to be triggered.
      */
     function cooldownRemaining() external view returns (uint256) {
-        uint256 cooldownExpires = lastTriggerTime + COOLDOWN;
+        uint256 cooldownExpires = lastTriggerTime + cooldown;
         if (block.timestamp >= cooldownExpires) {
             return 0;
         } else {
@@ -809,8 +811,8 @@ contract EricOrb is ERC721, Ownable {
      * @param   contentHash  Required keccak256 hash of the cleartext.
      */
     function triggerWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
-        if (block.timestamp < lastTriggerTime + COOLDOWN) {
-            revert CooldownIncomplete(lastTriggerTime + COOLDOWN - block.timestamp);
+        if (block.timestamp < lastTriggerTime + cooldown) {
+            revert CooldownIncomplete(lastTriggerTime + cooldown - block.timestamp);
         }
 
         uint256 triggerId = triggersCount;
