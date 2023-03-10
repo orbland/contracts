@@ -5,6 +5,7 @@ Eric's Orb (the proto-orb) contract. Auction + Harberger taxed ownership.
 ### Usage
 
 ```shell
+forge install 
 forge test
 ```
 
