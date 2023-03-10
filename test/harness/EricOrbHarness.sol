@@ -7,7 +7,8 @@ import {EricOrb} from "src/EricOrb.sol";
 contract EricOrbHarness is
     EricOrb(
         7 days, // cooldown
-        7 days // responseFlaggingPeriod
+        7 days, // responseFlaggingPeriod
+        1 days // minimumAuctionDuration
     )
 {
     function workaround_orbId() public pure returns (uint256) {

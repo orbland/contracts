@@ -111,7 +111,7 @@ contract EricOrb is ERC721, Ownable {
     // Each bid has to increase over previous bid by at least this much.
     uint256 public constant MINIMUM_BID_STEP = 0.01 ether;
     // Auction will run for at least this long.
-    uint256 public constant MINIMUM_AUCTION_DURATION = 1 days;
+    uint256 public immutable minimumAuctionDuration;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
     uint256 public constant BID_AUCTION_EXTENSION = 30 minutes;
 
@@ -181,9 +181,12 @@ contract EricOrb is ERC721, Ownable {
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
      */
-    constructor(uint256 cooldown_, uint256 responseFlaggingPeriod_) ERC721("Eric's Orb", "ORB") {
+    constructor(uint256 cooldown_, uint256 responseFlaggingPeriod_, uint256 minimumAuctionDuration_)
+        ERC721("Eric's Orb", "ORB")
+    {
         cooldown = cooldown_;
         responseFlaggingPeriod = responseFlaggingPeriod_;
+        minimumAuctionDuration = minimumAuctionDuration_;
 
         _safeMint(address(this), ERIC_ORB_ID);
     }
@@ -405,7 +408,7 @@ contract EricOrb is ERC721, Ownable {
         }
 
         startTime = block.timestamp;
-        endTime = block.timestamp + MINIMUM_AUCTION_DURATION;
+        endTime = block.timestamp + minimumAuctionDuration;
         winningBidder = address(0);
         winningBid = 0;
 
