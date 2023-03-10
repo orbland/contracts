@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Test} from "forge-std/Test.sol";
 import {EricOrbHarness} from "./harness/EricOrbHarness.sol";
-import {EricOrb} from "contracts/EricOrb.sol";
+import {EricOrb} from "src/EricOrb.sol";
 import {console} from "forge-std/console.sol";
 
 /* solhint-disable func-name-mixedcase */
@@ -49,8 +49,7 @@ contract InitialStateTest is EricOrbTestBase {
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
 
-        // This will be callable after audit mitigations
-        // assertEq(orb.price(), 0);
+        assertEq(orb.price(), 0);
         assertEq(orb.lastTriggerTime(), 0);
         assertEq(orb.triggersCount(), 0);
 
@@ -61,9 +60,8 @@ contract InitialStateTest is EricOrbTestBase {
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.winningBid(), 0);
 
-        // This will be callable after audit mitigations
-        // assertEq(orb.lastSettlementTime(), 0);
-        // assertEq(orb.userReceiveTime(), 0);
+        assertEq(orb.lastSettlementTime(), 0);
+        assertEq(orb.holderReceiveTime(), 0);
     }
 
     function test_constants() public {
@@ -969,7 +967,7 @@ contract ExitTest is EricOrbTestBase {
         vm.prank(user);
         orb.exit();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
-        // TODO: test for _price after the audit PRs are merged
+        assertEq(orb.price(), 0);
     }
 }
 
@@ -1033,5 +1031,342 @@ contract ForeclosureTimeTest is EricOrbTestBase {
         uint256 remaining = (orb.fundsOf(user) * 365 days * 10_000) / (winningBid * 1_000);
         uint256 lastSettlementTime = block.timestamp - 30 days;
         assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
+    }
+}
+
+contract TriggerWithCleartextTest is EricOrbTestBase {
+    event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+
+    function test_revertsIfLongLength() public {
+        uint256 max = orb.MAX_CLEARTEXT_LENGTH();
+        string memory text =
+            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk";
+        uint256 length = bytes(text).length;
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextTooLong.selector, length, max));
+        orb.triggerWithCleartext(text);
+    }
+
+    function test_callsTriggerHashCorrectly() public {
+        string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
+        makeHolderAndWarp(user, 1 ether);
+        vm.expectEmit(true, false, false, true);
+        emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
+        vm.prank(user);
+        orb.triggerWithCleartext(text);
+    }
+}
+
+contract TriggerWthHashTest is EricOrbTestBase {
+    event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+
+    function test_revertWhen_NotHolder() public {
+        makeHolderAndWarp(user, 1 ether);
+        bytes32 hash = "asdfsaf";
+        vm.prank(user2);
+        vm.expectRevert(EricOrb.NotHolder.selector);
+        orb.triggerWithHash(hash);
+
+        vm.expectEmit(true, false, false, true);
+        emit Triggered(user, 0, hash, block.timestamp);
+        vm.prank(user);
+        orb.triggerWithHash(hash);
+    }
+
+    function test_revertWhen_HolderInsolvent() public {
+        makeHolderAndWarp(user, 1 ether);
+        bytes32 hash = "asdfsaf";
+        vm.warp(block.timestamp + 13130000 days);
+        vm.prank(user);
+        vm.expectRevert(EricOrb.HolderInsolvent.selector);
+        orb.triggerWithHash(hash);
+    }
+
+    function test_revertWhen_CooldownIncomplete() public {
+        makeHolderAndWarp(user, 1 ether);
+        bytes32 hash = "asdfsaf";
+        vm.startPrank(user);
+        orb.triggerWithHash(hash);
+        assertEq(orb.triggers(0), hash);
+        vm.warp(block.timestamp + 1 days);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.COOLDOWN() - block.timestamp
+            )
+        );
+        orb.triggerWithHash(hash);
+        assertEq(orb.triggers(1), bytes32(0));
+        vm.warp(block.timestamp + orb.COOLDOWN() - 1 days + 1);
+        orb.triggerWithHash(hash);
+        assertEq(orb.triggers(1), hash);
+    }
+
+    function test_success() public {
+        makeHolderAndWarp(user, 1 ether);
+        bytes32 hash = "asdfsaf";
+        vm.startPrank(user);
+        vm.expectEmit(true, true, false, true);
+        emit Triggered(user, 0, hash, block.timestamp);
+        orb.triggerWithHash(hash);
+        assertEq(orb.triggers(0), hash);
+        assertEq(orb.lastTriggerTime(), block.timestamp);
+        assertEq(orb.triggersCount(), 1);
+    }
+}
+
+contract RecordTriggerCleartext is EricOrbTestBase {
+    function test_revertWhen_NotHolder() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        vm.prank(user2);
+        vm.expectRevert(EricOrb.NotHolder.selector);
+        orb.recordTriggerCleartext(0, cleartext);
+
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+    }
+
+    function test_revertWhen_HolderInsolvent() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        vm.warp(block.timestamp + 13130000 days);
+        vm.prank(user);
+        vm.expectRevert(EricOrb.HolderInsolvent.selector);
+        orb.recordTriggerCleartext(0, cleartext);
+
+        vm.warp(block.timestamp - 13130000 days);
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+    }
+
+    function test_revertWhen_incorrectLength() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.startPrank(user);
+        uint256 max = orb.MAX_CLEARTEXT_LENGTH();
+        string memory cleartext =
+            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk";
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        uint256 length = bytes(cleartext).length;
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextTooLong.selector, length, max));
+        orb.recordTriggerCleartext(0, cleartext);
+
+        vm.warp(block.timestamp + orb.COOLDOWN() + 1);
+        cleartext = "this is a cleartext";
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(1, cleartext);
+    }
+
+    function test_revertWhen_cleartextMismatch() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.startPrank(user);
+        string memory cleartext = "this is a cleartext";
+        string memory cleartext2 = "this is not the same cleartext";
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EricOrb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
+            )
+        );
+        orb.recordTriggerCleartext(0, cleartext2);
+
+        orb.recordTriggerCleartext(0, cleartext);
+    }
+
+    function test_success() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+    }
+}
+
+contract RespondTest is EricOrbTestBase {
+    event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+
+    function test_revertWhen_notOwner() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.respond(0, response);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, true);
+        emit Responded(owner, 0, response, block.timestamp);
+        orb.respond(0, response);
+    }
+
+    function test_revertWhen_triggerIdIncorrect() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.TriggerNotFound.selector, 1));
+        orb.respond(1, response);
+
+        vm.prank(owner);
+        orb.respond(0, response);
+    }
+
+    function test_revertWhen_responseAlreadyExists() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        orb.respond(0, response);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.ResponseExists.selector, 0));
+        orb.respond(0, response);
+    }
+
+    function test_success() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.startPrank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        orb.recordTriggerCleartext(0, cleartext);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, true);
+        emit Responded(owner, 0, response, block.timestamp);
+        orb.respond(0, response);
+        (bytes32 hash, uint256 time) = orb.responses(0);
+        assertEq(hash, response);
+        assertEq(time, block.timestamp);
+    }
+}
+
+contract FlagResponseTest is EricOrbTestBase {
+    event ResponseFlagged(address indexed from, uint256 indexed responseId);
+
+    function test_revertWhen_NotHolder() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(0, response);
+        vm.prank(user2);
+        vm.expectRevert(EricOrb.NotHolder.selector);
+        orb.flagResponse(0);
+
+        vm.prank(user);
+        orb.flagResponse(0);
+    }
+
+    function test_revertWhen_HolderInsolvent() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(0, response);
+        vm.warp(block.timestamp + 13130000 days);
+        vm.prank(user);
+        vm.expectRevert(EricOrb.HolderInsolvent.selector);
+        orb.flagResponse(0);
+
+        vm.warp(block.timestamp - 13130000 days);
+        vm.prank(user);
+        orb.flagResponse(0);
+    }
+
+    function test_revertWhen_ResponseNotExist() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(0, response);
+
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.ResponseNotFound.selector, 188));
+        orb.flagResponse(188);
+
+        orb.flagResponse(0);
+    }
+
+    function test_revertWhen_outsideFlaggingPeriod() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(0, response);
+
+        vm.warp(block.timestamp + 100 days);
+        vm.startPrank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 100 days, orb.RESPONSE_FLAGGING_PERIOD())
+        );
+        orb.flagResponse(0);
+
+        vm.warp(block.timestamp - (100 days - orb.RESPONSE_FLAGGING_PERIOD()));
+        orb.flagResponse(0);
+    }
+
+    function test_revertWhen_responseToPreviousHolder() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(0, response);
+
+        vm.startPrank(user2);
+        orb.purchase{value: 3 ether}(1 ether, 2 ether);
+        vm.expectRevert(
+            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, orb.holderReceiveTime(), block.timestamp)
+        );
+        orb.flagResponse(0);
+
+        vm.warp(block.timestamp + orb.COOLDOWN());
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.stopPrank();
+        vm.prank(owner);
+        orb.respond(1, response);
+        vm.prank(user2);
+        orb.flagResponse(1);
+    }
+
+    function test_success() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.triggerWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(0, response);
+        vm.prank(user);
+        assertEq(orb.responseFlagged(0), false);
+        assertEq(orb.flaggedResponsesCount(), 0);
+        vm.expectEmit(true, false, false, true);
+        emit ResponseFlagged(user, 0);
+        vm.prank(user);
+        orb.flagResponse(0);
+        assertEq(orb.responseFlagged(0), true);
+        assertEq(orb.flaggedResponsesCount(), 1);
     }
 }

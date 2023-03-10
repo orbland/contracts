@@ -5,6 +5,7 @@ Eric's Orb (the proto-orb) contract. Auction + Harberger taxed ownership.
 ### Usage
 
 ```shell
+forge install foundry-rs/forge-std openzeppelin/openzeppelin-contracts
 forge test
 ```
 
