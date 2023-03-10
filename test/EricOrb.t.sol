@@ -1338,7 +1338,7 @@ contract FlagResponseTest is EricOrbTestBase {
         vm.startPrank(user2);
         orb.purchase{value: 3 ether}(1 ether, 2 ether);
         vm.expectRevert(
-            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 0, orb.RESPONSE_FLAGGING_PERIOD())
+            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, orb.holderReceiveTime(), block.timestamp)
         );
         orb.flagResponse(0);
 
