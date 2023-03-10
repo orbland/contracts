@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import {Test} from "forge-std/Test.sol";
 import {EricOrbHarness} from "./harness/EricOrbHarness.sol";
 import {EricOrb} from "src/EricOrb.sol";
-import {console} from "forge-std/console.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract EricOrbTestBase is Test {
@@ -909,10 +908,7 @@ contract PurchaseTest is EricOrbTestBase {
         assertEq(orb.fundsOf(owner), ownerBefore + ownerRoyalties);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - ownerRoyalties));
         // User2 transfered buyPrice to the contract
-        // User2 payed bidAmount
-        console.log("buyPrice", buyPrice);
-        console.log("bidAmount", bidAmount);
-        console.log("diff", buyPrice - bidAmount);
+        // User2 paid bidAmount
         assertEq(orb.fundsOf(user2), buyPrice - bidAmount);
         assertEq(orb.price(), newPrice);
     }
@@ -1040,7 +1036,7 @@ contract TriggerWithCleartextTest is EricOrbTestBase {
     function test_revertsIfLongLength() public {
         uint256 max = orb.MAX_CLEARTEXT_LENGTH();
         string memory text =
-            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk";
+            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         uint256 length = bytes(text).length;
         vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextTooLong.selector, length, max));
         orb.triggerWithCleartext(text);
@@ -1145,7 +1141,7 @@ contract RecordTriggerCleartext is EricOrbTestBase {
         vm.startPrank(user);
         uint256 max = orb.MAX_CLEARTEXT_LENGTH();
         string memory cleartext =
-            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk";
+            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         uint256 length = bytes(cleartext).length;
         vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextTooLong.selector, length, max));
