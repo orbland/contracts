@@ -8,7 +8,8 @@ contract EricOrbHarness is
     EricOrb(
         7 days, // cooldown
         7 days, // responseFlaggingPeriod
-        1 days // minimumAuctionDuration
+        1 days, // minimumAuctionDuration
+        30 minutes // bidAuctionExtension
     )
 {
     function workaround_orbId() public pure returns (uint256) {
