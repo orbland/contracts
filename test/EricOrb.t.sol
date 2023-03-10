@@ -49,8 +49,7 @@ contract InitialStateTest is EricOrbTestBase {
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
 
-        // This will be callable after audit mitigations
-        // assertEq(orb.price(), 0);
+        assertEq(orb.price(), 0);
         assertEq(orb.lastTriggerTime(), 0);
         assertEq(orb.triggersCount(), 0);
 
@@ -61,9 +60,8 @@ contract InitialStateTest is EricOrbTestBase {
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.winningBid(), 0);
 
-        // This will be callable after audit mitigations
-        // assertEq(orb.lastSettlementTime(), 0);
-        // assertEq(orb.userReceiveTime(), 0);
+        assertEq(orb.lastSettlementTime(), 0);
+        assertEq(orb.holderReceiveTime(), 0);
     }
 
     function test_constants() public {
@@ -969,7 +967,7 @@ contract ExitTest is EricOrbTestBase {
         vm.prank(user);
         orb.exit();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
-        assertEq(orb.price(), 1 ether);
+        assertEq(orb.price(), 0);
     }
 }
 
