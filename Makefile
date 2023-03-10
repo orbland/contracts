@@ -21,12 +21,12 @@ test :; forge test
 
 snapshot :; forge snapshot
 
-slither :; slither ./contracts --exclude-dependencies --exclude timestamp,solc-version --solc-remaps @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/ --filter-paths node_modules
+slither :; slither ./src --exclude-dependencies --exclude timestamp,solc-version --solc-remaps @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/ --filter-paths lib
 
 format :; forge fmt
 
 # solhint should be installed globally
-lint :; solhint contracts/**/*.sol && solhint contracts/*.sol
+lint :; solhint src/**/*.sol && solhint src/*.sol && solhint test/**/*.sol && solhint test/*.sol
 
 anvil :; anvil -m 'test test test test test test test test test test test junk' -b 6
 

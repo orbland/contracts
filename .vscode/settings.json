@@ -1,8 +1,11 @@
 {
     "editor.formatOnSave": true,
     "solidity.remappings": [
-        "@openzeppelin/=./node_modules/@openzeppelin",
-        "forge-std/=./lib/forge-std/src/"
+        "@openzeppelin/=lib/openzeppelin-contracts/",
+        "forge-std/=lib/forge-std/src/",
+        "ds-test/=lib/forge-std/lib/ds-test/src/",
+        "src/=src/"
     ],
-    "solidity.formatter": "forge"
+    "solidity.formatter": "forge",
+    "git.detectSubmodules": false
 }

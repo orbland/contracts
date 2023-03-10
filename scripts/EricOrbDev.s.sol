@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
-import "../contracts/EricOrbDev.sol";
+import "src/EricOrbDev.sol";
 
 contract DeployEricOrbDev is Script {
     function run() external {
