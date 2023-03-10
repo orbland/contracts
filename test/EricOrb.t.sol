@@ -1033,8 +1033,8 @@ contract ForeclosureTimeTest is EricOrbTestBase {
         assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
     }
 }
-contract TriggerWithCleartextTest is EricOrbTestBase {
 
+contract TriggerWithCleartextTest is EricOrbTestBase {
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
 
     function test_revertsIfLongLength() public {
@@ -1047,19 +1047,16 @@ contract TriggerWithCleartextTest is EricOrbTestBase {
     }
 
     function test_callsTriggerHashCorrectly() public {
-        string memory text =
-            "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
+        string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
         makeHolderAndWarp(user, 1 ether);
         vm.expectEmit(true, false, false, true);
         emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.prank(user);
         orb.triggerWithCleartext(text);
     }
-
 }
 
 contract TriggerWthHashTest is EricOrbTestBase {
-
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
 
     function test_revertWhen_NotHolder() public {
@@ -1073,7 +1070,6 @@ contract TriggerWthHashTest is EricOrbTestBase {
         emit Triggered(user, 0, hash, block.timestamp);
         vm.prank(user);
         orb.triggerWithHash(hash);
-
     }
 
     function test_revertWhen_HolderInsolvent() public {
@@ -1092,14 +1088,16 @@ contract TriggerWthHashTest is EricOrbTestBase {
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(0), hash);
         vm.warp(block.timestamp + 1 days);
-        vm.expectRevert(abi.encodeWithSelector(EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days +
-                                               orb.COOLDOWN() - block.timestamp));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.COOLDOWN() - block.timestamp
+            )
+        );
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(1), bytes32(0));
         vm.warp(block.timestamp + orb.COOLDOWN() - 1 days + 1);
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(1), hash);
-
     }
 
     function test_success() public {
@@ -1113,14 +1111,12 @@ contract TriggerWthHashTest is EricOrbTestBase {
         assertEq(orb.lastTriggerTime(), block.timestamp);
         assertEq(orb.triggersCount(), 1);
     }
-
 }
 
 contract RecordTriggerCleartext is EricOrbTestBase {
-
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         vm.prank(user2);
         vm.expectRevert(EricOrb.NotHolder.selector);
         orb.recordTriggerCleartext(0, cleartext);
@@ -1132,7 +1128,7 @@ contract RecordTriggerCleartext is EricOrbTestBase {
 
     function test_revertWhen_HolderInsolvent() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
         vm.expectRevert(EricOrb.HolderInsolvent.selector);
@@ -1167,8 +1163,11 @@ contract RecordTriggerCleartext is EricOrbTestBase {
         string memory cleartext = "this is a cleartext";
         string memory cleartext2 = "this is not the same cleartext";
         orb.triggerWithHash(keccak256(bytes(cleartext)));
-        vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)),
-                                               keccak256(bytes(cleartext))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EricOrb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
+            )
+        );
         orb.recordTriggerCleartext(0, cleartext2);
 
         orb.recordTriggerCleartext(0, cleartext);
@@ -1176,20 +1175,19 @@ contract RecordTriggerCleartext is EricOrbTestBase {
 
     function test_success() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         vm.startPrank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         orb.recordTriggerCleartext(0, cleartext);
     }
-
 }
-contract RespondTest is EricOrbTestBase {
 
+contract RespondTest is EricOrbTestBase {
     event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
 
     function test_revertWhen_notOwner() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1206,7 +1204,7 @@ contract RespondTest is EricOrbTestBase {
 
     function test_revertWhen_triggerIdIncorrect() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1221,10 +1219,9 @@ contract RespondTest is EricOrbTestBase {
         orb.respond(0, response);
     }
 
-
     function test_revertWhen_responseAlreadyExists() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1239,7 +1236,7 @@ contract RespondTest is EricOrbTestBase {
 
     function test_success() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1254,15 +1251,14 @@ contract RespondTest is EricOrbTestBase {
         assertEq(hash, response);
         assertEq(time, block.timestamp);
     }
-
 }
-contract FlagResponseTest is EricOrbTestBase {
 
+contract FlagResponseTest is EricOrbTestBase {
     event ResponseFlagged(address indexed from, uint256 indexed responseId);
 
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1278,7 +1274,7 @@ contract FlagResponseTest is EricOrbTestBase {
 
     function test_revertWhen_HolderInsolvent() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1296,7 +1292,7 @@ contract FlagResponseTest is EricOrbTestBase {
 
     function test_revertWhen_ResponseNotExist() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1312,7 +1308,7 @@ contract FlagResponseTest is EricOrbTestBase {
 
     function test_revertWhen_outsideFlaggingPeriod() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1321,8 +1317,9 @@ contract FlagResponseTest is EricOrbTestBase {
 
         vm.warp(block.timestamp + 100 days);
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 100 days,
-        orb.RESPONSE_FLAGGING_PERIOD()));
+        vm.expectRevert(
+            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 100 days, orb.RESPONSE_FLAGGING_PERIOD())
+        );
         orb.flagResponse(0);
 
         vm.warp(block.timestamp - (100 days - orb.RESPONSE_FLAGGING_PERIOD()));
@@ -1331,7 +1328,7 @@ contract FlagResponseTest is EricOrbTestBase {
 
     function test_revertWhen_responseToPreviousHolder() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1340,8 +1337,9 @@ contract FlagResponseTest is EricOrbTestBase {
 
         vm.startPrank(user2);
         orb.purchase{value: 3 ether}(1 ether, 2 ether);
-        vm.expectRevert(abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 0,
-        orb.RESPONSE_FLAGGING_PERIOD()));
+        vm.expectRevert(
+            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 0, orb.RESPONSE_FLAGGING_PERIOD())
+        );
         orb.flagResponse(0);
 
         vm.warp(block.timestamp + orb.COOLDOWN());
@@ -1355,7 +1353,7 @@ contract FlagResponseTest is EricOrbTestBase {
 
     function test_success() public {
         makeHolderAndWarp(user, 1 ether);
-        string memory cleartext= "this is a cleartext";
+        string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
@@ -1371,5 +1369,4 @@ contract FlagResponseTest is EricOrbTestBase {
         assertEq(orb.responseFlagged(0), true);
         assertEq(orb.flaggedResponsesCount(), 1);
     }
-
 }
