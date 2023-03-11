@@ -16,3 +16,6 @@ ignored_error_codes = [2462]
 libs = ["node_modules", "lib"]
 
 ffi = false
+
+[fuzz]
+runs = 10000
