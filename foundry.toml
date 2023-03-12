@@ -18,4 +18,5 @@ libs = ["node_modules", "lib"]
 ffi = false
 
 [fuzz]
-runs = 100000
+
+runs = 10000

@@ -64,8 +64,6 @@ contract InitialStateTest is EricOrbTestBase {
     }
 
     function test_constants() public {
-        assertEq(orb.COOLDOWN(), 7 days);
-        assertEq(orb.RESPONSE_FLAGGING_PERIOD(), 7 days);
         assertEq(orb.MAX_CLEARTEXT_LENGTH(), 280);
 
         assertEq(orb.FEE_DENOMINATOR(), 10000);
@@ -75,8 +73,6 @@ contract InitialStateTest is EricOrbTestBase {
 
         assertEq(orb.STARTING_PRICE(), 0.1 ether);
         assertEq(orb.MINIMUM_BID_STEP(), 0.01 ether);
-        assertEq(orb.MINIMUM_AUCTION_DURATION(), 1 days);
-        assertEq(orb.BID_AUCTION_EXTENSION(), 30 minutes);
 
         assertEq(orb.workaround_orbId(), 69);
         assertEq(orb.workaround_infinity(), type(uint256).max);
@@ -131,10 +127,10 @@ contract StartAuctionTest is EricOrbTestBase {
         orb.workaround_setWinningBid(10);
         orb.workaround_setWinningBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.minimumAuctionDuration());
         orb.startAuction();
         assertEq(orb.startTime(), block.timestamp);
-        assertEq(orb.endTime(), block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        assertEq(orb.endTime(), block.timestamp + orb.minimumAuctionDuration());
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
     }
@@ -145,13 +141,13 @@ contract StartAuctionTest is EricOrbTestBase {
         orb.startAuction();
         orb.workaround_setOrbHolder(address(orb));
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.minimumAuctionDuration());
         orb.startAuction();
     }
 
     function test_startAuctionNotDuringAuction() public {
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.minimumAuctionDuration());
         orb.startAuction();
         vm.expectRevert(EricOrb.AuctionRunning.selector);
         orb.startAuction();
@@ -277,18 +273,18 @@ contract BidTest is EricOrbTestBase {
         assertEq(orb.endTime(), 0);
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        // endTime = block.timestamp + MINIMUM_AUCTION_DURATION
+        // endTime = block.timestamp + minimumAuctionDuration
         uint256 endTime = orb.endTime();
-        // set block.timestamp to endTime - BID_AUCTION_EXTENSION
-        vm.warp(endTime - orb.BID_AUCTION_EXTENSION());
+        // set block.timestamp to endTime - bidAuctionExtension
+        vm.warp(endTime - orb.bidAuctionExtension());
         prankAndBid(user, amount);
-        // didn't change because block.timestamp + BID_AUCTION_EXTENSION  = endTime
+        // didn't change because block.timestamp + bidAuctionExtension  = endTime
         assertEq(orb.endTime(), endTime);
 
-        vm.warp(endTime - orb.BID_AUCTION_EXTENSION() + 50);
+        vm.warp(endTime - orb.bidAuctionExtension() + 50);
         amount = orb.minimumBid();
         prankAndBid(user, amount);
-        // change because block.timestamp + BID_AUCTION_EXTENSION + 50 >  endTime
+        // change because block.timestamp + bidAuctionExtension + 50 >  endTime
         assertEq(orb.endTime(), endTime + 50);
     }
 }
@@ -312,7 +308,7 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         orb.finalizeAuction();
         orb.startAuction();
         // endTime != 0
-        assertEq(orb.endTime(), block.timestamp + orb.MINIMUM_AUCTION_DURATION());
+        assertEq(orb.endTime(), block.timestamp + orb.minimumAuctionDuration());
         vm.expectRevert(EricOrb.AuctionRunning.selector);
         orb.finalizeAuction();
     }
@@ -360,7 +356,7 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         assertEq(orb.fundsOf(address(this)), amount);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(orb.lastTriggerTime(), block.timestamp - orb.COOLDOWN());
+        assertEq(orb.lastTriggerTime(), block.timestamp - orb.cooldown());
         assertEq(orb.fundsOf(user), funds - amount);
         assertEq(orb.price(), amount);
     }
@@ -1084,12 +1080,12 @@ contract TriggerWthHashTest is EricOrbTestBase {
         vm.warp(block.timestamp + 1 days);
         vm.expectRevert(
             abi.encodeWithSelector(
-                EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.COOLDOWN() - block.timestamp
+                EricOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.cooldown() - block.timestamp
             )
         );
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(1), bytes32(0));
-        vm.warp(block.timestamp + orb.COOLDOWN() - 1 days + 1);
+        vm.warp(block.timestamp + orb.cooldown() - 1 days + 1);
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(1), hash);
     }
@@ -1145,7 +1141,7 @@ contract RecordTriggerCleartext is EricOrbTestBase {
         vm.expectRevert(abi.encodeWithSelector(EricOrb.CleartextTooLong.selector, length, max));
         orb.recordTriggerCleartext(0, cleartext);
 
-        vm.warp(block.timestamp + orb.COOLDOWN() + 1);
+        vm.warp(block.timestamp + orb.cooldown() + 1);
         cleartext = "this is a cleartext";
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         orb.recordTriggerCleartext(1, cleartext);
@@ -1312,11 +1308,11 @@ contract FlagResponseTest is EricOrbTestBase {
         vm.warp(block.timestamp + 100 days);
         vm.startPrank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 100 days, orb.RESPONSE_FLAGGING_PERIOD())
+            abi.encodeWithSelector(EricOrb.FlaggingPeriodExpired.selector, 0, 100 days, orb.responseFlaggingPeriod())
         );
         orb.flagResponse(0);
 
-        vm.warp(block.timestamp - (100 days - orb.RESPONSE_FLAGGING_PERIOD()));
+        vm.warp(block.timestamp - (100 days - orb.responseFlaggingPeriod()));
         orb.flagResponse(0);
     }
 
@@ -1336,7 +1332,7 @@ contract FlagResponseTest is EricOrbTestBase {
         );
         orb.flagResponse(0);
 
-        vm.warp(block.timestamp + orb.COOLDOWN());
+        vm.warp(block.timestamp + orb.cooldown());
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         vm.stopPrank();
         vm.prank(owner);
