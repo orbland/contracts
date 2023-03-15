@@ -463,9 +463,9 @@ contract EricOrb is ERC721, Ownable {
         }
 
         if (winningBidder != address(0)) {
-            _setPrice(winningBid);
-            fundsOf[winningBidder] -= price;
-            fundsOf[owner()] += price;
+            _setPrice(winningBid * 2);
+            fundsOf[winningBidder] -= winningBid;
+            fundsOf[owner()] += winningBid;
 
             lastSettlementTime = block.timestamp;
             lastTriggerTime = block.timestamp - cooldown;
