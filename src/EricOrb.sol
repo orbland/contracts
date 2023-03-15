@@ -89,6 +89,9 @@ contract EricOrb is ERC721, Ownable {
 
     // CONSTANTS AND IMMUTABLES
 
+    // Beneficiary receives all Orb proceeds
+    address public immutable beneficiary;
+
     // Public Constants
     // Cooldown: how often Orb can be triggered.
     uint256 public immutable cooldown;
@@ -185,12 +188,14 @@ contract EricOrb is ERC721, Ownable {
         uint256 cooldown_,
         uint256 responseFlaggingPeriod_,
         uint256 minimumAuctionDuration_,
-        uint256 bidAuctionExtension_
+        uint256 bidAuctionExtension_,
+        address beneficiary_
     ) ERC721("Eric's Orb", "ORB") {
         cooldown = cooldown_;
         responseFlaggingPeriod = responseFlaggingPeriod_;
         minimumAuctionDuration = minimumAuctionDuration_;
         bidAuctionExtension = bidAuctionExtension_;
+        beneficiary = beneficiary_;
 
         _safeMint(address(this), ERIC_ORB_ID);
     }
