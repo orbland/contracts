@@ -37,6 +37,8 @@ contract EricOrbTestBase is Test {
         prankAndBid(newHolder, bid);
         vm.warp(orb.endTime() + 1);
         orb.finalizeAuction();
+        vm.prank(newHolder);
+        orb.setPrice(bid);
         vm.warp(block.timestamp + 30 days);
     }
 }
@@ -358,7 +360,7 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(orb.lastTriggerTime(), block.timestamp - orb.cooldown());
         assertEq(orb.fundsOf(user), funds - amount);
-        assertEq(orb.price(), amount);
+        assertEq(orb.price(), amount * 2);
     }
 }
 
@@ -394,7 +396,7 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
     }
 
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
-        amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice());
+        amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice() / 2);
         amount2 = bound(amount2, orb.STARTING_PRICE(), amount1 - orb.MINIMUM_BID_STEP());
         uint256 funds1 = orb.fundsRequiredToBid(amount1);
         uint256 funds2 = orb.fundsRequiredToBid(amount2);
@@ -403,6 +405,8 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
         prankAndBid(user, amount1);
         vm.warp(orb.endTime() + 1);
         orb.finalizeAuction();
+        vm.prank(user);
+        orb.setPrice(amount1);
         vm.warp(block.timestamp + 1 days);
 
         // One day has passed since the orb holder got the orb
@@ -467,7 +471,7 @@ contract DepositTest is EricOrbTestBase {
     function testFuzz_depositHolderSolvent(uint256 bidAmount, uint256 depositAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
-        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maxPrice() / 2);
         depositAmount = bound(depositAmount, 0.1 ether, orb.workaround_maxPrice());
         makeHolderAndWarp(user, bidAmount);
         // User bids 1 ether, but deposit enough funds
@@ -588,7 +592,7 @@ contract WithdrawTest is EricOrbTestBase {
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
-        bidAmount = bound(bidAmount, orb.STARTING_PRICE(), orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, orb.STARTING_PRICE(), orb.workaround_maxPrice() / 2);
         makeHolderAndWarp(user, bidAmount);
 
         // ownerEffective = ownerFunds + transferableToOwner
@@ -645,7 +649,7 @@ contract SettleTest is EricOrbTestBase {
     }
 
     function testFuzz_settleCorrect(uint96 bid, uint96 time) public {
-        uint256 amount = bound(bid, orb.STARTING_PRICE(), orb.workaround_maxPrice());
+        uint256 amount = bound(bid, orb.STARTING_PRICE(), orb.workaround_maxPrice() / 2);
         // warp ahead a random amount of time
         // remain under 1 year in total, so solvent
         uint256 timeOffset = bound(time, 0, 300 days);
@@ -868,7 +872,7 @@ contract PurchaseTest is EricOrbTestBase {
     }
 
     function testFuzz_succeedsCorrectly(uint256 bidAmount, uint256 newPrice, uint256 buyPrice, uint256 diff) public {
-        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maxPrice() - 1);
+        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maxPrice() / 2 - 1);
         newPrice = bound(newPrice, 1, orb.workaround_maxPrice());
         buyPrice = bound(buyPrice, bidAmount + 1, orb.workaround_maxPrice());
         diff = bound(diff, 1, buyPrice);
