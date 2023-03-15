@@ -28,7 +28,7 @@ format :; forge fmt
 # solhint should be installed globally
 lint :; solhint src/**/*.sol && solhint src/*.sol && solhint test/**/*.sol && solhint test/*.sol
 
-anvil :; anvil -m 'test test test test test test test test test test test junk' -b 6
+anvil :; anvil -m 'test test test test test test test test test test test junk' -b 12
 
 # use the "@" to hide the command from your shell
 deploy-sepolia :; @forge script scripts/${contract}.s.sol:Deploy${contract} --rpc-url ${SEPOLIA_RPC_URL}  --private-key ${PRIVATE_KEY} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY}  -vvvv
