@@ -700,7 +700,11 @@ contract EricOrb is ERC721, Ownable {
 
         fundsOf[msg.sender] -= currentPrice;
         fundsOf[beneficiary] += beneficiaryRoyalties;
-        fundsOf[holder] += currentOwnerShare;
+        if (owner() == holder) {
+            fundsOf[beneficiary] += currentOwnerShare;
+        } else {
+            fundsOf[holder] += currentOwnerShare;
+        }
 
         lastSettlementTime = block.timestamp;
 
