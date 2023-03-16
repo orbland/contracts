@@ -540,7 +540,7 @@ contract EricOrb is ERC721, Ownable {
      * @dev     Not allowed for the winning auction bidder.
      */
     function withdrawAll() external notWinningBidder settlesIfHolder {
-        _withdraw(fundsOf[msg.sender]);
+        _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
     /**
@@ -549,7 +549,7 @@ contract EricOrb is ERC721, Ownable {
      * @dev     Not allowed for the winning auction bidder.
      */
     function withdraw(uint256 amount) external notWinningBidder settlesIfHolder {
-        _withdraw(amount);
+        _withdraw(msg.sender, amount);
     }
 
     /**
@@ -599,16 +599,16 @@ contract EricOrb is ERC721, Ownable {
      *          Emits Withdrawal().
      * @param   amount_  The value in wei to withdraw from the contract.
      */
-    function _withdraw(uint256 amount_) internal {
-        if (fundsOf[msg.sender] < amount_) {
-            revert InsufficientFunds(fundsOf[msg.sender], amount_);
+    function _withdraw(address receiver, uint256 amount_) internal {
+        if (fundsOf[receiver] < amount_) {
+            revert InsufficientFunds(fundsOf[receiver], amount_);
         }
 
-        fundsOf[msg.sender] -= amount_;
+        fundsOf[receiver] -= amount_;
 
-        emit Withdrawal(msg.sender, amount_);
+        emit Withdrawal(receiver, amount_);
 
-        Address.sendValue(payable(msg.sender), amount_);
+        Address.sendValue(payable(receiver), amount_);
     }
 
     /**
@@ -747,7 +747,7 @@ contract EricOrb is ERC721, Ownable {
         emit Foreclosure(msg.sender);
 
         _transferOrb(msg.sender, address(this));
-        _withdraw(fundsOf[msg.sender]);
+        _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
     /**
