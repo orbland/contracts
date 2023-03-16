@@ -49,6 +49,7 @@ contract InitialStateTest is EricOrbTestBase {
         assertEq(address(orb), orb.ownerOf(orb.workaround_orbId()));
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
+        assertEq(orb.beneficiary(), address(0xC0FFEE));
 
         assertEq(orb.price(), 0);
         assertEq(orb.lastTriggerTime(), 0);
@@ -177,6 +178,21 @@ contract BidTest is EricOrbTestBase {
         assertEq(orb.winningBid(), 0 ether);
         prankAndBid(user, 0.5 ether);
         assertEq(orb.winningBid(), 0.5 ether);
+    }
+
+    function test_bidRevertsIfBeneficiary() public {
+        orb.startAuction();
+        uint256 amount = orb.minimumBid();
+        uint256 fundsRequired = orb.fundsRequiredToBid(amount);
+        vm.deal(beneficiary, fundsRequired);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.BeneficiaryDisallowed.selector));
+        vm.prank(beneficiary);
+        orb.bid{value: fundsRequired}(amount);
+
+        // will not revert
+        vm.prank(user);
+        orb.bid{value: fundsRequired}(amount);
+        assertEq(orb.winningBid(), amount);
     }
 
     function test_bidRevertsIfLtMinimumBid() public {
@@ -587,6 +603,42 @@ contract WithdrawTest is EricOrbTestBase {
         assertEq(user2.balance, initialBalance + withdrawAmount);
     }
 
+    function test_withdrawAllForBeneficiarySettlesAndWithdraws() public {
+        assertEq(orb.fundsOf(user), 0);
+        // winning bid  = 1 ether
+        uint256 bidAmount = 10 ether;
+        uint256 smallBidAmount = 0.5 ether;
+
+        orb.startAuction();
+        // user2 bids
+        prankAndBid(user2, smallBidAmount);
+        // user1 bids and becomes the winning bidder
+        prankAndBid(user, bidAmount);
+        vm.warp(orb.endTime() + 1);
+        orb.finalizeAuction();
+
+        vm.warp(block.timestamp + 30 days);
+
+        // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
+        // userEffective = userFunds - transferableToBeneficiary
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
+        uint256 userEffective = orb.effectiveFundsOf(user);
+        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
+        uint256 initialBalance = beneficiary.balance;
+
+        vm.expectEmit(true, true, false, true);
+        emit Settlement(user, beneficiary, transferableToBeneficiary);
+
+        vm.prank(user);
+        orb.withdrawAllForBeneficiary();
+
+        assertEq(orb.fundsOf(user), userEffective);
+        assertEq(orb.fundsOf(beneficiary), 0);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(beneficiary.balance, initialBalance + beneficiaryEffective);
+    }
+
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
@@ -809,6 +861,20 @@ contract PurchaseTest is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
+    function test_revertsIfBeneficiary() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.deal(beneficiary, 1.1 ether);
+        vm.prank(beneficiary);
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.BeneficiaryDisallowed.selector));
+        orb.purchase{value: 1.1 ether}(1 ether, 3 ether);
+
+        // does not revert
+        assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
+        vm.prank(user2);
+        orb.purchase{value: 1.1 ether}(1 ether, 3 ether);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+    }
+
     function test_revertsIfWrongCurrentPrice() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user2);
@@ -834,6 +900,36 @@ contract PurchaseTest is EricOrbTestBase {
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event NewPrice(uint256 from, uint256 to);
     event Settlement(address indexed from, address indexed to, uint256 amount);
+
+    function test_beneficiaryAllProceedsIfOwnerSells() public {
+        uint256 bidAmount = 1 ether;
+        uint256 newPrice = 3 ether;
+        uint256 purchaseAmount = bidAmount / 2;
+        uint256 depositAmount = bidAmount / 2;
+        // bidAmount will be the `_price` of the Orb
+        makeHolderAndWarp(owner, bidAmount);
+        orb.settle();
+        uint256 ownerBefore = orb.fundsOf(owner);
+        uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
+        uint256 userBefore = orb.fundsOf(user);
+        vm.startPrank(user);
+        orb.deposit{value: depositAmount}();
+        assertEq(orb.fundsOf(user), userBefore + depositAmount);
+        vm.expectEmit(true, true, false, false);
+        emit Purchase(owner, user);
+        vm.expectEmit(true, true, true, false);
+        emit Transfer(owner, user, orb.workaround_orbId());
+        // The Orb is purchased with purchaseAmount
+        // It uses both the existing funds of the user and the funds
+        // that the user transfers when calling `purchase()`
+        orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
+        uint256 beneficiaryRoyalties = bidAmount;
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalties);
+        assertEq(orb.fundsOf(owner), ownerBefore);
+        // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
+        assertEq(orb.fundsOf(user), 1);
+        assertEq(orb.price(), newPrice);
+    }
 
     function test_succeedsCorrectly() public {
         uint256 bidAmount = 1 ether;
