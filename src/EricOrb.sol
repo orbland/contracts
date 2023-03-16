@@ -470,7 +470,7 @@ contract EricOrb is ERC721, Ownable {
         if (winningBidder != address(0)) {
             _setPrice(winningBid);
             fundsOf[winningBidder] -= price;
-            fundsOf[owner()] += price;
+            fundsOf[beneficiary] += price;
 
             lastSettlementTime = block.timestamp;
             lastTriggerTime = block.timestamp - cooldown;
@@ -626,14 +626,14 @@ contract EricOrb is ERC721, Ownable {
 
         uint256 availableFunds = fundsOf[holder];
         uint256 owedFunds = _owedSinceLastSettlement();
-        uint256 transferableToOwner = availableFunds <= owedFunds ? availableFunds : owedFunds;
+        uint256 transferableToBeneficiary = availableFunds <= owedFunds ? availableFunds : owedFunds;
 
-        fundsOf[holder] -= transferableToOwner;
-        fundsOf[owner()] += transferableToOwner;
+        fundsOf[holder] -= transferableToBeneficiary;
+        fundsOf[beneficiary] += transferableToBeneficiary;
 
         lastSettlementTime = block.timestamp;
 
-        emit Settlement(holder, owner(), transferableToOwner);
+        emit Settlement(holder, beneficiary, transferableToBeneficiary);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -695,11 +695,11 @@ contract EricOrb is ERC721, Ownable {
             revert InsufficientFunds(totalFunds, currentPrice);
         }
 
-        uint256 ownerRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
-        uint256 currentOwnerShare = currentPrice - ownerRoyalties;
+        uint256 beneficiaryRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
+        uint256 currentOwnerShare = currentPrice - beneficiaryRoyalties;
 
         fundsOf[msg.sender] -= currentPrice;
-        fundsOf[owner()] += ownerRoyalties;
+        fundsOf[beneficiary] += beneficiaryRoyalties;
         fundsOf[holder] += currentOwnerShare;
 
         lastSettlementTime = block.timestamp;
