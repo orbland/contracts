@@ -561,7 +561,7 @@ contract EricOrb is ERC721, Ownable {
      * @notice  Function to withdraw all beneficiary funds on the contract.
      * @dev     Allowed for anyone at any time, does not use msg.sender in its execution.
      */
-    function withdrawAllForBeneficiary() external {
+    function withdrawAllForBeneficiary() external settles {
         _withdraw(beneficiary, fundsOf[beneficiary]);
     }
 
