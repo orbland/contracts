@@ -553,6 +553,14 @@ contract EricOrb is ERC721, Ownable {
     }
 
     /**
+     * @notice  Function to withdraw all beneficiary funds on the contract.
+     * @dev     Allowed for anyone at any time, does not use msg.sender in its execution.
+     */
+    function withdrawAllForBeneficiary() external {
+        _withdraw(beneficiary, fundsOf[beneficiary]);
+    }
+
+    /**
      * @notice  Settlements transfer funds from orb holder to orb issuer.
      *          Orb accounting minimizes required transactions: orb holder's foreclosure time is only
      *          dependent on the price and available funds. Fund transfers are not necessary unless
