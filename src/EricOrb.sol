@@ -711,14 +711,15 @@ contract EricOrb is ERC721, Ownable {
             revert InsufficientFunds(totalFunds, currentPrice);
         }
 
-        uint256 beneficiaryRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
-        uint256 currentOwnerShare = currentPrice - beneficiaryRoyalties;
-
         fundsOf[msg.sender] -= currentPrice;
-        fundsOf[beneficiary] += beneficiaryRoyalties;
+
         if (owner() == holder) {
-            fundsOf[beneficiary] += currentOwnerShare;
+            fundsOf[beneficiary] += currentPrice;
         } else {
+            uint256 beneficiaryRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
+            uint256 currentOwnerShare = currentPrice - beneficiaryRoyalties;
+
+            fundsOf[beneficiary] += beneficiaryRoyalties;
             fundsOf[holder] += currentOwnerShare;
         }
 
