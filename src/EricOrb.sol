@@ -56,6 +56,7 @@ contract EricOrb is ERC721, Ownable {
     error NotHolder();
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
+    error BeneficiaryDisallowed();
 
     // Funds-Related Authorization Errors
     error HolderSolvent();
@@ -432,6 +433,10 @@ contract EricOrb is ERC721, Ownable {
      * @param   amount  The value to bid.
      */
     function bid(uint256 amount) external payable onlyDuringAuction {
+        if (msg.sender == beneficiary) {
+            revert BeneficiaryDisallowed();
+        }
+
         uint256 totalFunds = fundsOf[msg.sender] + msg.value;
 
         if (amount < minimumBid()) {
@@ -694,6 +699,9 @@ contract EricOrb is ERC721, Ownable {
 
         if (msg.sender == holder) {
             revert AlreadyHolder();
+        }
+        if (msg.sender == beneficiary) {
+            revert BeneficiaryDisallowed();
         }
 
         fundsOf[msg.sender] += msg.value;
