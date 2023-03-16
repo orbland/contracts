@@ -11,6 +11,7 @@ contract EricOrbTestBase is Test {
 
     address internal user;
     address internal user2;
+    address internal beneficiary;
     address internal owner;
 
     uint256 internal startingBalance;
@@ -19,6 +20,7 @@ contract EricOrbTestBase is Test {
         orb = new EricOrbHarness();
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
+        beneficiary = address(0xC0FFEE);
         startingBalance = 10000 ether;
         vm.deal(user, startingBalance);
         vm.deal(user2, startingBalance);
@@ -247,7 +249,7 @@ contract BidTest is EricOrbTestBase {
         for (uint256 i = 1; i < 16; i++) {
             uint256 amount = bound(amounts[i], orb.minimumBid(), orb.minimumBid() + 1_000_000_000);
             address bidder = bidders[i];
-            vm.assume(bidder != address(0) && bidder != address(orb));
+            vm.assume(bidder != address(0) && bidder != address(orb) && bidder != beneficiary);
 
             uint256 funds = orb.fundsRequiredToBid(amount);
 
@@ -353,7 +355,7 @@ contract FinalizeAuctionTest is EricOrbTestBase {
 
         // storage that persists
         assertEq(address(orb).balance, funds);
-        assertEq(orb.fundsOf(address(this)), amount);
+        assertEq(orb.fundsOf(beneficiary), amount);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(orb.lastTriggerTime(), block.timestamp - orb.cooldown());
@@ -383,7 +385,7 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
         // The user actually transfered `funds1` and `funds2` respectively
         // ether to the contract
         uint256 owed = orb.workaround_owedSinceLastSettlement();
-        assertEq(orb.effectiveFundsOf(owner), owed + amount1);
+        assertEq(orb.effectiveFundsOf(beneficiary), owed + amount1);
         // The user that won the auction and is holding the orb
         // has the funds they deposited, minus the tax and minus the bid
         // amount
@@ -407,13 +409,13 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
 
         // One day has passed since the orb holder got the orb
         // for bid = 1 ether. That means that the price of the
-        // orb is now 1 ether. Thus the Orb issuer is owed the tax
+        // orb is now 1 ether. Thus the Orb beneficiary is owed the tax
         // for 1 day.
 
         // The user actually transfered `funds1` and `funds2` respectively
         // ether to the contract
         uint256 owed = orb.workaround_owedSinceLastSettlement();
-        assertEq(orb.effectiveFundsOf(owner), owed + amount1);
+        assertEq(orb.effectiveFundsOf(beneficiary), owed + amount1);
         // The user that won the auction and is holding the orb
         // has the funds they deposited, minus the tax and minus the bid
         // amount
@@ -555,22 +557,22 @@ contract WithdrawTest is EricOrbTestBase {
 
         vm.warp(block.timestamp + 30 days);
 
-        // ownerEffective = ownerFunds + transferableToOwner
-        // userEffective = userFunds - transferableToOwner
-        uint256 ownerFunds = orb.fundsOf(owner);
+        // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
+        // userEffective = userFunds - transferableToBeneficiary
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
         uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 ownerEffective = orb.effectiveFundsOf(owner);
-        uint256 transferableToOwner = ownerEffective - ownerFunds;
+        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
         uint256 initialBalance = user.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit Settlement(user, owner, transferableToOwner);
+        emit Settlement(user, beneficiary, transferableToBeneficiary);
 
         vm.prank(user);
         orb.withdraw(withdrawAmount);
 
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
-        assertEq(orb.fundsOf(owner), ownerEffective);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, initialBalance + withdrawAmount);
 
@@ -591,29 +593,29 @@ contract WithdrawTest is EricOrbTestBase {
         bidAmount = bound(bidAmount, orb.STARTING_PRICE(), orb.workaround_maxPrice());
         makeHolderAndWarp(user, bidAmount);
 
-        // ownerEffective = ownerFunds + transferableToOwner
-        // userEffective = userFunds - transferableToOwner
-        uint256 ownerFunds = orb.fundsOf(owner);
+        // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
+        // userEffective = userFunds - transferableToBeneficiary
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
         uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 ownerEffective = orb.effectiveFundsOf(owner);
-        uint256 transferableToOwner = ownerEffective - ownerFunds;
+        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
         uint256 initialBalance = user.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit Settlement(user, owner, transferableToOwner);
+        emit Settlement(user, beneficiary, transferableToBeneficiary);
 
         vm.prank(user);
         withdrawAmount = bound(withdrawAmount, 0, userEffective - 1);
         orb.withdraw(withdrawAmount);
         assertEq(orb.fundsOf(user), userEffective - withdrawAmount);
-        assertEq(orb.fundsOf(owner), ownerEffective);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, initialBalance + withdrawAmount);
 
         vm.prank(user);
         orb.withdrawAll();
         assertEq(orb.fundsOf(user), 0);
-        assertEq(orb.fundsOf(owner), ownerEffective);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, initialBalance + userEffective);
     }
@@ -651,18 +653,18 @@ contract SettleTest is EricOrbTestBase {
         uint256 timeOffset = bound(time, 0, 300 days);
         vm.warp(block.timestamp + timeOffset);
         assertEq(orb.fundsOf(user), 0);
-        assertEq(orb.fundsOf(owner), 0);
+        assertEq(orb.fundsOf(beneficiary), 0);
         assertEq(orb.lastSettlementTime(), 0);
         // it warps 30 days by default
         makeHolderAndWarp(user, amount);
 
         uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 ownerEffective = orb.effectiveFundsOf(owner);
+        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
         uint256 initialBalance = user.balance;
 
         orb.settle();
         assertEq(orb.fundsOf(user), userEffective);
-        assertEq(orb.fundsOf(owner), ownerEffective);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, initialBalance);
 
@@ -675,8 +677,8 @@ contract SettleTest is EricOrbTestBase {
         uint256 transferable = orb.fundsOf(user);
         orb.settle();
         assertEq(orb.fundsOf(user), 0);
-        // ownerEffective is from the last time it settled
-        assertEq(orb.fundsOf(owner), transferable + ownerEffective);
+        // beneficiaryEffective is from the last time it settled
+        assertEq(orb.fundsOf(beneficiary), transferable + beneficiaryEffective);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(user.balance, initialBalance);
     }
@@ -842,13 +844,14 @@ contract PurchaseTest is EricOrbTestBase {
         makeHolderAndWarp(user, bidAmount);
         orb.settle();
         uint256 ownerBefore = orb.fundsOf(owner);
+        uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);
         vm.startPrank(user2);
         orb.deposit{value: depositAmount}();
         assertEq(orb.fundsOf(user2), depositAmount);
         vm.expectEmit(true, true, false, true);
         // we just settled above
-        emit Settlement(user, owner, 0);
+        emit Settlement(user, beneficiary, 0);
         vm.expectEmit(false, false, false, true);
         emit NewPrice(bidAmount, newPrice);
         vm.expectEmit(true, true, false, false);
@@ -859,9 +862,10 @@ contract PurchaseTest is EricOrbTestBase {
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
         orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
-        uint256 ownerRoyalties = ((bidAmount * 1000) / 10000);
-        assertEq(orb.fundsOf(owner), ownerBefore + ownerRoyalties);
-        assertEq(orb.fundsOf(user), userBefore + (bidAmount - ownerRoyalties));
+        uint256 beneficiaryRoyalties = ((bidAmount * 1000) / 10000);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalties);
+        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalties));
+        assertEq(orb.fundsOf(owner), ownerBefore);
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user2), 1);
         assertEq(orb.price(), newPrice);
@@ -880,13 +884,14 @@ contract PurchaseTest is EricOrbTestBase {
         makeHolderAndWarp(user, bidAmount);
         orb.settle();
         uint256 ownerBefore = orb.fundsOf(owner);
+        uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);
         vm.startPrank(user2);
         orb.deposit{value: depositAmount}();
         assertEq(orb.fundsOf(user2), depositAmount);
         vm.expectEmit(true, true, false, true);
         // we just settled above
-        emit Settlement(user, owner, 0);
+        emit Settlement(user, beneficiary, 0);
         vm.expectEmit(false, false, false, true);
         emit NewPrice(bidAmount, newPrice);
         vm.expectEmit(true, true, false, false);
@@ -898,9 +903,10 @@ contract PurchaseTest is EricOrbTestBase {
         // that the user transfers when calling `purchase()`
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         orb.purchase{value: purchaseAmount}(bidAmount, newPrice);
-        uint256 ownerRoyalties = ((bidAmount * 1000) / 10000);
-        assertEq(orb.fundsOf(owner), ownerBefore + ownerRoyalties);
-        assertEq(orb.fundsOf(user), userBefore + (bidAmount - ownerRoyalties));
+        uint256 beneficiaryRoyalties = ((bidAmount * 1000) / 10000);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalties);
+        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalties));
+        assertEq(orb.fundsOf(owner), ownerBefore);
         // User2 transfered buyPrice to the contract
         // User2 paid bidAmount
         assertEq(orb.fundsOf(user2), buyPrice - bidAmount);
