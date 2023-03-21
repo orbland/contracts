@@ -36,7 +36,7 @@ contract EricOrb is ERC721, Ownable {
     event Withdrawal(address indexed recipient, uint256 amount);
     event Settlement(address indexed from, address indexed to, uint256 amount);
     event NewPrice(uint256 from, uint256 to);
-    event Purchase(address indexed from, address indexed to);
+    event Purchase(address indexed from, address indexed to, uint256 price);
     event Foreclosure(address indexed from, bool indexed voluntary);
 
     // Triggering and Responding Events
@@ -702,7 +702,7 @@ contract EricOrb is ERC721, Ownable {
 
         _setPrice(newPrice);
 
-        emit Purchase(holder, msg.sender);
+        emit Purchase(holder, msg.sender, currentPrice);
 
         _transferOrb(holder, msg.sender);
     }
