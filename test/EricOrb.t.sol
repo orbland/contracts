@@ -1040,10 +1040,10 @@ contract TriggerWithCleartextTest is EricOrbTestBase {
     function test_callsTriggerHashCorrectly() public {
         string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
         makeHolderAndWarp(user, 1 ether);
-        vm.expectEmit(true, true, false, true);
-        emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.expectEmit(true, false, false, true);
         emit CleartextRecorded(0, text);
+        vm.expectEmit(true, true, false, true);
+        emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.prank(user);
         orb.triggerWithCleartext(text);
     }

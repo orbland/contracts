@@ -806,8 +806,8 @@ contract EricOrb is ERC721, Ownable {
         if (length > MAX_CLEARTEXT_LENGTH) {
             revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
         }
+        emit CleartextRecorded(triggersCount, cleartext);
         triggerWithHash(keccak256(abi.encodePacked(cleartext)));
-        emit CleartextRecorded(triggersCount - 1, cleartext);
     }
 
     /**
