@@ -42,6 +42,7 @@ contract EricOrb is ERC721, Ownable {
     // Triggering and Responding Events
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
     event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event CleartextRecorded(uint256 indexed triggerId, string cleartext);
     event ResponseFlagged(address indexed from, uint256 indexed responseId);
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -831,6 +832,7 @@ contract EricOrb is ERC721, Ownable {
         if (length > MAX_CLEARTEXT_LENGTH) {
             revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
         }
+        emit CleartextRecorded(triggersCount, cleartext);
         triggerWithHash(keccak256(abi.encodePacked(cleartext)));
     }
 
@@ -870,12 +872,7 @@ contract EricOrb is ERC721, Ownable {
      * @param   triggerId  Triggred id, matching the one that was emitted when calling {trigger()}.
      * @param   cleartext  Cleartext, limited to tweet length. Must match the content hash.
      */
-    function recordTriggerCleartext(uint256 triggerId, string memory cleartext)
-        external
-        view
-        onlyHolder
-        onlyHolderSolvent
-    {
+    function recordTriggerCleartext(uint256 triggerId, string memory cleartext) external onlyHolder onlyHolderSolvent {
         uint256 cleartextLength = bytes(cleartext).length;
 
         if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
@@ -888,6 +885,8 @@ contract EricOrb is ERC721, Ownable {
         if (recordedContentHash != cleartextHash) {
             revert CleartextHashMismatch(cleartextHash, recordedContentHash);
         }
+
+        emit CleartextRecorded(triggerId, cleartext);
     }
 
     /**

@@ -1127,6 +1127,7 @@ contract ForeclosureTimeTest is EricOrbTestBase {
 
 contract TriggerWithCleartextTest is EricOrbTestBase {
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event CleartextRecorded(uint256 indexed triggerId, string cleartext);
 
     function test_revertsIfLongLength() public {
         uint256 max = orb.MAX_CLEARTEXT_LENGTH();
@@ -1141,6 +1142,8 @@ contract TriggerWithCleartextTest is EricOrbTestBase {
         string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
         makeHolderAndWarp(user, 1 ether);
         vm.expectEmit(true, false, false, true);
+        emit CleartextRecorded(0, text);
+        vm.expectEmit(true, true, false, true);
         emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.prank(user);
         orb.triggerWithCleartext(text);
@@ -1205,6 +1208,8 @@ contract TriggerWthHashTest is EricOrbTestBase {
 }
 
 contract RecordTriggerCleartext is EricOrbTestBase {
+    event CleartextRecorded(uint256 indexed triggerId, string cleartext);
+
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
@@ -1268,6 +1273,8 @@ contract RecordTriggerCleartext is EricOrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         vm.startPrank(user);
+        vm.expectEmit(true, false, false, true);
+        emit CleartextRecorded(0, cleartext);
         orb.triggerWithHash(keccak256(bytes(cleartext)));
         orb.recordTriggerCleartext(0, cleartext);
     }
