@@ -190,8 +190,7 @@ contract BidTest is EricOrbTestBase {
         orb.bid{value: fundsRequired}(amount);
 
         // will not revert
-        vm.prank(user);
-        orb.bid{value: fundsRequired}(amount);
+        prankAndBid(user, amount);
         assertEq(orb.winningBid(), amount);
     }
 
