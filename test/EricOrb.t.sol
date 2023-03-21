@@ -1043,15 +1043,15 @@ contract ExitTest is EricOrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
-    event Foreclosure(address indexed from);
+    event Foreclosure(address indexed from, bool indexed voluntary);
     event Withdrawal(address indexed recipient, uint256 amount);
 
     function test_succeedsCorrectly() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
-        vm.expectEmit(true, false, false, false);
-        emit Foreclosure(user);
+        vm.expectEmit(true, true, false, false);
+        emit Foreclosure(user, true);
         vm.expectEmit(true, false, false, true);
         uint256 effectiveFunds = orb.effectiveFundsOf(user);
         emit Withdrawal(user, effectiveFunds);
@@ -1076,7 +1076,7 @@ contract ForecloseTest is EricOrbTestBase {
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
     }
 
-    event Foreclosure(address indexed from);
+    event Foreclosure(address indexed from, bool indexed voluntary);
 
     function test_revertsifHolderSolvent() public {
         uint256 winningBid = 10 ether;
@@ -1084,8 +1084,8 @@ contract ForecloseTest is EricOrbTestBase {
         vm.expectRevert(EricOrb.HolderSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
-        vm.expectEmit(true, false, false, false);
-        emit Foreclosure(user);
+        vm.expectEmit(true, true, false, false);
+        emit Foreclosure(user, false);
         orb.foreclose();
     }
 
@@ -1093,8 +1093,8 @@ contract ForecloseTest is EricOrbTestBase {
         uint256 winningBid = 10 ether;
         makeHolderAndWarp(user, winningBid);
         vm.warp(block.timestamp + 10000 days);
-        vm.expectEmit(true, false, false, false);
-        emit Foreclosure(user);
+        vm.expectEmit(true, true, false, false);
+        emit Foreclosure(user, false);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         orb.foreclose();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
