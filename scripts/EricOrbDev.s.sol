@@ -8,9 +8,9 @@ contract DeployEricOrbDev is Script {
     function run() external {
         vm.startBroadcast();
         new EricOrb(
-            5 minutes, // cooldown
-            5 minutes, // responseFlaggingPeriod
-            5 minutes, // minimumAuctionDuration
+            2 minutes, // cooldown
+            2 minutes, // responseFlaggingPeriod
+            2 minutes, // minimumAuctionDuration
             30 seconds // bidAuctionExtension
         );
         vm.stopBroadcast();

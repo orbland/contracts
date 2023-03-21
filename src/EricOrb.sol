@@ -37,7 +37,7 @@ contract EricOrb is ERC721, Ownable {
     event Settlement(address indexed from, address indexed to, uint256 amount);
     event NewPrice(uint256 from, uint256 to);
     event Purchase(address indexed from, address indexed to, uint256 price);
-    event Foreclosure(address indexed from);
+    event Foreclosure(address indexed from, bool indexed voluntary);
 
     // Triggering and Responding Events
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
@@ -735,7 +735,7 @@ contract EricOrb is ERC721, Ownable {
     function exit() external onlyHolder onlyHolderSolvent settles {
         price = 0;
 
-        emit Foreclosure(msg.sender);
+        emit Foreclosure(msg.sender, true);
 
         _transferOrb(msg.sender, address(this));
         _withdraw(fundsOf[msg.sender]);
@@ -749,7 +749,7 @@ contract EricOrb is ERC721, Ownable {
     function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
         address holder = ERC721.ownerOf(ERIC_ORB_ID);
         price = 0;
-        emit Foreclosure(holder);
+        emit Foreclosure(holder, false);
         _transferOrb(holder, address(this));
     }
 
