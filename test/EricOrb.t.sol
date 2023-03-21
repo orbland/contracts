@@ -895,7 +895,7 @@ contract PurchaseTest is EricOrbTestBase {
         orb.purchase{value: 1 ether - 1}(1 ether, 3 ether);
     }
 
-    event Purchase(address indexed from, address indexed to);
+    event Purchase(address indexed from, address indexed to, uint256 price);
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event NewPrice(uint256 from, uint256 to);
     event Settlement(address indexed from, address indexed to, uint256 amount);
@@ -949,8 +949,8 @@ contract PurchaseTest is EricOrbTestBase {
         emit Settlement(user, beneficiary, 0);
         vm.expectEmit(false, false, false, true);
         emit NewPrice(bidAmount, newPrice);
-        vm.expectEmit(true, true, false, false);
-        emit Purchase(user, user2);
+        vm.expectEmit(true, true, false, true);
+        emit Purchase(user, user2, bidAmount);
         vm.expectEmit(true, true, true, false);
         emit Transfer(user, user2, orb.workaround_orbId());
         // The Orb is purchased with purchaseAmount
@@ -989,8 +989,8 @@ contract PurchaseTest is EricOrbTestBase {
         emit Settlement(user, beneficiary, 0);
         vm.expectEmit(false, false, false, true);
         emit NewPrice(bidAmount, newPrice);
-        vm.expectEmit(true, true, false, false);
-        emit Purchase(user, user2);
+        vm.expectEmit(true, true, false, true);
+        emit Purchase(user, user2, bidAmount);
         vm.expectEmit(true, true, true, false);
         emit Transfer(user, user2, orb.workaround_orbId());
         // The Orb is purchased with purchaseAmount
