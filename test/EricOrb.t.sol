@@ -915,7 +915,7 @@ contract PurchaseTest is EricOrbTestBase {
         orb.deposit{value: depositAmount}();
         assertEq(orb.fundsOf(user), userBefore + depositAmount);
         vm.expectEmit(true, true, false, false);
-        emit Purchase(owner, user);
+        emit Purchase(owner, user, bidAmount);
         vm.expectEmit(true, true, true, false);
         emit Transfer(owner, user, orb.workaround_orbId());
         // The Orb is purchased with purchaseAmount
