@@ -13,6 +13,10 @@ contract EricOrbHarness is
         address(0xC0FFEE) // beneficiary
     )
 {
+    function fundsRequiredToBidOneYear(uint256 amount) public pure returns (uint256) {
+        return amount + (amount * HOLDER_TAX_NUMERATOR) / FEE_DENOMINATOR;
+    }
+
     function workaround_orbId() public pure returns (uint256) {
         return ERIC_ORB_ID;
     }
