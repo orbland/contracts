@@ -170,6 +170,7 @@ contract EricOrb is ERC721, Ownable {
     mapping(address => uint256) public fundsOf;
 
     // Price of the Orb. No need for mapping, as only one token is very minted.
+    // Also used during auction to store future purchase price.
     // Shouldn't be useful is orb is held by the contract.
     uint256 public price;
     // Last time orb holder's funds were settled.
@@ -184,12 +185,13 @@ contract EricOrb is ERC721, Ownable {
     // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
     address public winningBidder;
     // Winning Bid: highest current bid. 0 not during the auction and before first bid.
-    // Note: user has to deposit more than just the bid to ensure solvency after auction is finalized.
     uint256 public winningBid;
 
     // Trigger and Response State Variables
 
-    // Struct used to track both triggger and response base information: content hash and timestamp.
+    // Struct used to track response information: content hash and timestamp.
+    // Timestamp is used to determine if the response can be flagged by the holder.
+    // Trigger timestamp doesn't need to be tracked, as nothing is done with it.
     struct HashTime {
         // keccak256 hash of the cleartext
         bytes32 contentHash;
@@ -219,6 +221,12 @@ contract EricOrb is ERC721, Ownable {
      * @dev  When deployed, contract mints the only token that will ever exist, to itself.
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
+     * @param cooldown_  How often Orb can be triggered.
+     * @param responseFlaggingPeriod_  How long after resonse was recorded it can be flagged by the holder.
+     * @param minimumAuctionDuration_  Minimum length for an auction.
+     * @param bidAuctionExtension_  If remaining time is less than this after a bid is made,
+     *        auction will continue for at least this long.
+     * @param beneficiary_  Beneficiary receives all Orb proceeds.
      */
     constructor(
         uint256 cooldown_,
@@ -440,7 +448,7 @@ contract EricOrb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at lest MINIMUM_AUCTION_DURATION.
+     * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least minimumAuctionDuration.
      * @dev     Prevents repeated starts by checking the endTime.
      *          Important to set endTime to 0 after auction is finalized.
      *          Also, resets winningBidder and winningBid.
@@ -544,7 +552,7 @@ contract EricOrb is ERC721, Ownable {
     /**
      * @notice  Returns funds for an address on this contract, freely available to withdraw.
      *          Accounts for owed Harberger tax, so can be used to display an actual effective balance.
-     * @dev     The only addresses where this mismatches with {fundsOf[]} is the issuer and the holder.
+     * @dev     The only addresses where this mismatches with {fundsOf[]} is the beneficiary and the holder.
      * @param   user  Address to return effective funds of.
      * @return  uint256  Address effective funds.
      */
@@ -610,13 +618,13 @@ contract EricOrb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Settlements transfer funds from orb holder to orb issuer.
+     * @notice  Settlements transfer funds from orb holder to the beneficiary.
      *          Orb accounting minimizes required transactions: orb holder's foreclosure time is only
      *          dependent on the price and available funds. Fund transfers are not necessary unless
      *          these variables (price, holder funds) are being changed. Settlement transfers funds owed
      *          since the last settlement, and a new period of virtual accounting begins.
      * @dev     Holder might owe more than they have funds available: it means that the holder is foreclosable.
-     *          Settlement would transfer all holder funds to the issuer, but not more.
+     *          Settlement would transfer all holder funds to the beneficiary, but not more.
      *          Does nothing if the issuer holds the orb. Reverts if contract holds the orb.
      *          Emits Settlement().
      */
@@ -654,6 +662,7 @@ contract EricOrb is ERC721, Ownable {
      *          to user's wallet. The only function in the contract that sends value and has re-entrancy risk.
      *          Does not check if the address is payable, as the Address library reverts if it is not.
      *          Emits Withdrawal().
+     * @param   receiver  The address to send the value to.
      * @param   amount_  The value in wei to withdraw from the contract.
      */
     function _withdraw(address receiver, uint256 amount_) internal {
@@ -718,7 +727,7 @@ contract EricOrb is ERC721, Ownable {
      *          re-auctioned.
      *          Purchaser is required to have more funds than the price itself, but the exact amount is left for the
      *          user interface implementation to calculate and send along.
-     *          Purchasing sends Sale Royalties part to the orb issuer, 10% by default.
+     *          Purchasing sends Sale Royalties part to the beneficiary, 10% by default.
      * @dev     Requires to provide the current price as the first parameter to prevent front-running: without current
      *          price requirement someone could purchase the orb ahead of someone else, set the price higher, and
      *          profit from the purchase.
@@ -961,6 +970,8 @@ contract EricOrb is ERC721, Ownable {
      *          allowing anyone to quickly look up how many responses were flagged.
      * @dev     Only existing responses (with non-zero timestamps) can be flagged.
      *          Responses can only be flagged by solvent holders to keep it consistent with {trigger()}.
+     *          Also, the holder must have received the orb after the response was made;
+     *          this is to prevent holders from flagging responses that were made in response to others' triggers.
      *          Emits ResponseFlagged().
      * @param   triggerId  ID of a trigger to which the response is being flagged.
      */
