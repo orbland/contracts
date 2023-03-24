@@ -466,8 +466,9 @@ contract EricOrb is ERC721, Ownable {
      *          Important: the winning bidder will not be able to withdraw funds until someone outbids them.
      * @dev     Emits NewBid().
      * @param   amount  The value to bid.
+     * @param   priceIfWon  Price if the bid wins. Must be less than MAX_PRICE.
      */
-    function bid(uint256 amount) external payable onlyDuringAuction {
+    function bid(uint256 amount, uint256 priceIfWon) external payable onlyDuringAuction {
         if (msg.sender == beneficiary) {
             revert BeneficiaryDisallowed();
         }
@@ -482,9 +483,14 @@ contract EricOrb is ERC721, Ownable {
             revert InsufficientFunds(totalFunds, fundsRequiredToBid(amount));
         }
 
+        if (priceIfWon > MAX_PRICE) {
+            revert InvalidNewPrice(priceIfWon);
+        }
+
         fundsOf[msg.sender] = totalFunds;
         winningBidder = msg.sender;
         winningBid = amount;
+        price = priceIfWon;
 
         emit NewBid(msg.sender, amount);
 
@@ -495,8 +501,9 @@ contract EricOrb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Finalizes the Auction, transferring the winning bid to the issuer, and the orb to the winner.
+     * @notice  Finalizes the Auction, transferring the winning bid to the beneficiary, and the orb to the winner.
      *          Sets lastTriggerTime so that the Orb could be triggered immediately.
+     *          The price has been set when bidding, now becomes relevant.
      *          If no bids were made, resets the state to allow the auction to be started again later.
      * @dev     Critical state transition function. Called after endTime, but only if it's not 0.
      *          Can be called by anyone, although probably will be called by the issuer or the winner.
@@ -508,19 +515,21 @@ contract EricOrb is ERC721, Ownable {
         }
 
         if (winningBidder != address(0)) {
-            _setPrice(winningBid);
-            fundsOf[winningBidder] -= price;
-            fundsOf[beneficiary] += price;
+            fundsOf[winningBidder] -= winningBid;
+            fundsOf[beneficiary] += winningBid;
 
             lastSettlementTime = block.timestamp;
             lastTriggerTime = block.timestamp - cooldown;
 
             emit AuctionFinalized(winningBidder, winningBid);
+            emit NewPrice(0, price);
+            // price has been set when bidding
 
             _transferOrb(address(this), winningBidder);
             winningBidder = address(0);
             winningBid = 0;
         } else {
+            price = 0;
             emit AuctionFinalized(winningBidder, winningBid);
         }
 
