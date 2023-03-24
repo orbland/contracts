@@ -28,10 +28,10 @@ contract EricOrbTestBase is Test {
     }
 
     function prankAndBid(address bidder, uint256 bidAmount) internal {
-        uint256 finalAmount = orb.fundsRequiredToBid(bidAmount);
+        uint256 finalAmount = orb.fundsRequiredToBidOneYear(bidAmount);
         vm.deal(bidder, startingBalance + finalAmount);
         vm.prank(bidder);
-        orb.bid{value: finalAmount}(bidAmount);
+        orb.bid{value: finalAmount}(bidAmount, bidAmount);
     }
 
     function makeHolderAndWarp(address newHolder, uint256 bid) public {
@@ -110,7 +110,7 @@ contract MinimumBidTest is EricOrbTestBase {
 contract FundsRequiredToBidTest is EricOrbTestBase {
     function test_fundsRequiredToBidReturnsCorrectValues(uint256 amount) public {
         amount = bound(amount, 0, type(uint224).max);
-        assertEq(orb.fundsRequiredToBid(amount), amount + ((amount * 1_000) / 10_000));
+        assertEq(orb.fundsRequiredToBid(amount), amount);
     }
 }
 
@@ -164,7 +164,7 @@ contract BidTest is EricOrbTestBase {
         vm.deal(user, finalAmount);
         vm.expectRevert(EricOrb.AuctionNotRunning.selector);
         vm.prank(user);
-        orb.bid{value: finalAmount}(bidAmount);
+        orb.bid{value: finalAmount}(bidAmount, bidAmount);
         orb.startAuction();
         assertEq(orb.winningBid(), 0 ether);
         prankAndBid(user, bidAmount);
@@ -187,7 +187,7 @@ contract BidTest is EricOrbTestBase {
         vm.deal(beneficiary, fundsRequired);
         vm.expectRevert(abi.encodeWithSelector(EricOrb.BeneficiaryDisallowed.selector));
         vm.prank(beneficiary);
-        orb.bid{value: fundsRequired}(amount);
+        orb.bid{value: fundsRequired}(amount, amount);
 
         // will not revert
         prankAndBid(user, amount);
@@ -200,20 +200,20 @@ contract BidTest is EricOrbTestBase {
         uint256 amount = orb.minimumBid() - 1;
         vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientBid.selector, amount, orb.minimumBid()));
         vm.prank(user);
-        orb.bid{value: amount}(amount);
+        orb.bid{value: amount}(amount, amount);
 
         // Add back + 1 to amount
         amount++;
         // will not revert
         vm.prank(user);
-        orb.bid{value: orb.fundsRequiredToBid(amount)}(amount);
+        orb.bid{value: orb.fundsRequiredToBid(amount)}(amount, amount);
         assertEq(orb.winningBid(), amount);
 
         // minimum bid will be the winning bid + MINIMUM_BID_STEP
         amount = orb.minimumBid() - 1;
         vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientBid.selector, amount, orb.minimumBid()));
         vm.prank(user);
-        orb.bid{value: amount}(amount);
+        orb.bid{value: amount}(amount, amount);
     }
 
     function test_bidRevertsIfLtFundsRequired() public {
@@ -222,13 +222,30 @@ contract BidTest is EricOrbTestBase {
         uint256 funds = orb.fundsRequiredToBid(amount) - 1;
         vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientFunds.selector, funds, funds + 1));
         vm.prank(user);
-        orb.bid{value: funds}(amount);
+        orb.bid{value: funds}(amount, amount);
 
         funds++;
         vm.prank(user);
         // will not revert
-        orb.bid{value: funds}(amount);
+        orb.bid{value: funds}(amount, amount);
         assertEq(orb.winningBid(), amount);
+    }
+
+    function test_bidRevertsIfPriceTooHigh() public {
+        orb.startAuction();
+        uint256 amount = orb.minimumBid();
+        uint256 price = orb.workaround_maxPrice() + 1;
+        vm.expectRevert(abi.encodeWithSelector(EricOrb.InvalidNewPrice.selector, price));
+        vm.prank(user);
+        orb.bid{value: amount}(amount, price);
+
+        // Bring price back to acceptable amount
+        price--;
+        // will not revert
+        vm.prank(user);
+        orb.bid{value: orb.fundsRequiredToBid(amount)}(amount, price);
+        assertEq(orb.winningBid(), amount);
+        assertEq(orb.price(), orb.workaround_maxPrice());
     }
 
     event NewBid(address indexed from, uint256 price);
@@ -236,7 +253,7 @@ contract BidTest is EricOrbTestBase {
     function test_bidSetsCorrectState() public {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        uint256 funds = orb.fundsRequiredToBid(amount);
+        uint256 funds = orb.fundsRequiredToBidOneYear(amount);
         assertEq(orb.winningBid(), 0 ether);
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.fundsOf(user), 0);
@@ -249,6 +266,7 @@ contract BidTest is EricOrbTestBase {
 
         assertEq(orb.winningBid(), amount);
         assertEq(orb.winningBidder(), user);
+        assertEq(orb.price(), amount);
         assertEq(orb.fundsOf(user), funds);
         assertEq(address(orb).balance, funds);
         assertEq(orb.endTime(), endTime);
@@ -266,7 +284,7 @@ contract BidTest is EricOrbTestBase {
             address bidder = bidders[i];
             vm.assume(bidder != address(0) && bidder != address(orb) && bidder != beneficiary);
 
-            uint256 funds = orb.fundsRequiredToBid(amount);
+            uint256 funds = orb.fundsRequiredToBidOneYear(amount);
 
             fundsOfUser[bidder] += funds;
 
@@ -277,6 +295,7 @@ contract BidTest is EricOrbTestBase {
 
             assertEq(orb.winningBid(), amount);
             assertEq(orb.winningBidder(), bidder);
+            assertEq(orb.price(), amount);
             assertEq(orb.fundsOf(bidder), fundsOfUser[bidder]);
             assertEq(address(orb).balance, contractBalance);
         }
@@ -340,12 +359,15 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         assertEq(orb.startTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
+        assertEq(orb.price(), 0);
     }
+
+    event NewPrice(uint256 oldPrice, uint256 newPrice);
 
     function test_finalizeAuctionWithWinner() public {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        uint256 funds = orb.fundsRequiredToBid(amount);
+        uint256 funds = orb.fundsRequiredToBidOneYear(amount);
         // Bid `amount` and transfer `funds` to the contract
         prankAndBid(user, amount);
         vm.warp(orb.endTime() + 1);
@@ -353,11 +375,14 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         // Assert storage before
         assertEq(orb.winningBidder(), user);
         assertEq(orb.winningBid(), amount);
+        assertEq(orb.price(), amount);
         assertEq(orb.fundsOf(user), funds);
         assertEq(orb.fundsOf(address(orb)), 0);
 
         vm.expectEmit(true, false, false, true);
         emit AuctionFinalized(user, amount);
+        vm.expectEmit(false, false, false, true);
+        emit NewPrice(0, amount);
 
         orb.finalizeAuction();
 
@@ -367,6 +392,7 @@ contract FinalizeAuctionTest is EricOrbTestBase {
         assertEq(orb.startTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
+        assertEq(orb.price(), amount);
 
         // storage that persists
         assertEq(address(orb).balance, funds);
@@ -383,8 +409,8 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
     function test_effectiveFundsCorrectCalculation() public {
         uint256 amount1 = 1 ether;
         uint256 amount2 = 0.5 ether;
-        uint256 funds1 = orb.fundsRequiredToBid(amount1);
-        uint256 funds2 = orb.fundsRequiredToBid(amount2);
+        uint256 funds1 = orb.fundsRequiredToBidOneYear(amount1);
+        uint256 funds2 = orb.fundsRequiredToBidOneYear(amount2);
         orb.startAuction();
         prankAndBid(user2, amount2);
         prankAndBid(user, amount1);
@@ -413,8 +439,8 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice());
         amount2 = bound(amount2, orb.STARTING_PRICE(), amount1 - orb.MINIMUM_BID_STEP());
-        uint256 funds1 = orb.fundsRequiredToBid(amount1);
-        uint256 funds2 = orb.fundsRequiredToBid(amount2);
+        uint256 funds1 = orb.fundsRequiredToBidOneYear(amount1);
+        uint256 funds2 = orb.fundsRequiredToBidOneYear(amount2);
         orb.startAuction();
         prankAndBid(user2, amount2);
         prankAndBid(user, amount1);
@@ -471,7 +497,7 @@ contract DepositTest is EricOrbTestBase {
         makeHolderAndWarp(user, bidAmount);
         // User bids 1 ether, but deposit enough funds
         // to cover the tax for a year, according to
-        // fundsRequiredToBid(bidAmount)
+        // fundsRequiredToBidOneYear(bidAmount)
         uint256 funds = orb.fundsOf(user);
         vm.expectEmit(true, false, false, true);
         // deposit 1 ether
@@ -489,7 +515,7 @@ contract DepositTest is EricOrbTestBase {
         makeHolderAndWarp(user, bidAmount);
         // User bids 1 ether, but deposit enough funds
         // to cover the tax for a year, according to
-        // fundsRequiredToBid(bidAmount)
+        // fundsRequiredToBidOneYear(bidAmount)
         uint256 funds = orb.fundsOf(user);
         vm.expectEmit(true, false, false, true);
         // deposit 1 ether
@@ -507,7 +533,7 @@ contract DepositTest is EricOrbTestBase {
         makeHolderAndWarp(user, bidAmount);
 
         // let's make the user insolvent
-        // fundsRequiredToBid(bidAmount) ensures enough
+        // fundsRequiredToBidOneYear(bidAmount) ensures enough
         // ether for 1 year, not two
         vm.warp(block.timestamp + 731 days);
 
@@ -598,7 +624,7 @@ contract WithdrawTest is EricOrbTestBase {
         vm.prank(user2);
         initialBalance = user2.balance;
         orb.withdraw(withdrawAmount);
-        assertEq(orb.fundsOf(user2), orb.fundsRequiredToBid(smallBidAmount) - withdrawAmount);
+        assertEq(orb.fundsOf(user2), orb.fundsRequiredToBidOneYear(smallBidAmount) - withdrawAmount);
         assertEq(user2.balance, initialBalance + withdrawAmount);
     }
 
