@@ -430,13 +430,13 @@ contract EricOrb is ERC721, Ownable {
 
     /**
      * @notice  Total funds (funds on contract + sent value) required to fund a bid of a given value.
-     *          Returns bid amount + enough to cover the Harberger tax for one Harberger tax period, 1 year by default.
+     *          Returns just bid amount itself, not requiring anything more.
      * @dev     Can be used together with {minimumBid()} and {fundsOf{}} to figure out msg.value required for bid().
      * @param   amount  Bid amount to calculate for.
      * @return  uint256  Total funds required to satisfy the bid of `amount`.
      */
     function fundsRequiredToBid(uint256 amount) public pure returns (uint256) {
-        return amount + (amount * HOLDER_TAX_NUMERATOR) / FEE_DENOMINATOR;
+        return amount;
     }
 
     /**
