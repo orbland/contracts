@@ -75,7 +75,7 @@ contract InitialStateTest is EricOrbTestBase {
         assertEq(orb.SALE_ROYALTIES_NUMERATOR(), 1000);
 
         assertEq(orb.STARTING_PRICE(), 0.1 ether);
-        assertEq(orb.MINIMUM_BID_STEP(), 0.01 ether);
+        assertEq(orb.MINIMUM_BID_STEP(), 0.1 ether);
 
         assertEq(orb.workaround_orbId(), 69);
         assertEq(orb.workaround_infinity(), type(uint256).max);

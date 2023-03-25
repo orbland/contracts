@@ -148,7 +148,7 @@ contract EricOrb is ERC721, Ownable {
     // Auction starting price.
     uint256 public constant STARTING_PRICE = 0.1 ether;
     // Each bid has to increase over previous bid by at least this much.
-    uint256 public constant MINIMUM_BID_STEP = 0.01 ether;
+    uint256 public constant MINIMUM_BID_STEP = 0.1 ether;
     // Auction will run for at least this long.
     uint256 public immutable minimumAuctionDuration;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
