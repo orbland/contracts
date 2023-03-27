@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {DeployBase} from "./DeployBase.s.sol";
 
-contract DeployGoerli is DeployBase {
+contract DeploySepolia is DeployBase {
     address[] private contributorWallets = [
         0xE48C655276C23F1534AE2a87A2bf8A8A6585Df70, // ercwl.eth
         0x9F49230672c52A2b958F253134BB17Ac84d30833, // jonas.eth

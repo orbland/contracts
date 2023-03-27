@@ -3,148 +3,67 @@ pragma solidity ^0.8.17;
 
 import {Script} from "forge-std/Script.sol";
 
-import {LibRLP} from "../../test/utils/LibRLP.sol";
+// import {LibRLP} from "lib/utils/LibRLP.sol";
 
 import {EricOrb} from "src/EricOrb.sol";
 import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
 abstract contract DeployBase is Script {
     // Environment specific variables.
-    address private immutable governorWallet;
-    address private immutable teamColdWallet;
-    address private immutable communityWallet;
-    bytes32 private immutable merkleRoot;
-    uint256 private immutable mintStart;
-    address private immutable vrfCoordinator;
-    address private immutable linkToken;
-    bytes32 private immutable chainlinkKeyHash;
-    uint256 private immutable chainlinkFee;
-    string private gobblerBaseUri;
-    string private gobblerUnrevealedUri;
-    string private pagesBaseUri;
-    bytes32 private immutable provenanceHash;
+    address[] private contributorWallets;
+    uint256[] private contributorShares;
+
+    address private immutable issuerWallet;
+    uint256 private immutable cooldown;
+    uint256 private immutable responseFlaggingPeriod;
+    uint256 private immutable minimumAuctionDuration;
+    uint256 private immutable bidAuctionExtension;
+    // string private orbBaseUri;
 
     // Deploy addresses.
-    GobblerReserve public teamReserve;
-    GobblerReserve public communityReserve;
-    Goo public goo;
-    RandProvider public randProvider;
-    ArtGobblers public artGobblers;
-    Pages public pages;
+    PaymentSplitter public orbBeneficiary;
+    EricOrb public ericOrb;
 
     constructor(
-        address _governorWallet,
-        address _teamColdWallet,
-        address _communityWallet,
-        bytes32 _merkleRoot,
-        uint256 _mintStart,
-        address _vrfCoordinator,
-        address _linkToken,
-        bytes32 _chainlinkKeyHash,
-        uint256 _chainlinkFee,
-        string memory _gobblerBaseUri,
-        string memory _gobblerUnrevealedUri,
-        string memory _pagesBaseUri,
-        bytes32 _provenanceHash
+        address[] memory _contributorWallets,
+        uint256[] memory _contributorShares,
+        address _issuerWallet,
+        uint256 _cooldown,
+        uint256 _responseFlaggingPeriod,
+        uint256 _minimumAuctionDuration,
+        uint256 _bidAuctionExtension
     ) {
-        governorWallet = _governorWallet;
-        teamColdWallet = _teamColdWallet;
-        communityWallet = _communityWallet;
-        merkleRoot = _merkleRoot;
-        mintStart = _mintStart;
-        vrfCoordinator = _vrfCoordinator;
-        linkToken = _linkToken;
-        chainlinkKeyHash = _chainlinkKeyHash;
-        chainlinkFee = _chainlinkFee;
-        gobblerBaseUri = _gobblerBaseUri;
-        gobblerUnrevealedUri = _gobblerUnrevealedUri;
-        pagesBaseUri = _pagesBaseUri;
-        provenanceHash = _provenanceHash;
+        contributorWallets = _contributorWallets;
+        contributorShares = _contributorShares;
+        issuerWallet = _issuerWallet;
+        cooldown = _cooldown;
+        responseFlaggingPeriod = _responseFlaggingPeriod;
+        minimumAuctionDuration = _minimumAuctionDuration;
+        bidAuctionExtension = _bidAuctionExtension;
     }
 
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        uint256 gobblerKey = vm.envUint("GOBBLER_PRIVATE_KEY");
-        uint256 pagesKey = vm.envUint("PAGES_PRIVATE_KEY");
-        uint256 gooKey = vm.envUint("GOO_PRIVATE_KEY");
-
-        address gobblerDeployerAddress = vm.addr(gobblerKey);
-        address pagesDeployerAddress = vm.addr(pagesKey);
-        address gooDeployerAddress = vm.addr(gooKey);
+        // address deployer = vm.rememberKey(privKey);
 
         // Precomputed contract addresses, based on contract deploy nonces.
-        address gobblerAddress = LibRLP.computeAddress(gobblerDeployerAddress, 0);
-        address pageAddress = LibRLP.computeAddress(pagesDeployerAddress, 0);
+        // address splitterAddress = LibRLP.computeAddress(deployer, 0);
+        // address orbAddress = LibRLP.computeAddress(deployer, 1);
 
         vm.startBroadcast(deployerKey);
 
-        // Deploy team and community reserves, owned by cold wallet.
-        teamReserve = new GobblerReserve(ArtGobblers(gobblerAddress), teamColdWallet);
-        communityReserve = new GobblerReserve(ArtGobblers(gobblerAddress), teamColdWallet);
-        randProvider = new ChainlinkV1RandProvider(
-            ArtGobblers(gobblerAddress),
-            vrfCoordinator,
-            linkToken,
-            chainlinkKeyHash,
-            chainlinkFee
+        orbBeneficiary = new PaymentSplitter(contributorWallets, contributorShares);
+        address splitterAddress = address(orbBeneficiary);
+
+        ericOrb = new EricOrb(
+            cooldown,
+            responseFlaggingPeriod,
+            minimumAuctionDuration,
+            bidAuctionExtension,
+            splitterAddress // beneficiary
         );
+        ericOrb.transferOwnership(issuerWallet);
 
-        // Fund each of the other deployer addresses.
-        payable(gobblerDeployerAddress).transfer(0.25 ether);
-        payable(pagesDeployerAddress).transfer(0.25 ether);
-        payable(gooDeployerAddress).transfer(0.25 ether);
-
-        vm.stopBroadcast();
-
-        vm.startBroadcast(gooKey);
-
-        // Deploy goo contract.
-        goo = new Goo(
-            // Gobblers contract address:
-            gobblerAddress,
-            // Pages contract address:
-            pageAddress
-        );
-
-        vm.stopBroadcast();
-
-        vm.startBroadcast(gobblerKey);
-
-        // Deploy gobblers contract,
-        artGobblers = new ArtGobblers(
-            merkleRoot,
-            mintStart,
-            goo,
-            Pages(pageAddress),
-            address(teamReserve),
-            address(communityReserve),
-            randProvider,
-            gobblerBaseUri,
-            gobblerUnrevealedUri,
-            provenanceHash
-        );
-
-        artGobblers.transferOwnership(governorWallet);
-
-        vm.stopBroadcast();
-
-        vm.startBroadcast(pagesKey);
-
-        // Deploy pages contract.
-        pages = new Pages(mintStart, goo, communityWallet, artGobblers, pagesBaseUri);
-
-        vm.stopBroadcast();
-    }
-
-    function run() external {
-        vm.startBroadcast();
-        new EricOrb(
-            2 minutes, // cooldown
-            2 minutes, // responseFlaggingPeriod
-            2 minutes, // minimumAuctionDuration
-            30 seconds, // bidAuctionExtension
-            0x3bf0282b0199D486c4ABC76298c0F3dbDfA77455 // beneficiary
-        );
         vm.stopBroadcast();
     }
 }
