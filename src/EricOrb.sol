@@ -437,17 +437,6 @@ contract EricOrb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Total funds (funds on contract + sent value) required to fund a bid of a given value.
-     *          Returns just bid amount itself, not requiring anything more.
-     * @dev     Can be used together with {minimumBid()} and {fundsOf{}} to figure out msg.value required for bid().
-     * @param   amount  Bid amount to calculate for.
-     * @return  uint256  Total funds required to satisfy the bid of `amount`.
-     */
-    function fundsRequiredToBid(uint256 amount) public pure returns (uint256) {
-        return amount;
-    }
-
-    /**
      * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least minimumAuctionDuration.
      * @dev     Prevents repeated starts by checking the endTime.
      *          Important to set endTime to 0 after auction is finalized.
@@ -487,8 +476,8 @@ contract EricOrb is ERC721, Ownable {
             revert InsufficientBid(amount, minimumBid());
         }
 
-        if (totalFunds < fundsRequiredToBid(amount)) {
-            revert InsufficientFunds(totalFunds, fundsRequiredToBid(amount));
+        if (totalFunds < amount) {
+            revert InsufficientFunds(totalFunds, amount);
         }
 
         if (priceIfWon > MAX_PRICE) {

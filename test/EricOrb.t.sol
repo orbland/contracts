@@ -107,13 +107,6 @@ contract MinimumBidTest is EricOrbTestBase {
     }
 }
 
-contract FundsRequiredToBidTest is EricOrbTestBase {
-    function test_fundsRequiredToBidReturnsCorrectValues(uint256 amount) public {
-        amount = bound(amount, 0, type(uint224).max);
-        assertEq(orb.fundsRequiredToBid(amount), amount);
-    }
-}
-
 contract StartAuctionTest is EricOrbTestBase {
     function test_startAuctionOnlyOrbIssuer() public {
         vm.prank(address(0xBEEF));
@@ -160,11 +153,10 @@ contract StartAuctionTest is EricOrbTestBase {
 contract BidTest is EricOrbTestBase {
     function test_bidOnlyDuringAuction() public {
         uint256 bidAmount = 0.6 ether;
-        uint256 finalAmount = orb.fundsRequiredToBid(bidAmount);
-        vm.deal(user, finalAmount);
+        vm.deal(user, bidAmount);
         vm.expectRevert(EricOrb.AuctionNotRunning.selector);
         vm.prank(user);
-        orb.bid{value: finalAmount}(bidAmount, bidAmount);
+        orb.bid{value: bidAmount}(bidAmount, bidAmount);
         orb.startAuction();
         assertEq(orb.winningBid(), 0 ether);
         prankAndBid(user, bidAmount);
@@ -183,11 +175,10 @@ contract BidTest is EricOrbTestBase {
     function test_bidRevertsIfBeneficiary() public {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        uint256 fundsRequired = orb.fundsRequiredToBid(amount);
-        vm.deal(beneficiary, fundsRequired);
+        vm.deal(beneficiary, amount);
         vm.expectRevert(abi.encodeWithSelector(EricOrb.BeneficiaryDisallowed.selector));
         vm.prank(beneficiary);
-        orb.bid{value: fundsRequired}(amount, amount);
+        orb.bid{value: amount}(amount, amount);
 
         // will not revert
         prankAndBid(user, amount);
@@ -206,7 +197,7 @@ contract BidTest is EricOrbTestBase {
         amount++;
         // will not revert
         vm.prank(user);
-        orb.bid{value: orb.fundsRequiredToBid(amount)}(amount, amount);
+        orb.bid{value: amount}(amount, amount);
         assertEq(orb.winningBid(), amount);
 
         // minimum bid will be the winning bid + MINIMUM_BID_STEP
@@ -219,7 +210,7 @@ contract BidTest is EricOrbTestBase {
     function test_bidRevertsIfLtFundsRequired() public {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        uint256 funds = orb.fundsRequiredToBid(amount) - 1;
+        uint256 funds = amount - 1;
         vm.expectRevert(abi.encodeWithSelector(EricOrb.InsufficientFunds.selector, funds, funds + 1));
         vm.prank(user);
         orb.bid{value: funds}(amount, amount);
@@ -243,7 +234,7 @@ contract BidTest is EricOrbTestBase {
         price--;
         // will not revert
         vm.prank(user);
-        orb.bid{value: orb.fundsRequiredToBid(amount)}(amount, price);
+        orb.bid{value: amount}(amount, price);
         assertEq(orb.winningBid(), amount);
         assertEq(orb.price(), orb.workaround_maxPrice());
     }
