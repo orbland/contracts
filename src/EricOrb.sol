@@ -167,6 +167,9 @@ contract EricOrb is ERC721, Ownable {
     // STATE
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
+    // The value is without settlement. It means effective user funds (withdrawable) would be different
+    // for holder (subtracting owedSinceLastSettlement) and beneficiary (adding owedSinceLastSettlement).
+    // If Orb is held by the creator, funds are not subtracted, as Harberger Tax does not apply to the creator.
     mapping(address => uint256) public fundsOf;
 
     // Price of the Orb. No need for mapping, as only one token is very minted.
