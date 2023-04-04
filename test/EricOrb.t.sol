@@ -45,6 +45,31 @@ contract EricOrbTestBase is Test {
     function fundsRequiredToBidOneYear(uint256 amount) public view returns (uint256) {
         return amount + (amount * orb.HOLDER_TAX_NUMERATOR()) / orb.FEE_DENOMINATOR();
     }
+
+    function effectiveFundsOf(address user_) public view returns (uint256) {
+        uint256 unadjustedFunds = orb.fundsOf(user_);
+        address holder = orb.ownerOf(orb.workaround_orbId());
+        address creator = orb.owner();
+
+        if (user_ == holder && user_ == creator) {
+            return unadjustedFunds;
+        }
+
+        if (user_ == beneficiary || user_ == holder) {
+            uint256 owedFunds = orb.workaround_owedSinceLastSettlement();
+            uint256 holderFunds = orb.fundsOf(holder);
+            uint256 transferableToBeneficiary = holderFunds <= owedFunds ? holderFunds : owedFunds;
+
+            if (user_ == beneficiary) {
+                return unadjustedFunds + transferableToBeneficiary;
+            }
+            if (user_ == holder) {
+                return unadjustedFunds - transferableToBeneficiary;
+            }
+        }
+
+        return unadjustedFunds;
+    }
 }
 
 contract InitialStateTest is EricOrbTestBase {
