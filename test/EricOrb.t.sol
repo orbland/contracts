@@ -672,10 +672,15 @@ contract WithdrawTest is EricOrbTestBase {
         uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
         uint256 initialBalance = beneficiary.balance;
 
+        vm.prank(user);
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, beneficiary, transferableToBeneficiary);
+        orb.settle();
 
-        vm.prank(user);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryFunds + transferableToBeneficiary);
+
+        vm.expectEmit(true, false, false, true);
+        emit Withdrawal(beneficiary, beneficiaryFunds + transferableToBeneficiary);
         orb.withdrawAllForBeneficiary();
 
         assertEq(orb.fundsOf(user), userEffective);
