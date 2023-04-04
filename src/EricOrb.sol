@@ -539,33 +539,6 @@ contract EricOrb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @notice  Returns funds for an address on this contract, freely available to withdraw.
-     *          Accounts for owed Harberger tax, so can be used to display an actual effective balance.
-     * @dev     The only addresses where this mismatches with {fundsOf[]} is the beneficiary and the holder.
-     * @param   user  Address to return effective funds of.
-     * @return  uint256  Address effective funds.
-     */
-    function effectiveFundsOf(address user) external view returns (uint256) {
-        uint256 unadjustedFunds = fundsOf[user];
-        address holder = ERC721.ownerOf(ERIC_ORB_ID);
-
-        if (user == beneficiary || user == holder) {
-            uint256 owedFunds = _owedSinceLastSettlement();
-            uint256 holderFunds = fundsOf[holder];
-            uint256 transferableToBeneficiary = holderFunds <= owedFunds ? holderFunds : owedFunds;
-
-            if (user == beneficiary) {
-                return unadjustedFunds + transferableToBeneficiary;
-            }
-            if (user == holder) {
-                return unadjustedFunds - transferableToBeneficiary;
-            }
-        }
-
-        return unadjustedFunds;
-    }
-
-    /**
      * @notice  Allows depositing funds on the contract. Not allowed for insolvent holders.
      * @dev     Deposits are not allowed for insolvent holders to prevent cheating via front-running.
      *          If the user becomes insolvent, the orb will always be returned to the contract as the next step.
