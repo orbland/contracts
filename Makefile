@@ -31,11 +31,11 @@ lint :; solhint src/**/*.sol && solhint src/*.sol && solhint test/**/*.sol && so
 anvil :; anvil -m 'test test test test test test test test test test test junk' -b 12
 
 # use the "@" to hide the command from your shell
-deploy-goerli :; @forge script scripts/DeployGoerli.s.sol:DeployGoerli --rpc-url ${GOERLI_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
+deploy-goerli :; @forge script script/DeployGoerli.s.sol:DeployGoerli --rpc-url ${GOERLI_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
 
-deploy-sepolia :; @forge script scripts/DeploySepolia.s.sol:DeploySepolia --rpc-url ${SEPOLIA_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
+deploy-sepolia :; @forge script script/DeploySepolia.s.sol:DeploySepolia --rpc-url ${SEPOLIA_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
 
-deploy-mainnet :; @forge script scripts/DeployMainnet.s.sol:DeployMainnet --rpc-url ${MAINNET_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
+deploy-mainnet :; @forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-url ${MAINNET_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
 
 # This is the private key of account from the mnemonic from the "make anvil" command
-deploy-anvil :; @forge script scripts/DeployLocal.s.sol:DeployLocal --rpc-url http://localhost:8545 --broadcast
+deploy-anvil :; @forge script script/DeployLocal.s.sol:DeployLocal --rpc-url http://localhost:8545 --broadcast

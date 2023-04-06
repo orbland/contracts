@@ -11,13 +11,13 @@ contract DeployGoerli is DeployBase {
     ];
     uint256[] private contributorShares = [65, 20, 15];
 
-    // would be ercwl.eth for mainnet
-    address private immutable issuerWallet = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    // our test issuer
+    address private immutable issuerWallet = 0xC0A00c8c9EF6fe6F0a79B8a616183384dbaf8EC8;
 
-    uint256 private immutable cooldown = 2 minutes;
-    uint256 private immutable responseFlaggingPeriod = 2 minutes;
-    uint256 private immutable minimumAuctionDuration = 2 minutes;
-    uint256 private immutable bidAuctionExtension = 30 seconds;
+    uint256 private immutable cooldown = 30 minutes;
+    uint256 private immutable responseFlaggingPeriod = 30 minutes;
+    uint256 private immutable minimumAuctionDuration = 30 minutes;
+    uint256 private immutable bidAuctionExtension = 2 minutes;
 
     constructor()
         DeployBase(
