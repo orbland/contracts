@@ -8,14 +8,14 @@ import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.s
 
 abstract contract DeployBase is Script {
     // Environment specific variables.
-    address[] private contributorWallets;
-    uint256[] private contributorShares;
+    address[] internal contributorWallets;
+    uint256[] internal contributorShares;
 
-    address private immutable issuerWallet;
-    uint256 private immutable cooldown;
-    uint256 private immutable responseFlaggingPeriod;
-    uint256 private immutable minimumAuctionDuration;
-    uint256 private immutable bidAuctionExtension;
+    address internal immutable issuerWallet;
+    uint256 internal immutable cooldown;
+    uint256 internal immutable responseFlaggingPeriod;
+    uint256 internal immutable minimumAuctionDuration;
+    uint256 internal immutable bidAuctionExtension;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
