@@ -45,6 +45,30 @@ contract EricOrbTestBase is Test {
     function fundsRequiredToBidOneYear(uint256 amount) public view returns (uint256) {
         return amount + (amount * orb.HOLDER_TAX_NUMERATOR()) / orb.FEE_DENOMINATOR();
     }
+
+    function effectiveFundsOf(address user_) public view returns (uint256) {
+        uint256 unadjustedFunds = orb.fundsOf(user_);
+        address holder = orb.ownerOf(orb.workaround_orbId());
+
+        if (user_ == orb.owner()) {
+            return unadjustedFunds;
+        }
+
+        if (user_ == beneficiary || user_ == holder) {
+            uint256 owedFunds = orb.workaround_owedSinceLastSettlement();
+            uint256 holderFunds = orb.fundsOf(holder);
+            uint256 transferableToBeneficiary = holderFunds <= owedFunds ? holderFunds : owedFunds;
+
+            if (user_ == beneficiary) {
+                return unadjustedFunds + transferableToBeneficiary;
+            }
+            if (user_ == holder) {
+                return unadjustedFunds - transferableToBeneficiary;
+            }
+        }
+
+        return unadjustedFunds;
+    }
 }
 
 contract InitialStateTest is EricOrbTestBase {
@@ -421,14 +445,14 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
         // The user actually transfered `funds1` and `funds2` respectively
         // ether to the contract
         uint256 owed = orb.workaround_owedSinceLastSettlement();
-        assertEq(orb.effectiveFundsOf(beneficiary), owed + amount1);
+        assertEq(effectiveFundsOf(beneficiary), owed + amount1);
         // The user that won the auction and is holding the orb
         // has the funds they deposited, minus the tax and minus the bid
         // amount
-        assertEq(orb.effectiveFundsOf(user), funds1 - owed - amount1);
+        assertEq(effectiveFundsOf(user), funds1 - owed - amount1);
         // The user that didn't won the auction, has the funds they
         // deposited
-        assertEq(orb.effectiveFundsOf(user2), funds2);
+        assertEq(effectiveFundsOf(user2), funds2);
     }
 
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
@@ -451,14 +475,14 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
         // The user actually transfered `funds1` and `funds2` respectively
         // ether to the contract
         uint256 owed = orb.workaround_owedSinceLastSettlement();
-        assertEq(orb.effectiveFundsOf(beneficiary), owed + amount1);
+        assertEq(effectiveFundsOf(beneficiary), owed + amount1);
         // The user that won the auction and is holding the orb
         // has the funds they deposited, minus the tax and minus the bid
         // amount
-        assertEq(orb.effectiveFundsOf(user), funds1 - owed - amount1);
+        assertEq(effectiveFundsOf(user), funds1 - owed - amount1);
         // The user that didn't won the auction, has the funds they
         // deposited
-        assertEq(orb.effectiveFundsOf(user2), funds2);
+        assertEq(effectiveFundsOf(user2), funds2);
     }
 }
 
@@ -596,8 +620,8 @@ contract WithdrawTest is EricOrbTestBase {
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
         // userEffective = userFunds - transferableToBeneficiary
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
-        uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 userEffective = effectiveFundsOf(user);
+        uint256 beneficiaryEffective = effectiveFundsOf(beneficiary);
         uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
         uint256 initialBalance = user.balance;
 
@@ -642,8 +666,8 @@ contract WithdrawTest is EricOrbTestBase {
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
         // userEffective = userFunds - transferableToBeneficiary
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
-        uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 userEffective = effectiveFundsOf(user);
+        uint256 beneficiaryEffective = effectiveFundsOf(beneficiary);
         uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
         uint256 initialBalance = beneficiary.balance;
 
@@ -668,8 +692,8 @@ contract WithdrawTest is EricOrbTestBase {
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
         // userEffective = userFunds - transferableToBeneficiary
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
-        uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 userEffective = effectiveFundsOf(user);
+        uint256 beneficiaryEffective = effectiveFundsOf(beneficiary);
         uint256 transferableToBeneficiary = beneficiaryEffective - beneficiaryFunds;
         uint256 initialBalance = user.balance;
 
@@ -730,8 +754,8 @@ contract SettleTest is EricOrbTestBase {
         // it warps 30 days by default
         makeHolderAndWarp(user, amount);
 
-        uint256 userEffective = orb.effectiveFundsOf(user);
-        uint256 beneficiaryEffective = orb.effectiveFundsOf(beneficiary);
+        uint256 userEffective = effectiveFundsOf(user);
+        uint256 beneficiaryEffective = effectiveFundsOf(beneficiary);
         uint256 initialBalance = user.balance;
 
         orb.settle();
@@ -1074,7 +1098,7 @@ contract ExitTest is EricOrbTestBase {
         vm.expectEmit(true, true, false, false);
         emit Foreclosure(user, true);
         vm.expectEmit(true, false, false, true);
-        uint256 effectiveFunds = orb.effectiveFundsOf(user);
+        uint256 effectiveFunds = effectiveFundsOf(user);
         emit Withdrawal(user, effectiveFunds);
         vm.prank(user);
         orb.exit();

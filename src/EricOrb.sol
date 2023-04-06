@@ -167,6 +167,9 @@ contract EricOrb is ERC721, Ownable {
     // STATE
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
+    // The value is without settlement. It means effective user funds (withdrawable) would be different
+    // for holder (subtracting owedSinceLastSettlement) and beneficiary (adding owedSinceLastSettlement).
+    // If Orb is held by the creator, funds are not subtracted, as Harberger Tax does not apply to the creator.
     mapping(address => uint256) public fundsOf;
 
     // Price of the Orb. No need for mapping, as only one token is very minted.
@@ -537,33 +540,6 @@ contract EricOrb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: FUNDS AND HOLDING
     ////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * @notice  Returns funds for an address on this contract, freely available to withdraw.
-     *          Accounts for owed Harberger tax, so can be used to display an actual effective balance.
-     * @dev     The only addresses where this mismatches with {fundsOf[]} is the beneficiary and the holder.
-     * @param   user  Address to return effective funds of.
-     * @return  uint256  Address effective funds.
-     */
-    function effectiveFundsOf(address user) external view returns (uint256) {
-        uint256 unadjustedFunds = fundsOf[user];
-        address holder = ERC721.ownerOf(ERIC_ORB_ID);
-
-        if (user == beneficiary || user == holder) {
-            uint256 owedFunds = _owedSinceLastSettlement();
-            uint256 holderFunds = fundsOf[holder];
-            uint256 transferableToBeneficiary = holderFunds <= owedFunds ? holderFunds : owedFunds;
-
-            if (user == beneficiary) {
-                return unadjustedFunds + transferableToBeneficiary;
-            }
-            if (user == holder) {
-                return unadjustedFunds - transferableToBeneficiary;
-            }
-        }
-
-        return unadjustedFunds;
-    }
 
     /**
      * @notice  Allows depositing funds on the contract. Not allowed for insolvent holders.
