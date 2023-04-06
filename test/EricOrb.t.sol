@@ -49,9 +49,8 @@ contract EricOrbTestBase is Test {
     function effectiveFundsOf(address user_) public view returns (uint256) {
         uint256 unadjustedFunds = orb.fundsOf(user_);
         address holder = orb.ownerOf(orb.workaround_orbId());
-        address creator = orb.owner();
 
-        if (user_ == holder && user_ == creator) {
+        if (user_ == orb.owner()) {
             return unadjustedFunds;
         }
 
