@@ -3,8 +3,6 @@ pragma solidity ^0.8.17;
 
 import {Script} from "forge-std/Script.sol";
 
-// import {LibRLP} from "lib/utils/LibRLP.sol";
-
 import {EricOrb} from "src/EricOrb.sol";
 import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
@@ -18,7 +16,6 @@ abstract contract DeployBase is Script {
     uint256 private immutable responseFlaggingPeriod;
     uint256 private immutable minimumAuctionDuration;
     uint256 private immutable bidAuctionExtension;
-    // string private orbBaseUri;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
@@ -44,11 +41,6 @@ abstract contract DeployBase is Script {
 
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        // address deployer = vm.rememberKey(privKey);
-
-        // Precomputed contract addresses, based on contract deploy nonces.
-        // address splitterAddress = LibRLP.computeAddress(deployer, 0);
-        // address orbAddress = LibRLP.computeAddress(deployer, 1);
 
         vm.startBroadcast(deployerKey);
 
