@@ -237,7 +237,7 @@ contract EricOrb is ERC721, Ownable {
         uint256 minimumAuctionDuration_,
         uint256 bidAuctionExtension_,
         address beneficiary_
-    ) ERC721("Eric's Orb", "ORB") {
+    ) ERC721("Eric Orb", "ORB") {
         cooldown = cooldown_;
         responseFlaggingPeriod = responseFlaggingPeriod_;
         minimumAuctionDuration = minimumAuctionDuration_;
