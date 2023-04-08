@@ -18,6 +18,10 @@ contract DeployGoerli is DeployBase {
     uint256 private immutable responseFlaggingPeriod = 30 minutes;
     uint256 private immutable minimumAuctionDuration = 30 minutes;
     uint256 private immutable bidAuctionExtension = 2 minutes;
+    uint256 private immutable holderTaxNumerator = 1000;
+    uint256 private immutable saleRoyaltiesNumerator = 1000;
+    uint256 private immutable startingPrice = 0.1 ether;
+    uint256 private immutable minimumBidStep = 0.1 ether;
 
     constructor()
         DeployBase(
@@ -27,7 +31,11 @@ contract DeployGoerli is DeployBase {
             cooldown,
             responseFlaggingPeriod,
             minimumAuctionDuration,
-            bidAuctionExtension
+            bidAuctionExtension,
+            holderTaxNumerator,
+            saleRoyaltiesNumerator,
+            startingPrice,
+            minimumBidStep
         )
     {}
 }

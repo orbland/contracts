@@ -43,7 +43,7 @@ contract EricOrbTestBase is Test {
     }
 
     function fundsRequiredToBidOneYear(uint256 amount) public view returns (uint256) {
-        return amount + (amount * orb.HOLDER_TAX_NUMERATOR()) / orb.FEE_DENOMINATOR();
+        return amount + (amount * orb.holderTaxNumerator()) / orb.FEE_DENOMINATOR();
     }
 
     function effectiveFundsOf(address user_) public view returns (uint256) {
@@ -98,12 +98,7 @@ contract InitialStateTest is EricOrbTestBase {
         assertEq(orb.MAX_CLEARTEXT_LENGTH(), 280);
 
         assertEq(orb.FEE_DENOMINATOR(), 10000);
-        assertEq(orb.HOLDER_TAX_NUMERATOR(), 1000);
         assertEq(orb.HOLDER_TAX_PERIOD(), 365 days);
-        assertEq(orb.SALE_ROYALTIES_NUMERATOR(), 1000);
-
-        assertEq(orb.STARTING_PRICE(), 0.1 ether);
-        assertEq(orb.MINIMUM_BID_STEP(), 0.1 ether);
 
         assertEq(orb.workaround_orbId(), 69);
         assertEq(orb.workaround_infinity(), type(uint256).max);
@@ -129,9 +124,9 @@ contract MinimumBidTest is EricOrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
         orb.startAuction();
-        assertEq(orb.minimumBid(), orb.STARTING_PRICE());
+        assertEq(orb.minimumBid(), orb.startingPrice());
         prankAndBid(user, bidAmount);
-        assertEq(orb.minimumBid(), bidAmount + orb.MINIMUM_BID_STEP());
+        assertEq(orb.minimumBid(), bidAmount + orb.minimumBidStep());
     }
 }
 
@@ -457,7 +452,7 @@ contract EffectiveFundsOfTest is EricOrbTestBase {
 
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice());
-        amount2 = bound(amount2, orb.STARTING_PRICE(), amount1 - orb.MINIMUM_BID_STEP());
+        amount2 = bound(amount2, orb.startingPrice(), amount1 - orb.minimumBidStep());
         uint256 funds1 = fundsRequiredToBidOneYear(amount1);
         uint256 funds2 = fundsRequiredToBidOneYear(amount2);
         orb.startAuction();
@@ -691,7 +686,7 @@ contract WithdrawTest is EricOrbTestBase {
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
-        bidAmount = bound(bidAmount, orb.STARTING_PRICE(), orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, orb.startingPrice(), orb.workaround_maxPrice());
         makeHolderAndWarp(user, bidAmount);
 
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
@@ -748,7 +743,7 @@ contract SettleTest is EricOrbTestBase {
     }
 
     function testFuzz_settleCorrect(uint96 bid, uint96 time) public {
-        uint256 amount = bound(bid, orb.STARTING_PRICE(), orb.workaround_maxPrice());
+        uint256 amount = bound(bid, orb.startingPrice(), orb.workaround_maxPrice());
         // warp ahead a random amount of time
         // remain under 1 year in total, so solvent
         uint256 timeOffset = bound(time, 0, 300 days);

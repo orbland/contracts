@@ -10,7 +10,11 @@ contract EricOrbHarness is
         7 days, // responseFlaggingPeriod
         1 days, // minimumAuctionDuration
         30 minutes, // bidAuctionExtension
-        address(0xC0FFEE) // beneficiary
+        address(0xC0FFEE), // beneficiary
+        1000, // holderTaxNumerator
+        1000, // saleRoyaltiesNumerator
+        0.1 ether, // startingPrice
+        0.1 ether // minimumBidStep
     )
 {
     function workaround_orbId() public pure returns (uint256) {
