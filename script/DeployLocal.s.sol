@@ -18,6 +18,10 @@ contract DeployLocal is DeployBase {
     uint256 public immutable responseFlaggingPeriod = 2 minutes;
     uint256 public immutable minimumAuctionDuration = 2 minutes;
     uint256 public immutable bidAuctionExtension = 30 seconds;
+    uint256 private immutable holderTaxNumerator = 1000;
+    uint256 private immutable saleRoyaltiesNumerator = 1000;
+    uint256 private immutable startingPrice = 0.1 ether;
+    uint256 private immutable minimumBidStep = 0.1 ether;
 
     constructor()
         DeployBase(
@@ -27,7 +31,11 @@ contract DeployLocal is DeployBase {
             cooldown,
             responseFlaggingPeriod,
             minimumAuctionDuration,
-            bidAuctionExtension
+            bidAuctionExtension,
+            holderTaxNumerator,
+            saleRoyaltiesNumerator,
+            startingPrice,
+            minimumBidStep
         )
     {}
 }

@@ -139,16 +139,16 @@ contract EricOrb is ERC721, Ownable {
     // Fee Nominator: basis points. Other fees are in relation to this.
     uint256 public constant FEE_DENOMINATOR = 10000;
     // Harberger Tax for holding. Value: 10%.
-    uint256 public constant HOLDER_TAX_NUMERATOR = 1000;
+    uint256 public immutable holderTaxNumerator;
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year. So, 10% of price per year.
     uint256 public constant HOLDER_TAX_PERIOD = 365 days;
     // Secondary sale (royalties) to issuer: 10% of the sale price.
-    uint256 public constant SALE_ROYALTIES_NUMERATOR = 1000;
+    uint256 public immutable saleRoyaltiesNumerator;
 
     // Auction starting price.
-    uint256 public constant STARTING_PRICE = 0.1 ether;
+    uint256 public immutable startingPrice;
     // Each bid has to increase over previous bid by at least this much.
-    uint256 public constant MINIMUM_BID_STEP = 0.1 ether;
+    uint256 public immutable minimumBidStep;
     // Auction will run for at least this long.
     uint256 public immutable minimumAuctionDuration;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
@@ -236,13 +236,21 @@ contract EricOrb is ERC721, Ownable {
         uint256 responseFlaggingPeriod_,
         uint256 minimumAuctionDuration_,
         uint256 bidAuctionExtension_,
-        address beneficiary_
+        address beneficiary_,
+        uint256 holderTaxNumerator_,
+        uint256 saleRoyaltiesNumerator_,
+        uint256 startingPrice_,
+        uint256 minimumBidStep_
     ) ERC721("Eric Orb", "ORB") {
         cooldown = cooldown_;
         responseFlaggingPeriod = responseFlaggingPeriod_;
         minimumAuctionDuration = minimumAuctionDuration_;
         bidAuctionExtension = bidAuctionExtension_;
         beneficiary = beneficiary_;
+        holderTaxNumerator = holderTaxNumerator_;
+        saleRoyaltiesNumerator = saleRoyaltiesNumerator_;
+        startingPrice = startingPrice_;
+        minimumBidStep = minimumBidStep_;
 
         _safeMint(address(this), ERIC_ORB_ID);
     }
@@ -426,15 +434,15 @@ contract EricOrb is ERC721, Ownable {
 
     /**
      * @notice  Minimum bid that would currently be accepted by {bid()}.
-     * @dev     STARTING_PRICE if no bids were made, otherwise previous bid increased by MINIMUM_BID_STEP.
+     * @dev     startingPrice if no bids were made, otherwise previous bid increased by minimumBidStep.
      * @return  uint256  Minimum bid required for {bid()}.
      */
     function minimumBid() public view returns (uint256) {
         if (winningBid == 0) {
-            return STARTING_PRICE;
+            return startingPrice;
         } else {
             unchecked {
-                return winningBid + MINIMUM_BID_STEP;
+                return winningBid + minimumBidStep;
             }
         }
     }
@@ -619,7 +627,7 @@ contract EricOrb is ERC721, Ownable {
      */
     function _owedSinceLastSettlement() internal view returns (uint256) {
         uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime;
-        return (price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
+        return (price * holderTaxNumerator * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
     }
 
     /**
@@ -734,7 +742,7 @@ contract EricOrb is ERC721, Ownable {
         if (owner() == holder) {
             fundsOf[beneficiary] += currentPrice;
         } else {
-            uint256 beneficiaryRoyalties = (currentPrice * SALE_ROYALTIES_NUMERATOR) / FEE_DENOMINATOR;
+            uint256 beneficiaryRoyalties = (currentPrice * saleRoyaltiesNumerator) / FEE_DENOMINATOR;
             uint256 currentOwnerShare = currentPrice - beneficiaryRoyalties;
 
             fundsOf[beneficiary] += beneficiaryRoyalties;
@@ -816,7 +824,7 @@ contract EricOrb is ERC721, Ownable {
         }
 
         uint256 remainingSeconds =
-            (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (price * HOLDER_TAX_NUMERATOR);
+            (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (price * holderTaxNumerator);
         return lastSettlementTime + remainingSeconds;
     }
 

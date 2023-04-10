@@ -16,6 +16,10 @@ abstract contract DeployBase is Script {
     uint256 private immutable responseFlaggingPeriod;
     uint256 private immutable minimumAuctionDuration;
     uint256 private immutable bidAuctionExtension;
+    uint256 private immutable holderTaxNumerator;
+    uint256 private immutable saleRoyaltiesNumerator;
+    uint256 private immutable startingPrice;
+    uint256 private immutable minimumBidStep;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
@@ -28,7 +32,11 @@ abstract contract DeployBase is Script {
         uint256 _cooldown,
         uint256 _responseFlaggingPeriod,
         uint256 _minimumAuctionDuration,
-        uint256 _bidAuctionExtension
+        uint256 _bidAuctionExtension,
+        uint256 _holderTaxNumerator,
+        uint256 _saleRoyaltiesNumerator,
+        uint256 _startingPrice,
+        uint256 _minimumBidStep
     ) {
         contributorWallets = _contributorWallets;
         contributorShares = _contributorShares;
@@ -37,6 +45,10 @@ abstract contract DeployBase is Script {
         responseFlaggingPeriod = _responseFlaggingPeriod;
         minimumAuctionDuration = _minimumAuctionDuration;
         bidAuctionExtension = _bidAuctionExtension;
+        holderTaxNumerator = _holderTaxNumerator;
+        saleRoyaltiesNumerator = _saleRoyaltiesNumerator;
+        startingPrice = _startingPrice;
+        minimumBidStep = _minimumBidStep;
     }
 
     function run() external {
@@ -52,7 +64,11 @@ abstract contract DeployBase is Script {
             responseFlaggingPeriod,
             minimumAuctionDuration,
             bidAuctionExtension,
-            splitterAddress // beneficiary
+            splitterAddress, // beneficiary
+            holderTaxNumerator,
+            saleRoyaltiesNumerator,
+            startingPrice,
+            minimumBidStep
         );
         ericOrb.transferOwnership(issuerWallet);
 
