@@ -1,17 +1,23 @@
-# Eric's Orb Contract
+# 🔮 Eric's Orb Contract • [![test](https://github.com/orbland/orb/actions/workflows/ci.yml/badge.svg)](https://github.com/orbland/orb/actions/workflows/ci.yml) ![license](https://img.shields.io/badge/License-MIT-green.svg?label=license)
 
-Eric's Orb (the proto-orb) contract. Auction + Harberger taxed ownership.
+Auction + Harberger taxed ownership. Used by [eric.orb.land](https://eric.orb.land). Uses Forge toolkit for building and testing.
 
-### Usage
-
-```shell
-forge install foundry-rs/forge-std openzeppelin/openzeppelin-contracts
-forge test
-```
-
-### Run Local Node
+## Usage
 
 ```shell
-make anvil
-make deploy-anvil contract=EricOrbDev # in another terminal
+forge install foundry-rs/forge-std openzeppelin/openzeppelin-contracts # dependencies
+forge test # tests
+make anvil # local node
+make deploy-anvil # deploy to local node in another terminal
 ```
+
+## License
+
+Released under the [MIT License](https://github.com/orbland/orb/blob/main/LICENSE).
+
+## Credits
+
+- [Eric Wall](https://twitter.com/ercwl) - Concept and mechanics design
+- [Jonas Lekevicius](https://twitter.com/lekevicius) - Contract implementation
+- [Odysseas.eth](https://twitter.com/odysseas_eth) - Tests, toolkit setup and many other contributions
+- [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) - Contract is based on OZ ERC-721 and Ownable implementations
