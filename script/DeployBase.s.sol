@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Script} from "forge-std/Script.sol";
 
-import {EricOrb} from "src/EricOrb.sol";
+import {Orb} from "src/Orb.sol";
 import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
 abstract contract DeployBase is Script {
@@ -23,7 +23,7 @@ abstract contract DeployBase is Script {
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
-    EricOrb public ericOrb;
+    Orb public orb;
 
     constructor(
         address[] memory _contributorWallets,
@@ -59,7 +59,7 @@ abstract contract DeployBase is Script {
         orbBeneficiary = new PaymentSplitter(contributorWallets, contributorShares);
         address splitterAddress = address(orbBeneficiary);
 
-        ericOrb = new EricOrb(
+        orb = new Orb(
             cooldown,
             responseFlaggingPeriod,
             minimumAuctionDuration,
@@ -70,7 +70,7 @@ abstract contract DeployBase is Script {
             startingPrice,
             minimumBidStep
         );
-        ericOrb.transferOwnership(issuerWallet);
+        orb.transferOwnership(issuerWallet);
 
         vm.stopBroadcast();
     }
