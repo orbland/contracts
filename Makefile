@@ -19,6 +19,8 @@ build:; forge build
 
 test :; forge test -vvv
 
+test-dev:; FOUNDRY_FUZZ_RUNS=50 forge test -vvv
+
 snapshot :; forge snapshot
 
 slither :; slither ./src --exclude-dependencies --exclude timestamp,solc-version --solc-remaps @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/ --filter-paths lib
