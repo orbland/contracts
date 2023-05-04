@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {EricOrb} from "src/EricOrb.sol";
+import {Orb} from "src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
-contract EricOrbHarness is
-    EricOrb(
+contract OrbHarness is
+    Orb(
         7 days, // cooldown
         7 days, // responseFlaggingPeriod
         1 days, // minimumAuctionDuration
@@ -18,7 +18,7 @@ contract EricOrbHarness is
     )
 {
     function workaround_orbId() public pure returns (uint256) {
-        return ERIC_ORB_ID;
+        return TOKEN_ID;
     }
 
     function workaround_infinity() public pure returns (uint256) {
@@ -50,7 +50,7 @@ contract EricOrbHarness is
     }
 
     function workaround_setOrbHolder(address holder) public {
-        _transferOrb(ownerOf(ERIC_ORB_ID), holder);
+        _transferOrb(ownerOf(TOKEN_ID), holder);
     }
 
     function workaround_owedSinceLastSettlement() public view returns (uint256) {
