@@ -1,6 +1,6 @@
 # 🔮 Eric's Orb Contract • [![test](https://github.com/orbland/orb/actions/workflows/ci.yml/badge.svg)](https://github.com/orbland/orb/actions/workflows/ci.yml) ![license](https://img.shields.io/badge/License-MIT-green.svg?label=license)
 
-Auction + Harberger taxed ownership. Used by [eric.orb.land](https://eric.orb.land). Uses Forge toolkit for building and testing. Contract combines the following areas of functionality:
+Auction + Harberger taxed ownership. Used by [eric.orb.land](https://eric.orb.land), branch kept for maintenance. Uses Forge toolkit for building and testing. Contract combines the following areas of functionality:
 
 - **Auction.** Allows the contract owner to start the Orb auction, determining the first owner of the Orb.
 - **Funds management.** Allows any user to deposit and withdraw funds. Funds are used to make auction bids and pay Harberger Tax.
