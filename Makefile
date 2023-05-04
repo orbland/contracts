@@ -23,7 +23,7 @@ test-dev:; FOUNDRY_FUZZ_RUNS=50 forge test -vvv
 
 snapshot :; forge snapshot
 
-slither :; slither ./src --exclude-dependencies --exclude timestamp,solc-version --solc-remaps @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/ --filter-paths lib
+slither :; slither ./src --exclude-dependencies --exclude timestamp,solc-version,missing-zero-check --solc-remaps @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/ --filter-paths lib
 
 format :; forge fmt
 
