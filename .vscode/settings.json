@@ -8,5 +8,6 @@
         "lib/=lib/"
     ],
     "solidity.formatter": "forge",
-    "git.detectSubmodules": false
+    "git.detectSubmodules": false,
+    "git.enableCommitSigning": true
 }
