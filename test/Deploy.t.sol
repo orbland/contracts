@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Test} from "forge-std/Test.sol";
 import {DeployLocal} from "../script/DeployLocal.s.sol";
-import {EricOrb} from "src/EricOrb.sol";
+import {Orb} from "src/Orb.sol";
 
 contract DeployMainnetTest is Test {
     DeployLocal internal deployScript;
@@ -18,10 +18,10 @@ contract DeployMainnetTest is Test {
     }
 
     function testOrbOwnership() public {
-        assertEq(deployScript.ericOrb().owner(), deployScript.issuerWallet());
+        assertEq(deployScript.orb().owner(), deployScript.issuerWallet());
     }
 
     function testBeneficiary() public {
-        assertEq(deployScript.ericOrb().beneficiary(), address(deployScript.orbBeneficiary()));
+        assertEq(deployScript.orb().beneficiary(), address(deployScript.orbBeneficiary()));
     }
 }
