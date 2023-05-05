@@ -76,7 +76,7 @@ contract Orb is ERC721, Ownable {
     // Triggering and Responding Events
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
-    event CleartextRecorded(uint256 indexed invocationId, string cleartext);
+    event CleartextRecording(uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -856,7 +856,7 @@ contract Orb is ERC721, Ownable {
         if (length > CLEARTEXT_MAXIMUM_LENGTH) {
             revert CleartextTooLong(length, CLEARTEXT_MAXIMUM_LENGTH);
         }
-        emit CleartextRecorded(invocationCount, cleartext);
+        emit CleartextRecording(invocationCount, cleartext);
         invokeWithHash(keccak256(abi.encodePacked(cleartext)));
     }
 
@@ -914,7 +914,7 @@ contract Orb is ERC721, Ownable {
             revert CleartextHashMismatch(cleartextHash, recordedContentHash);
         }
 
-        emit CleartextRecorded(triggerId, cleartext);
+        emit CleartextRecording(triggerId, cleartext);
     }
 
     /**
