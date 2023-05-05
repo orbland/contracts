@@ -62,7 +62,7 @@ contract Orb is ERC721, Ownable {
     // Auction Events
     event AuctionStarted(uint256 auctionStartTime, uint256 auctionEndTime);
     event AuctionBid(address indexed bidder, uint256 bid);
-    event UpdatedAuctionEnd(uint256 auctionEndTime);
+    event AuctionExtended(uint256 newAuctionEndTime);
     event AuctionFinalized(address indexed winner, uint256 price);
 
     // Fund Management, Holding and Purchasing Events
@@ -503,7 +503,7 @@ contract Orb is ERC721, Ownable {
 
         if (block.timestamp + auctionBidExtension > auctionEndTime) {
             auctionEndTime = block.timestamp + auctionBidExtension;
-            emit UpdatedAuctionEnd(auctionEndTime);
+            emit AuctionExtended(auctionEndTime);
         }
     }
 
