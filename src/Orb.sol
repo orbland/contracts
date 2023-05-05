@@ -291,7 +291,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @dev  Ensures that the orb belongs to the contract itself, either because it hasn't been auctioned,
-     *       or because it has returned to the contract due to {exit()} or {foreclose()}
+     *       or because it has returned to the contract due to {relinquish()} or {foreclose()}
      */
     modifier onlyContractHeld() {
         if (address(this) != ERC721.ownerOf(TOKEN_ID)) {
@@ -565,7 +565,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Function to withdraw all funds on the contract.
-     *          Not recommended for current orb holders, they should call exit() to take out their funds.
+     *          Not recommended for current orb holders, they should call relinquish() to take out their funds.
      * @dev     Not allowed for the winning auction bidder.
      */
     function withdrawAll() external notLeadingBidder settlesIfHolder {
@@ -776,14 +776,14 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @notice  Exit is a voluntary giving up of the orb. It's a combination of withdrawing all funds not owed to
-     *          the issuer since last settlement, and foreclosing yourself after.
+     * @notice  Relinquishment is a voluntary giving up of the orb. It's a combination of withdrawing all funds
+     *          not owed to the issuer since last settlement, and foreclosing yourself after.
      *          Most useful if the issuer themselves hold the orb and want to re-auction it.
      *          For any other holder, setting the price to zero would be more practical.
      * @dev     Calls _withdraw(), which does value transfer from the contract.
      *          Emits Foreclosure() and Withdrawal().
      */
-    function exit() external onlyHolder onlyHolderSolvent settles {
+    function relinquish() external onlyHolder onlyHolderSolvent settles {
         price = 0;
 
         emit Foreclosure(msg.sender, true);
