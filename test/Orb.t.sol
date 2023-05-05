@@ -967,8 +967,8 @@ contract PurchaseTest is OrbTestBase {
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
         orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
-        uint256 beneficiaryRoyalties = bidAmount;
-        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalties);
+        uint256 beneficiaryRoyalty = bidAmount;
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty);
         assertEq(orb.fundsOf(owner), ownerBefore);
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user), 1);
@@ -1002,9 +1002,9 @@ contract PurchaseTest is OrbTestBase {
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
         orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
-        uint256 beneficiaryRoyalties = ((bidAmount * 1000) / 10000);
-        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalties);
-        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalties));
+        uint256 beneficiaryRoyalty = ((bidAmount * 1000) / 10000);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty);
+        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty));
         assertEq(orb.fundsOf(owner), ownerBefore);
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user2), 1);
@@ -1043,9 +1043,9 @@ contract PurchaseTest is OrbTestBase {
         // that the user transfers when calling `purchase()`
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         orb.purchase{value: purchaseAmount}(bidAmount, newPrice);
-        uint256 beneficiaryRoyalties = ((bidAmount * 1000) / 10000);
-        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalties);
-        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalties));
+        uint256 beneficiaryRoyalty = ((bidAmount * 1000) / 10000);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty);
+        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty));
         assertEq(orb.fundsOf(owner), ownerBefore);
         // User2 transfered buyPrice to the contract
         // User2 paid bidAmount

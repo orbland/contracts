@@ -17,7 +17,7 @@ abstract contract DeployBase is Script {
     uint256 private immutable auctionMinimumDuration;
     uint256 private immutable auctionBidExtension;
     uint256 private immutable holderTaxNumerator;
-    uint256 private immutable saleRoyaltiesNumerator;
+    uint256 private immutable royaltyNumerator;
     uint256 private immutable auctionStartingPrice;
     uint256 private immutable auctionMinimumBidStep;
 
@@ -34,7 +34,7 @@ abstract contract DeployBase is Script {
         uint256 _auctionMinimumDuration,
         uint256 _auctionBidExtension,
         uint256 _holderTaxNumerator,
-        uint256 _saleRoyaltiesNumerator,
+        uint256 _royaltyNumerator,
         uint256 _auctionStartingPrice,
         uint256 _auctionMinimumBidStep
     ) {
@@ -46,7 +46,7 @@ abstract contract DeployBase is Script {
         auctionMinimumDuration = _auctionMinimumDuration;
         auctionBidExtension = _auctionBidExtension;
         holderTaxNumerator = _holderTaxNumerator;
-        saleRoyaltiesNumerator = _saleRoyaltiesNumerator;
+        royaltyNumerator = _royaltyNumerator;
         auctionStartingPrice = _auctionStartingPrice;
         auctionMinimumBidStep = _auctionMinimumBidStep;
     }
@@ -66,7 +66,7 @@ abstract contract DeployBase is Script {
             auctionBidExtension,
             splitterAddress, // beneficiary
             holderTaxNumerator,
-            saleRoyaltiesNumerator,
+            royaltyNumerator,
             auctionStartingPrice,
             auctionMinimumBidStep
         );

@@ -142,8 +142,8 @@ contract Orb is ERC721, Ownable {
     uint256 public immutable holderTaxNumerator;
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
     uint256 public constant HOLDER_TAX_PERIOD = 365 days;
-    // Secondary sale royalties paid to beneficiary, based on sale price.
-    uint256 public immutable saleRoyaltiesNumerator;
+    // Secondary sale royalty paid to beneficiary, based on sale price.
+    uint256 public immutable royaltyNumerator;
 
     // Auction starting price.
     uint256 public immutable auctionStartingPrice;
@@ -238,7 +238,7 @@ contract Orb is ERC721, Ownable {
         uint256 auctionBidExtension_,
         address beneficiary_,
         uint256 holderTaxNumerator_,
-        uint256 saleRoyaltiesNumerator_,
+        uint256 royaltyNumerator_,
         uint256 auctionStartingPrice_,
         uint256 auctionMinimumBidStep_
     ) ERC721("Orb", "ORB") {
@@ -248,7 +248,7 @@ contract Orb is ERC721, Ownable {
         auctionBidExtension = auctionBidExtension_;
         beneficiary = beneficiary_;
         holderTaxNumerator = holderTaxNumerator_;
-        saleRoyaltiesNumerator = saleRoyaltiesNumerator_;
+        royaltyNumerator = royaltyNumerator_;
         auctionStartingPrice = auctionStartingPrice_;
         auctionMinimumBidStep = auctionMinimumBidStep_;
 
@@ -699,7 +699,7 @@ contract Orb is ERC721, Ownable {
      *          re-auctioned.
      *          Purchaser is required to have more funds than the price itself, but the exact amount is left for the
      *          user interface implementation to calculate and send along.
-     *          Purchasing sends Sale Royalties part to the beneficiary.
+     *          Purchasing sends sale royalty part to the beneficiary.
      * @dev     Requires to provide the current price as the first parameter to prevent front-running: without current
      *          price requirement someone could purchase the orb ahead of someone else, set the price higher, and
      *          profit from the purchase.
@@ -741,10 +741,10 @@ contract Orb is ERC721, Ownable {
         if (owner() == holder) {
             fundsOf[beneficiary] += currentPrice;
         } else {
-            uint256 beneficiaryRoyalties = (currentPrice * saleRoyaltiesNumerator) / FEE_DENOMINATOR;
-            uint256 currentOwnerShare = currentPrice - beneficiaryRoyalties;
+            uint256 beneficiaryRoyalty = (currentPrice * royaltyNumerator) / FEE_DENOMINATOR;
+            uint256 currentOwnerShare = currentPrice - beneficiaryRoyalty;
 
-            fundsOf[beneficiary] += beneficiaryRoyalties;
+            fundsOf[beneficiary] += beneficiaryRoyalty;
             fundsOf[holder] += currentOwnerShare;
         }
 
