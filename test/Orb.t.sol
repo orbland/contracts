@@ -1195,7 +1195,7 @@ contract InvokeWithCleartextTest is OrbTestBase {
     }
 }
 
-contract TriggerWthHashTest is OrbTestBase {
+contract InvokeWthHashTest is OrbTestBase {
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
 
     function test_revertWhen_NotHolder() public {
