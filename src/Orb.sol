@@ -851,7 +851,7 @@ contract Orb is ERC721, Ownable {
      * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
      * @param   cleartext  Required cleartext.
      */
-    function triggerWithCleartext(string memory cleartext) external {
+    function invokeWithCleartext(string memory cleartext) external {
         uint256 length = bytes(cleartext).length;
         if (length > CLEARTEXT_MAXIMUM_LENGTH) {
             revert CleartextTooLong(length, CLEARTEXT_MAXIMUM_LENGTH);

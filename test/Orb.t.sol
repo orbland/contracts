@@ -1170,7 +1170,7 @@ contract ForeclosureTimeTest is OrbTestBase {
     }
 }
 
-contract TriggerWithCleartextTest is OrbTestBase {
+contract InvokeWithCleartextTest is OrbTestBase {
     event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
     event CleartextRecorded(uint256 indexed triggerId, string cleartext);
 
@@ -1180,7 +1180,7 @@ contract TriggerWithCleartextTest is OrbTestBase {
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         uint256 length = bytes(text).length;
         vm.expectRevert(abi.encodeWithSelector(Orb.CleartextTooLong.selector, length, max));
-        orb.triggerWithCleartext(text);
+        orb.invokeWithCleartext(text);
     }
 
     function test_callsTriggerHashCorrectly() public {
@@ -1191,7 +1191,7 @@ contract TriggerWithCleartextTest is OrbTestBase {
         vm.expectEmit(true, true, false, true);
         emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.prank(user);
-        orb.triggerWithCleartext(text);
+        orb.invokeWithCleartext(text);
     }
 }
 
