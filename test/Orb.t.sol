@@ -1054,16 +1054,16 @@ contract PurchaseTest is OrbTestBase {
     }
 }
 
-contract ExitTest is OrbTestBase {
+contract RelinquishmentTest is OrbTestBase {
     function test_revertsIfNotHolder() public {
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
         vm.expectRevert(Orb.NotHolder.selector);
         vm.prank(user2);
-        orb.exit();
+        orb.relinquish();
 
         vm.prank(user);
-        orb.exit();
+        orb.relinquish();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
     }
 
@@ -1072,10 +1072,10 @@ contract ExitTest is OrbTestBase {
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
         vm.expectRevert(Orb.HolderInsolvent.selector);
-        orb.exit();
+        orb.relinquish();
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
-        orb.exit();
+        orb.relinquish();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
     }
 
@@ -1084,7 +1084,7 @@ contract ExitTest is OrbTestBase {
         // after making `user` the current holder of the orb, `makeHolderAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user);
-        orb.exit();
+        orb.relinquish();
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
@@ -1101,7 +1101,7 @@ contract ExitTest is OrbTestBase {
         uint256 effectiveFunds = effectiveFundsOf(user);
         emit Withdrawal(user, effectiveFunds);
         vm.prank(user);
-        orb.exit();
+        orb.relinquish();
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
         assertEq(orb.price(), 0);
     }
