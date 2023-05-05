@@ -74,7 +74,7 @@ contract Orb is ERC721, Ownable {
     event Foreclosure(address indexed formerHolder, bool indexed voluntary);
 
     // Triggering and Responding Events
-    event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
     event CleartextRecorded(uint256 indexed triggerId, string cleartext);
     event ResponseFlagged(address indexed from, uint256 indexed responseId);
@@ -867,7 +867,7 @@ contract Orb is ERC721, Ownable {
      *          The Orb can only be triggered by solvent holders.
      * @dev     Content hash is keccak256 of the cleartext.
      *          invocationCount is used to track the id of the next trigger.
-     *          Emits Triggered().
+     *          Emits Invocation().
      * @param   contentHash  Required keccak256 hash of the cleartext.
      */
     function invokeWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
@@ -881,7 +881,7 @@ contract Orb is ERC721, Ownable {
         lastInvocationTime = block.timestamp;
         invocationCount += 1;
 
-        emit Triggered(msg.sender, triggerId, contentHash, block.timestamp);
+        emit Invocation(msg.sender, triggerId, contentHash, block.timestamp);
     }
 
     /**
