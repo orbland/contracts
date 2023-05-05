@@ -410,9 +410,9 @@ contract Orb is ERC721, Ownable {
      *          If the new owner is not this contract (an actual user), updates holderReceiveTime.
      *          holderReceiveTime is used to limit response flagging window.
      */
-    function _transferOrb(address oldAddress, address newAddress) internal {
-        _transfer(oldAddress, newAddress, TOKEN_ID);
-        if (newAddress != address(this)) {
+    function _transferOrb(address from, address to) internal {
+        _transfer(from, to, TOKEN_ID);
+        if (to != address(this)) {
             holderReceiveTime = block.timestamp;
         }
     }
