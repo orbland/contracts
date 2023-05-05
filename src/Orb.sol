@@ -896,7 +896,11 @@ contract Orb is ERC721, Ownable {
      * @param   triggerId  Triggred id, matching the one that was emitted when calling {trigger()}.
      * @param   cleartext  Cleartext, limited in length. Must match the content hash.
      */
-    function recordTriggerCleartext(uint256 triggerId, string memory cleartext) external onlyHolder onlyHolderSolvent {
+    function recordInvocationCleartext(uint256 triggerId, string memory cleartext)
+        external
+        onlyHolder
+        onlyHolderSolvent
+    {
         uint256 cleartextLength = bytes(cleartext).length;
 
         if (cleartextLength > CLEARTEXT_MAXIMUM_LENGTH) {
