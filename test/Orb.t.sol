@@ -87,8 +87,8 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.auctionEndTime(), 0);
-        assertEq(orb.winningBidder(), address(0));
-        assertEq(orb.winningBid(), 0);
+        assertEq(orb.leadingBidder(), address(0));
+        assertEq(orb.leadingBid(), 0);
 
         assertEq(orb.lastSettlementTime(), 0);
         assertEq(orb.holderReceiveTime(), 0);
@@ -143,15 +143,15 @@ contract StartAuctionTest is OrbTestBase {
 
     function test_startAuctionCorrectly() public {
         assertEq(orb.auctionStartTime(), 0);
-        orb.workaround_setWinningBid(10);
-        orb.workaround_setWinningBidder(address(0xBEEF));
+        orb.workaround_setLeadingBid(10);
+        orb.workaround_setLeadingBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
         emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
         assertEq(orb.auctionStartTime(), block.timestamp);
         assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
-        assertEq(orb.winningBid(), 0);
-        assertEq(orb.winningBidder(), address(0));
+        assertEq(orb.leadingBid(), 0);
+        assertEq(orb.leadingBidder(), address(0));
     }
 
     function test_startAuctionOnlyContractHeld() public {
@@ -181,18 +181,18 @@ contract BidTest is OrbTestBase {
         vm.prank(user);
         orb.bid{value: bidAmount}(bidAmount, bidAmount);
         orb.startAuction();
-        assertEq(orb.winningBid(), 0 ether);
+        assertEq(orb.leadingBid(), 0 ether);
         prankAndBid(user, bidAmount);
-        assertEq(orb.winningBid(), bidAmount);
+        assertEq(orb.leadingBid(), bidAmount);
     }
 
     function test_bidUsesTotalFunds() public {
         orb.deposit{value: 1 ether}();
         orb.startAuction();
         vm.prank(user);
-        assertEq(orb.winningBid(), 0 ether);
+        assertEq(orb.leadingBid(), 0 ether);
         prankAndBid(user, 0.5 ether);
-        assertEq(orb.winningBid(), 0.5 ether);
+        assertEq(orb.leadingBid(), 0.5 ether);
     }
 
     function test_bidRevertsIfBeneficiary() public {
@@ -205,7 +205,7 @@ contract BidTest is OrbTestBase {
 
         // will not revert
         prankAndBid(user, amount);
-        assertEq(orb.winningBid(), amount);
+        assertEq(orb.leadingBid(), amount);
     }
 
     function test_bidRevertsIfLtMinimumBid() public {
@@ -221,7 +221,7 @@ contract BidTest is OrbTestBase {
         // will not revert
         vm.prank(user);
         orb.bid{value: amount}(amount, amount);
-        assertEq(orb.winningBid(), amount);
+        assertEq(orb.leadingBid(), amount);
 
         // minimum bid will be the winning bid + MINIMUM_BID_STEP
         amount = orb.minimumBid() - 1;
@@ -242,7 +242,7 @@ contract BidTest is OrbTestBase {
         vm.prank(user);
         // will not revert
         orb.bid{value: funds}(amount, amount);
-        assertEq(orb.winningBid(), amount);
+        assertEq(orb.leadingBid(), amount);
     }
 
     function test_bidRevertsIfPriceTooHigh() public {
@@ -258,7 +258,7 @@ contract BidTest is OrbTestBase {
         // will not revert
         vm.prank(user);
         orb.bid{value: amount}(amount, price);
-        assertEq(orb.winningBid(), amount);
+        assertEq(orb.leadingBid(), amount);
         assertEq(orb.price(), orb.workaround_maxPrice());
     }
 
@@ -268,8 +268,8 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
         uint256 funds = fundsRequiredToBidOneYear(amount);
-        assertEq(orb.winningBid(), 0 ether);
-        assertEq(orb.winningBidder(), address(0));
+        assertEq(orb.leadingBid(), 0 ether);
+        assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.fundsOf(user), 0);
         assertEq(address(orb).balance, 0);
         uint256 auctionEndTime = orb.auctionEndTime();
@@ -278,8 +278,8 @@ contract BidTest is OrbTestBase {
         emit NewBid(user, amount);
         prankAndBid(user, amount);
 
-        assertEq(orb.winningBid(), amount);
-        assertEq(orb.winningBidder(), user);
+        assertEq(orb.leadingBid(), amount);
+        assertEq(orb.leadingBidder(), user);
         assertEq(orb.price(), amount);
         assertEq(orb.fundsOf(user), funds);
         assertEq(address(orb).balance, funds);
@@ -307,14 +307,14 @@ contract BidTest is OrbTestBase {
             prankAndBid(bidder, amount);
             contractBalance += funds;
 
-            assertEq(orb.winningBid(), amount);
-            assertEq(orb.winningBidder(), bidder);
+            assertEq(orb.leadingBid(), amount);
+            assertEq(orb.leadingBidder(), bidder);
             assertEq(orb.price(), amount);
             assertEq(orb.fundsOf(bidder), fundsOfUser[bidder]);
             assertEq(address(orb).balance, contractBalance);
         }
         vm.expectEmit(true, false, false, true);
-        emit AuctionFinalized(orb.winningBidder(), orb.winningBid());
+        emit AuctionFinalized(orb.leadingBidder(), orb.leadingBid());
         vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
     }
@@ -371,8 +371,8 @@ contract FinalizeAuctionTest is OrbTestBase {
         orb.finalizeAuction();
         assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.auctionStartTime(), 0);
-        assertEq(orb.winningBid(), 0);
-        assertEq(orb.winningBidder(), address(0));
+        assertEq(orb.leadingBid(), 0);
+        assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.price(), 0);
     }
 
@@ -387,8 +387,8 @@ contract FinalizeAuctionTest is OrbTestBase {
         vm.warp(orb.auctionEndTime() + 1);
 
         // Assert storage before
-        assertEq(orb.winningBidder(), user);
-        assertEq(orb.winningBid(), amount);
+        assertEq(orb.leadingBidder(), user);
+        assertEq(orb.leadingBid(), amount);
         assertEq(orb.price(), amount);
         assertEq(orb.fundsOf(user), funds);
         assertEq(orb.fundsOf(address(orb)), 0);
@@ -404,8 +404,8 @@ contract FinalizeAuctionTest is OrbTestBase {
         // storage that is reset
         assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.auctionStartTime(), 0);
-        assertEq(orb.winningBid(), 0);
-        assertEq(orb.winningBidder(), address(0));
+        assertEq(orb.leadingBid(), 0);
+        assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.price(), amount);
 
         // storage that persists
@@ -566,19 +566,19 @@ contract DepositTest is OrbTestBase {
 contract WithdrawTest is OrbTestBase {
     event Withdrawal(address indexed recipient, uint256 amount);
 
-    function test_withdrawRevertsIfWinningBidder() public {
+    function test_withdrawRevertsIfLeadingBidder() public {
         uint256 bidAmount = 1 ether;
         orb.startAuction();
         prankAndBid(user, bidAmount);
-        vm.expectRevert(Orb.NotPermittedForWinningBidder.selector);
+        vm.expectRevert(Orb.NotPermittedForLeadingBidder.selector);
         vm.prank(user);
         orb.withdraw(1);
 
-        vm.expectRevert(Orb.NotPermittedForWinningBidder.selector);
+        vm.expectRevert(Orb.NotPermittedForLeadingBidder.selector);
         vm.prank(user);
         orb.withdrawAll();
 
-        // user is no longer the winningBidder
+        // user is no longer the leadingBidder
         prankAndBid(user2, 2 ether);
 
         // user can withdraw
@@ -829,8 +829,8 @@ contract OwedSinceLastSettlementTest is OrbTestBase {
 
 contract SetPriceTest is OrbTestBase {
     function test_setPriceRevertsIfNotHolder() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.expectRevert(Orb.NotHolder.selector);
         vm.prank(user2);
         orb.setPrice(1 ether);
@@ -842,8 +842,8 @@ contract SetPriceTest is OrbTestBase {
     }
 
     function test_setPriceRevertsIfHolderInsolvent() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 600 days);
         vm.startPrank(user);
         vm.expectRevert(Orb.HolderInsolvent.selector);
@@ -857,8 +857,8 @@ contract SetPriceTest is OrbTestBase {
     }
 
     function test_setPriceSettlesBefore() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.prank(user);
         orb.setPrice(2 ether);
         assertEq(orb.price(), 2 ether);
@@ -869,8 +869,8 @@ contract SetPriceTest is OrbTestBase {
 
     function test_setPriceRevertsIfMaxPrice() public {
         uint256 maxPrice = orb.workaround_maxPrice();
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.InvalidNewPrice.selector, maxPrice + 1));
         orb.setPrice(maxPrice + 1);
@@ -1056,8 +1056,8 @@ contract PurchaseTest is OrbTestBase {
 
 contract ExitTest is OrbTestBase {
     function test_revertsIfNotHolder() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.expectRevert(Orb.NotHolder.selector);
         vm.prank(user2);
         orb.exit();
@@ -1113,8 +1113,8 @@ contract ForecloseTest is OrbTestBase {
         vm.prank(user2);
         orb.foreclose();
 
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 100000 days);
         vm.prank(user2);
         orb.foreclose();
@@ -1124,8 +1124,8 @@ contract ForecloseTest is OrbTestBase {
     event Foreclosure(address indexed from, bool indexed voluntary);
 
     function test_revertsifHolderSolvent() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.expectRevert(Orb.HolderSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
@@ -1135,8 +1135,8 @@ contract ForecloseTest is OrbTestBase {
     }
 
     function test_succeeds() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, true, false, false);
         emit Foreclosure(user, false);
@@ -1153,8 +1153,8 @@ contract ForeclosureTimeTest is OrbTestBase {
     }
 
     function test_returnsInfinityIfPriceZero() public {
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
         orb.workaround_setPrice(0);
         assertEq(orb.foreclosureTime(), type(uint256).max);
     }
@@ -1162,9 +1162,9 @@ contract ForeclosureTimeTest is OrbTestBase {
     function test_correctCalculation() public {
         // uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR)
         //                             / (_price * HOLDER_TAX_NUMERATOR);
-        uint256 winningBid = 10 ether;
-        makeHolderAndWarp(user, winningBid);
-        uint256 remaining = (orb.fundsOf(user) * 365 days * 10_000) / (winningBid * 1_000);
+        uint256 leadingBid = 10 ether;
+        makeHolderAndWarp(user, leadingBid);
+        uint256 remaining = (orb.fundsOf(user) * 365 days * 10_000) / (leadingBid * 1_000);
         uint256 lastSettlementTime = block.timestamp - 30 days;
         assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
     }

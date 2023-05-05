@@ -33,12 +33,12 @@ contract OrbHarness is
         return BASE_URL;
     }
 
-    function workaround_setWinningBidder(address bidder) public {
-        winningBidder = bidder;
+    function workaround_setLeadingBidder(address bidder) public {
+        leadingBidder = bidder;
     }
 
-    function workaround_setWinningBid(uint256 bid) public {
-        winningBid = bid;
+    function workaround_setLeadingBid(uint256 bid) public {
+        leadingBid = bid;
     }
 
     function workaround_setPrice(uint256 _price) public {

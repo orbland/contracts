@@ -102,7 +102,7 @@ contract Orb is ERC721, Ownable {
     error AuctionNotRunning();
     error AuctionRunning();
     error AuctionNotStarted();
-    error NotPermittedForWinningBidder();
+    error NotPermittedForLeadingBidder();
     error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
 
     // Purchasing Errors
@@ -186,9 +186,9 @@ contract Orb is ERC721, Ownable {
     // End Time: when the auction ends, can be extended by late bids. 0 not during the auction.
     uint256 public auctionEndTime;
     // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
-    address public winningBidder;
+    address public leadingBidder;
     // Winning Bid: highest current bid. 0 not during the auction and before first bid.
-    uint256 public winningBid;
+    uint256 public leadingBid;
 
     // Trigger and Response State Variables
 
@@ -327,9 +327,9 @@ contract Orb is ERC721, Ownable {
      * @dev  Ensures that the caller is not currently winning the auction.
      *       User winning the auction cannot withdraw funds, as funds include user's bid.
      */
-    modifier notWinningBidder() {
-        if (msg.sender == winningBidder) {
-            revert NotPermittedForWinningBidder();
+    modifier notLeadingBidder() {
+        if (msg.sender == leadingBidder) {
+            revert NotPermittedForLeadingBidder();
         }
         _;
     }
@@ -437,11 +437,11 @@ contract Orb is ERC721, Ownable {
      * @return  uint256  Minimum bid required for {bid()}.
      */
     function minimumBid() public view returns (uint256) {
-        if (winningBid == 0) {
+        if (leadingBid == 0) {
             return auctionStartingPrice;
         } else {
             unchecked {
-                return winningBid + auctionMinimumBidStep;
+                return leadingBid + auctionMinimumBidStep;
             }
         }
     }
@@ -450,7 +450,7 @@ contract Orb is ERC721, Ownable {
      * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least auctionMinimumDuration.
      * @dev     Prevents repeated starts by checking the auctionEndTime.
      *          Important to set auctionEndTime to 0 after auction is finalized.
-     *          Also, resets winningBidder and winningBid.
+     *          Also, resets leadingBidder and leadingBid.
      *          Should not be necessary, as {finalizeAuction()} also does that.
      *          Emits AuctionStarted().
      */
@@ -461,8 +461,8 @@ contract Orb is ERC721, Ownable {
 
         auctionStartTime = block.timestamp;
         auctionEndTime = block.timestamp + auctionMinimumDuration;
-        winningBidder = address(0);
-        winningBid = 0;
+        leadingBidder = address(0);
+        leadingBid = 0;
 
         emit AuctionStarted(auctionStartTime, auctionEndTime);
     }
@@ -495,8 +495,8 @@ contract Orb is ERC721, Ownable {
         }
 
         fundsOf[msg.sender] = totalFunds;
-        winningBidder = msg.sender;
-        winningBid = amount;
+        leadingBidder = msg.sender;
+        leadingBid = amount;
         price = priceIfWon;
 
         emit NewBid(msg.sender, amount);
@@ -521,23 +521,23 @@ contract Orb is ERC721, Ownable {
             revert AuctionNotStarted();
         }
 
-        if (winningBidder != address(0)) {
-            fundsOf[winningBidder] -= winningBid;
-            fundsOf[beneficiary] += winningBid;
+        if (leadingBidder != address(0)) {
+            fundsOf[leadingBidder] -= leadingBid;
+            fundsOf[beneficiary] += leadingBid;
 
             lastSettlementTime = block.timestamp;
             lastTriggerTime = block.timestamp - cooldown;
 
-            emit AuctionFinalized(winningBidder, winningBid);
+            emit AuctionFinalized(leadingBidder, leadingBid);
             emit NewPrice(0, price);
             // price has been set when bidding
 
-            _transferOrb(address(this), winningBidder);
-            winningBidder = address(0);
-            winningBid = 0;
+            _transferOrb(address(this), leadingBidder);
+            leadingBidder = address(0);
+            leadingBid = 0;
         } else {
             price = 0;
-            emit AuctionFinalized(winningBidder, winningBid);
+            emit AuctionFinalized(leadingBidder, leadingBid);
         }
 
         auctionStartTime = 0;
@@ -568,7 +568,7 @@ contract Orb is ERC721, Ownable {
      *          Not recommended for current orb holders, they should call exit() to take out their funds.
      * @dev     Not allowed for the winning auction bidder.
      */
-    function withdrawAll() external notWinningBidder settlesIfHolder {
+    function withdrawAll() external notLeadingBidder settlesIfHolder {
         _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
@@ -577,7 +577,7 @@ contract Orb is ERC721, Ownable {
      *          For current orb holders, reduces the time until foreclosure.
      * @dev     Not allowed for the winning auction bidder.
      */
-    function withdraw(uint256 amount) external notWinningBidder settlesIfHolder {
+    function withdraw(uint256 amount) external notLeadingBidder settlesIfHolder {
         _withdraw(msg.sender, amount);
     }
 
