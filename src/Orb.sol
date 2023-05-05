@@ -113,7 +113,7 @@ contract Orb is ERC721, Ownable {
     error CooldownIncomplete(uint256 timeRemaining);
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error CleartextHashMismatch(bytes32 cleartextHash, bytes32 recordedContentHash);
-    error TriggerNotFound(uint256 triggerId);
+    error InvocationNotFound(uint256 invocationId);
     error ResponseNotFound(uint256 triggerId);
     error ResponseExists(uint256 triggerId);
     error FlaggingPeriodExpired(uint256 triggerId, uint256 currentTimeValue, uint256 timeValueLimit);
@@ -927,7 +927,7 @@ contract Orb is ERC721, Ownable {
      */
     function respond(uint256 triggerId, bytes32 contentHash) external onlyOwner {
         if (triggerId >= invocationCount) {
-            revert TriggerNotFound(triggerId);
+            revert InvocationNotFound(triggerId);
         }
 
         if (_responseExists(triggerId)) {
