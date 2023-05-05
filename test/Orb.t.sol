@@ -37,7 +37,7 @@ contract OrbTestBase is Test {
     function makeHolderAndWarp(address newHolder, uint256 bid) public {
         orb.startAuction();
         prankAndBid(newHolder, bid);
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
         vm.warp(block.timestamp + 30 days);
     }
@@ -86,7 +86,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.flaggedResponsesCount(), 0);
 
         assertEq(orb.auctionStartTime(), 0);
-        assertEq(orb.endTime(), 0);
+        assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.winningBid(), 0);
 
@@ -139,7 +139,7 @@ contract StartAuctionTest is OrbTestBase {
         assertEq(orb.auctionStartTime(), block.timestamp);
     }
 
-    event AuctionStarted(uint256 auctionStartTime, uint256 endTime);
+    event AuctionStarted(uint256 auctionStartTime, uint256 auctionEndTime);
 
     function test_startAuctionCorrectly() public {
         assertEq(orb.auctionStartTime(), 0);
@@ -149,7 +149,7 @@ contract StartAuctionTest is OrbTestBase {
         emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
         assertEq(orb.auctionStartTime(), block.timestamp);
-        assertEq(orb.endTime(), block.timestamp + orb.auctionMinimumDuration());
+        assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
     }
@@ -272,7 +272,7 @@ contract BidTest is OrbTestBase {
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.fundsOf(user), 0);
         assertEq(address(orb).balance, 0);
-        uint256 endTime = orb.endTime();
+        uint256 auctionEndTime = orb.auctionEndTime();
 
         vm.expectEmit(true, false, false, true);
         emit NewBid(user, amount);
@@ -283,7 +283,7 @@ contract BidTest is OrbTestBase {
         assertEq(orb.price(), amount);
         assertEq(orb.fundsOf(user), funds);
         assertEq(address(orb).balance, funds);
-        assertEq(orb.endTime(), endTime);
+        assertEq(orb.auctionEndTime(), auctionEndTime);
     }
 
     mapping(address => uint256) internal fundsOfUser;
@@ -315,27 +315,27 @@ contract BidTest is OrbTestBase {
         }
         vm.expectEmit(true, false, false, true);
         emit AuctionFinalized(orb.winningBidder(), orb.winningBid());
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
     }
 
     function test_bidExtendsAuction() public {
-        assertEq(orb.endTime(), 0);
+        assertEq(orb.auctionEndTime(), 0);
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        // endTime = block.timestamp + auctionMinimumDuration
-        uint256 endTime = orb.endTime();
-        // set block.timestamp to endTime - auctionBidExtension
-        vm.warp(endTime - orb.auctionBidExtension());
+        // auctionEndTime = block.timestamp + auctionMinimumDuration
+        uint256 auctionEndTime = orb.auctionEndTime();
+        // set block.timestamp to auctionEndTime - auctionBidExtension
+        vm.warp(auctionEndTime - orb.auctionBidExtension());
         prankAndBid(user, amount);
-        // didn't change because block.timestamp + auctionBidExtension  = endTime
-        assertEq(orb.endTime(), endTime);
+        // didn't change because block.timestamp + auctionBidExtension = auctionEndTime
+        assertEq(orb.auctionEndTime(), auctionEndTime);
 
-        vm.warp(endTime - orb.auctionBidExtension() + 50);
+        vm.warp(auctionEndTime - orb.auctionBidExtension() + 50);
         amount = orb.minimumBid();
         prankAndBid(user, amount);
-        // change because block.timestamp + auctionBidExtension + 50 >  endTime
-        assertEq(orb.endTime(), endTime + 50);
+        // change because block.timestamp + auctionBidExtension + 50 >  auctionEndTime
+        assertEq(orb.auctionEndTime(), auctionEndTime + 50);
     }
 }
 
@@ -347,7 +347,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         vm.expectRevert(Orb.AuctionRunning.selector);
         orb.finalizeAuction();
 
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         vm.expectEmit(true, false, false, true);
         emit AuctionFinalized(address(0), 0);
         orb.finalizeAuction();
@@ -357,19 +357,19 @@ contract FinalizeAuctionTest is OrbTestBase {
         vm.expectRevert(Orb.AuctionNotStarted.selector);
         orb.finalizeAuction();
         orb.startAuction();
-        // endTime != 0
-        assertEq(orb.endTime(), block.timestamp + orb.auctionMinimumDuration());
+        // auctionEndTime != 0
+        assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
         vm.expectRevert(Orb.AuctionRunning.selector);
         orb.finalizeAuction();
     }
 
     function test_finalizeAuctionWithoutWinner() public {
         orb.startAuction();
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         vm.expectEmit(true, false, false, true);
         emit AuctionFinalized(address(0), 0);
         orb.finalizeAuction();
-        assertEq(orb.endTime(), 0);
+        assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
@@ -384,7 +384,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         uint256 funds = fundsRequiredToBidOneYear(amount);
         // Bid `amount` and transfer `funds` to the contract
         prankAndBid(user, amount);
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
 
         // Assert storage before
         assertEq(orb.winningBidder(), user);
@@ -402,7 +402,7 @@ contract FinalizeAuctionTest is OrbTestBase {
 
         // Assert storage after
         // storage that is reset
-        assertEq(orb.endTime(), 0);
+        assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
@@ -428,7 +428,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
         orb.startAuction();
         prankAndBid(user2, amount2);
         prankAndBid(user, amount1);
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
         vm.warp(block.timestamp + 1 days);
 
@@ -458,7 +458,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
         orb.startAuction();
         prankAndBid(user2, amount2);
         prankAndBid(user, amount1);
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
         vm.warp(block.timestamp + 1 days);
 
@@ -607,7 +607,7 @@ contract WithdrawTest is OrbTestBase {
         prankAndBid(user2, smallBidAmount);
         // user1 bids and becomes the winning bidder
         prankAndBid(user, bidAmount);
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
 
         vm.warp(block.timestamp + 30 days);
@@ -653,7 +653,7 @@ contract WithdrawTest is OrbTestBase {
         prankAndBid(user2, smallBidAmount);
         // user1 bids and becomes the winning bidder
         prankAndBid(user, bidAmount);
-        vm.warp(orb.endTime() + 1);
+        vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
 
         vm.warp(block.timestamp + 30 days);
