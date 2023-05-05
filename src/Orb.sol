@@ -60,7 +60,7 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     // Auction Events
-    event AuctionStarted(uint256 auctionStartTime, uint256 auctionEndTime);
+    event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
     event AuctionBid(address indexed bidder, uint256 bid);
     event AuctionExtended(uint256 newAuctionEndTime);
     event AuctionFinalized(address indexed winner, uint256 winningBid);
@@ -452,7 +452,7 @@ contract Orb is ERC721, Ownable {
      *          Important to set auctionEndTime to 0 after auction is finalized.
      *          Also, resets leadingBidder and leadingBid.
      *          Should not be necessary, as {finalizeAuction()} also does that.
-     *          Emits AuctionStarted().
+     *          Emits AuctionStart().
      */
     function startAuction() external onlyOwner onlyContractHeld notDuringAuction {
         if (auctionEndTime > 0) {
@@ -464,7 +464,7 @@ contract Orb is ERC721, Ownable {
         leadingBidder = address(0);
         leadingBid = 0;
 
-        emit AuctionStarted(auctionStartTime, auctionEndTime);
+        emit AuctionStart(auctionStartTime, auctionEndTime);
     }
 
     /**
