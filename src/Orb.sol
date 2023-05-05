@@ -77,7 +77,7 @@ contract Orb is ERC721, Ownable {
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event CleartextRecorded(uint256 indexed invocationId, string cleartext);
-    event ResponseFlagged(address indexed from, uint256 indexed responseId);
+    event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -948,7 +948,7 @@ contract Orb is ERC721, Ownable {
      *          Responses can only be flagged by solvent holders to keep it consistent with {trigger()}.
      *          Also, the holder must have received the orb after the response was made;
      *          this is to prevent holders from flagging responses that were made in response to others' triggers.
-     *          Emits ResponseFlagged().
+     *          Emits ResponseFlagging().
      * @param   triggerId  ID of a trigger to which the response is being flagged.
      */
     function flagResponse(uint256 triggerId) external onlyHolder onlyHolderSolvent {
@@ -971,7 +971,7 @@ contract Orb is ERC721, Ownable {
         responseFlagged[triggerId] = true;
         flaggedResponsesCount += 1;
 
-        emit ResponseFlagged(msg.sender, triggerId);
+        emit ResponseFlagging(msg.sender, triggerId);
     }
 
     /**

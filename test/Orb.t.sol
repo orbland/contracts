@@ -1397,7 +1397,7 @@ contract RespondTest is OrbTestBase {
 }
 
 contract FlagResponseTest is OrbTestBase {
-    event ResponseFlagged(address indexed from, uint256 indexed responseId);
+    event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
 
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
@@ -1506,7 +1506,7 @@ contract FlagResponseTest is OrbTestBase {
         assertEq(orb.responseFlagged(0), false);
         assertEq(orb.flaggedResponsesCount(), 0);
         vm.expectEmit(true, false, false, true);
-        emit ResponseFlagged(user, 0);
+        emit ResponseFlagging(user, 0);
         vm.prank(user);
         orb.flagResponse(0);
         assertEq(orb.responseFlagged(0), true);
