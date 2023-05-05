@@ -70,7 +70,7 @@ contract Orb is ERC721, Ownable {
     event Withdrawal(address indexed recipient, uint256 amount);
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
     event PriceUpdated(uint256 previousPrice, uint256 newPrice);
-    event Purchase(address indexed from, address indexed to, uint256 price);
+    event Purchase(address indexed seller, address indexed buyer, uint256 price);
     event Foreclosure(address indexed from, bool indexed voluntary);
 
     // Triggering and Responding Events
