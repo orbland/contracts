@@ -593,7 +593,7 @@ contract WithdrawTest is OrbTestBase {
         assertEq(user.balance, startingBalance + fundsBefore);
     }
 
-    event Settlement(address indexed holder, address indexed owner, uint256 amount);
+    event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
 
     function test_withdrawSettlesFirstIfHolder() public {
         assertEq(orb.fundsOf(user), 0);
@@ -731,7 +731,7 @@ contract WithdrawTest is OrbTestBase {
 }
 
 contract SettleTest is OrbTestBase {
-    event Settlement(address indexed holder, address indexed owner, uint256 amount);
+    event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
 
     function test_settleOnlyIfHolderHeld() public {
         vm.expectRevert(Orb.ContractHoldsOrb.selector);
@@ -943,7 +943,7 @@ contract PurchaseTest is OrbTestBase {
     event Purchase(address indexed from, address indexed to, uint256 price);
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event NewPrice(uint256 from, uint256 to);
-    event Settlement(address indexed from, address indexed to, uint256 amount);
+    event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
 
     function test_beneficiaryAllProceedsIfOwnerSells() public {
         uint256 bidAmount = 1 ether;
