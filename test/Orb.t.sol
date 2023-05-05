@@ -81,7 +81,7 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.price(), 0);
         assertEq(orb.lastInvocationTime(), 0);
-        assertEq(orb.triggersCount(), 0);
+        assertEq(orb.invocationCount(), 0);
 
         assertEq(orb.flaggedResponsesCount(), 0);
 
@@ -1248,7 +1248,7 @@ contract TriggerWthHashTest is OrbTestBase {
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(0), hash);
         assertEq(orb.lastInvocationTime(), block.timestamp);
-        assertEq(orb.triggersCount(), 1);
+        assertEq(orb.invocationCount(), 1);
     }
 }
 

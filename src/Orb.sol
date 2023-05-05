@@ -208,7 +208,7 @@ contract Orb is ERC721, Ownable {
     // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
     mapping(uint256 => bytes32) public triggers;
     // Count of triggers made. Used to calculate triggerId of the next trigger.
-    uint256 public triggersCount = 0;
+    uint256 public invocationCount = 0;
     // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
     mapping(uint256 => HashTime) public responses;
     // Additional mapping for flagged (reported) Responses. Used by the holder not satisfied with a response.
@@ -856,7 +856,7 @@ contract Orb is ERC721, Ownable {
         if (length > CLEARTEXT_MAXIMUM_LENGTH) {
             revert CleartextTooLong(length, CLEARTEXT_MAXIMUM_LENGTH);
         }
-        emit CleartextRecorded(triggersCount, cleartext);
+        emit CleartextRecorded(invocationCount, cleartext);
         triggerWithHash(keccak256(abi.encodePacked(cleartext)));
     }
 
@@ -866,7 +866,7 @@ contract Orb is ERC721, Ownable {
      *          Puts the orb on cooldown.
      *          The Orb can only be triggered by solvent holders.
      * @dev     Content hash is keccak256 of the cleartext.
-     *          triggersCount is used to track the id of the next trigger.
+     *          invocationCount is used to track the id of the next trigger.
      *          Emits Triggered().
      * @param   contentHash  Required keccak256 hash of the cleartext.
      */
@@ -875,11 +875,11 @@ contract Orb is ERC721, Ownable {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
 
-        uint256 triggerId = triggersCount;
+        uint256 triggerId = invocationCount;
 
         triggers[triggerId] = contentHash;
         lastInvocationTime = block.timestamp;
-        triggersCount += 1;
+        invocationCount += 1;
 
         emit Triggered(msg.sender, triggerId, contentHash, block.timestamp);
     }
@@ -922,7 +922,7 @@ contract Orb is ERC721, Ownable {
      * @param   contentHash  keccak256 hash of the response text.
      */
     function respond(uint256 triggerId, bytes32 contentHash) external onlyOwner {
-        if (triggerId >= triggersCount) {
+        if (triggerId >= invocationCount) {
             revert TriggerNotFound(triggerId);
         }
 
