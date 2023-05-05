@@ -117,7 +117,7 @@ contract Orb is ERC721, Ownable {
     error ResponseNotFound(uint256 invocationId);
     error ResponseExists(uint256 invocationId);
     error FlaggingPeriodExpired(uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
-    error ResponseAlreadyFlagged(uint256 triggerId);
+    error ResponseAlreadyFlagged(uint256 invocationId);
 
     ////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
