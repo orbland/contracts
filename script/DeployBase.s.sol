@@ -18,7 +18,7 @@ abstract contract DeployBase is Script {
     uint256 private immutable bidAuctionExtension;
     uint256 private immutable holderTaxNumerator;
     uint256 private immutable saleRoyaltiesNumerator;
-    uint256 private immutable startingPrice;
+    uint256 private immutable auctionStartingPrice;
     uint256 private immutable minimumBidStep;
 
     // Deploy addresses.
@@ -35,7 +35,7 @@ abstract contract DeployBase is Script {
         uint256 _bidAuctionExtension,
         uint256 _holderTaxNumerator,
         uint256 _saleRoyaltiesNumerator,
-        uint256 _startingPrice,
+        uint256 _auctionStartingPrice,
         uint256 _minimumBidStep
     ) {
         contributorWallets = _contributorWallets;
@@ -47,7 +47,7 @@ abstract contract DeployBase is Script {
         bidAuctionExtension = _bidAuctionExtension;
         holderTaxNumerator = _holderTaxNumerator;
         saleRoyaltiesNumerator = _saleRoyaltiesNumerator;
-        startingPrice = _startingPrice;
+        auctionStartingPrice = _auctionStartingPrice;
         minimumBidStep = _minimumBidStep;
     }
 
@@ -67,7 +67,7 @@ abstract contract DeployBase is Script {
             splitterAddress, // beneficiary
             holderTaxNumerator,
             saleRoyaltiesNumerator,
-            startingPrice,
+            auctionStartingPrice,
             minimumBidStep
         );
         orb.transferOwnership(issuerWallet);

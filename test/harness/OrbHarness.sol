@@ -13,7 +13,7 @@ contract OrbHarness is
         address(0xC0FFEE), // beneficiary
         1000, // holderTaxNumerator
         1000, // saleRoyaltiesNumerator
-        0.1 ether, // startingPrice
+        0.1 ether, // auctionStartingPrice
         0.1 ether // minimumBidStep
     )
 {

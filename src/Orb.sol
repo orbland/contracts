@@ -146,7 +146,7 @@ contract Orb is ERC721, Ownable {
     uint256 public immutable saleRoyaltiesNumerator;
 
     // Auction starting price.
-    uint256 public immutable startingPrice;
+    uint256 public immutable auctionStartingPrice;
     // Each bid has to increase over previous bid by at least this much.
     uint256 public immutable minimumBidStep;
     // Auction will run for at least this long.
@@ -239,7 +239,7 @@ contract Orb is ERC721, Ownable {
         address beneficiary_,
         uint256 holderTaxNumerator_,
         uint256 saleRoyaltiesNumerator_,
-        uint256 startingPrice_,
+        uint256 auctionStartingPrice_,
         uint256 minimumBidStep_
     ) ERC721("Orb", "ORB") {
         cooldown = cooldown_;
@@ -249,7 +249,7 @@ contract Orb is ERC721, Ownable {
         beneficiary = beneficiary_;
         holderTaxNumerator = holderTaxNumerator_;
         saleRoyaltiesNumerator = saleRoyaltiesNumerator_;
-        startingPrice = startingPrice_;
+        auctionStartingPrice = auctionStartingPrice_;
         minimumBidStep = minimumBidStep_;
 
         _safeMint(address(this), TOKEN_ID);
@@ -433,12 +433,12 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Minimum bid that would currently be accepted by {bid()}.
-     * @dev     startingPrice if no bids were made, otherwise previous bid increased by minimumBidStep.
+     * @dev     auctionStartingPrice if no bids were made, otherwise previous bid increased by minimumBidStep.
      * @return  uint256  Minimum bid required for {bid()}.
      */
     function minimumBid() public view returns (uint256) {
         if (winningBid == 0) {
-            return startingPrice;
+            return auctionStartingPrice;
         } else {
             unchecked {
                 return winningBid + minimumBidStep;
