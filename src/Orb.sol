@@ -206,7 +206,7 @@ contract Orb is ERC721, Ownable {
     // Last Trigger Time: when the orb was last triggered. Used together with Cooldown constant.
     uint256 public lastInvocationTime;
     // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
-    mapping(uint256 => bytes32) public triggers;
+    mapping(uint256 => bytes32) public invocations;
     // Count of triggers made. Used to calculate triggerId of the next trigger.
     uint256 public invocationCount = 0;
     // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
@@ -877,7 +877,7 @@ contract Orb is ERC721, Ownable {
 
         uint256 triggerId = invocationCount;
 
-        triggers[triggerId] = contentHash;
+        invocations[triggerId] = contentHash;
         lastInvocationTime = block.timestamp;
         invocationCount += 1;
 
@@ -907,7 +907,7 @@ contract Orb is ERC721, Ownable {
             revert CleartextTooLong(cleartextLength, CLEARTEXT_MAXIMUM_LENGTH);
         }
 
-        bytes32 recordedContentHash = triggers[triggerId];
+        bytes32 recordedContentHash = invocations[triggerId];
         bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
 
         if (recordedContentHash != cleartextHash) {
