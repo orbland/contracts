@@ -95,7 +95,7 @@ contract InitialStateTest is OrbTestBase {
     }
 
     function test_constants() public {
-        assertEq(orb.MAX_CLEARTEXT_LENGTH(), 280);
+        assertEq(orb.CLEARTEXT_MAXIMUM_LENGTH(), 280);
 
         assertEq(orb.FEE_DENOMINATOR(), 10000);
         assertEq(orb.HOLDER_TAX_PERIOD(), 365 days);
@@ -1175,7 +1175,7 @@ contract TriggerWithCleartextTest is OrbTestBase {
     event CleartextRecorded(uint256 indexed triggerId, string cleartext);
 
     function test_revertsIfLongLength() public {
-        uint256 max = orb.MAX_CLEARTEXT_LENGTH();
+        uint256 max = orb.CLEARTEXT_MAXIMUM_LENGTH();
         string memory text =
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         uint256 length = bytes(text).length;
@@ -1284,7 +1284,7 @@ contract RecordTriggerCleartext is OrbTestBase {
     function test_revertWhen_incorrectLength() public {
         makeHolderAndWarp(user, 1 ether);
         vm.startPrank(user);
-        uint256 max = orb.MAX_CLEARTEXT_LENGTH();
+        uint256 max = orb.CLEARTEXT_MAXIMUM_LENGTH();
         string memory cleartext =
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         orb.triggerWithHash(keccak256(bytes(cleartext)));

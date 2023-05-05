@@ -134,7 +134,7 @@ contract Orb is ERC721, Ownable {
     // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
     uint256 public immutable responseFlaggingPeriod;
     // Maximum length for trigger cleartext content.
-    uint256 public constant MAX_CLEARTEXT_LENGTH = 280;
+    uint256 public constant CLEARTEXT_MAXIMUM_LENGTH = 280;
 
     // Fee Nominator: basis points. Other fees are in relation to this.
     uint256 public constant FEE_DENOMINATOR = 10000;
@@ -853,8 +853,8 @@ contract Orb is ERC721, Ownable {
      */
     function triggerWithCleartext(string memory cleartext) external {
         uint256 length = bytes(cleartext).length;
-        if (length > MAX_CLEARTEXT_LENGTH) {
-            revert CleartextTooLong(length, MAX_CLEARTEXT_LENGTH);
+        if (length > CLEARTEXT_MAXIMUM_LENGTH) {
+            revert CleartextTooLong(length, CLEARTEXT_MAXIMUM_LENGTH);
         }
         emit CleartextRecorded(triggersCount, cleartext);
         triggerWithHash(keccak256(abi.encodePacked(cleartext)));
@@ -899,8 +899,8 @@ contract Orb is ERC721, Ownable {
     function recordTriggerCleartext(uint256 triggerId, string memory cleartext) external onlyHolder onlyHolderSolvent {
         uint256 cleartextLength = bytes(cleartext).length;
 
-        if (cleartextLength > MAX_CLEARTEXT_LENGTH) {
-            revert CleartextTooLong(cleartextLength, MAX_CLEARTEXT_LENGTH);
+        if (cleartextLength > CLEARTEXT_MAXIMUM_LENGTH) {
+            revert CleartextTooLong(cleartextLength, CLEARTEXT_MAXIMUM_LENGTH);
         }
 
         bytes32 recordedContentHash = triggers[triggerId];
