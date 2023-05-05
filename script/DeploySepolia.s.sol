@@ -20,8 +20,8 @@ contract DeploySepolia is DeployBase {
     uint256 private immutable bidAuctionExtension = 30 seconds;
     uint256 private immutable holderTaxNumerator = 1000;
     uint256 private immutable saleRoyaltiesNumerator = 1000;
-    uint256 private immutable startingPrice = 0.1 ether;
-    uint256 private immutable minimumBidStep = 0.1 ether;
+    uint256 private immutable auctionStartingPrice = 0.1 ether;
+    uint256 private immutable auctionMinimumBidStep = 0.1 ether;
 
     constructor()
         DeployBase(
@@ -34,8 +34,8 @@ contract DeploySepolia is DeployBase {
             bidAuctionExtension,
             holderTaxNumerator,
             saleRoyaltiesNumerator,
-            startingPrice,
-            minimumBidStep
+            auctionStartingPrice,
+            auctionMinimumBidStep
         )
     {}
 }
