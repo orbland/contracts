@@ -765,10 +765,10 @@ contract Orb is ERC721, Ownable {
             revert InvalidNewPrice(newPrice_);
         }
 
-        uint256 oldPrice = price;
+        uint256 previousPrice = price;
         price = newPrice_;
 
-        emit PriceUpdate(oldPrice, newPrice_);
+        emit PriceUpdate(previousPrice, newPrice_);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
