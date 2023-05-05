@@ -288,7 +288,7 @@ contract BidTest is OrbTestBase {
 
     mapping(address => uint256) internal fundsOfUser;
 
-    event AuctionFinalized(address indexed winner, uint256 price);
+    event AuctionFinalized(address indexed winner, uint256 winningBid);
 
     function testFuzz_bidSetsCorrectState(address[16] memory bidders, uint128[16] memory amounts) public {
         orb.startAuction();
@@ -340,7 +340,7 @@ contract BidTest is OrbTestBase {
 }
 
 contract FinalizeAuctionTest is OrbTestBase {
-    event AuctionFinalized(address indexed winner, uint256 price);
+    event AuctionFinalized(address indexed winner, uint256 winningBid);
 
     function test_finalizeAuctionRevertsDuringAuction() public {
         orb.startAuction();
