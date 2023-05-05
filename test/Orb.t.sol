@@ -940,7 +940,7 @@ contract PurchaseTest is OrbTestBase {
         orb.purchase{value: 1 ether - 1}(1 ether, 3 ether);
     }
 
-    event Purchase(address indexed from, address indexed to, uint256 price);
+    event Purchase(address indexed seller, address indexed buyer, uint256 price);
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event PriceUpdated(uint256 previousPrice, uint256 newPrice);
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
