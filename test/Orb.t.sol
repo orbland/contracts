@@ -146,10 +146,10 @@ contract StartAuctionTest is OrbTestBase {
         orb.workaround_setWinningBid(10);
         orb.workaround_setWinningBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.minimumAuctionDuration());
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
         assertEq(orb.startTime(), block.timestamp);
-        assertEq(orb.endTime(), block.timestamp + orb.minimumAuctionDuration());
+        assertEq(orb.endTime(), block.timestamp + orb.auctionMinimumDuration());
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
     }
@@ -160,13 +160,13 @@ contract StartAuctionTest is OrbTestBase {
         orb.startAuction();
         orb.workaround_setOrbHolder(address(orb));
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.minimumAuctionDuration());
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
     }
 
     function test_startAuctionNotDuringAuction() public {
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.minimumAuctionDuration());
+        emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
         vm.expectRevert(Orb.AuctionRunning.selector);
         orb.startAuction();
@@ -323,7 +323,7 @@ contract BidTest is OrbTestBase {
         assertEq(orb.endTime(), 0);
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        // endTime = block.timestamp + minimumAuctionDuration
+        // endTime = block.timestamp + auctionMinimumDuration
         uint256 endTime = orb.endTime();
         // set block.timestamp to endTime - bidAuctionExtension
         vm.warp(endTime - orb.bidAuctionExtension());
@@ -358,7 +358,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         orb.finalizeAuction();
         orb.startAuction();
         // endTime != 0
-        assertEq(orb.endTime(), block.timestamp + orb.minimumAuctionDuration());
+        assertEq(orb.endTime(), block.timestamp + orb.auctionMinimumDuration());
         vm.expectRevert(Orb.AuctionRunning.selector);
         orb.finalizeAuction();
     }

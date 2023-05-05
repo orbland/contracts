@@ -16,7 +16,7 @@ contract DeployLocal is DeployBase {
 
     uint256 public immutable cooldown = 2 minutes;
     uint256 public immutable responseFlaggingPeriod = 2 minutes;
-    uint256 public immutable minimumAuctionDuration = 2 minutes;
+    uint256 public immutable auctionMinimumDuration = 2 minutes;
     uint256 public immutable bidAuctionExtension = 30 seconds;
     uint256 private immutable holderTaxNumerator = 1000;
     uint256 private immutable saleRoyaltiesNumerator = 1000;
@@ -30,7 +30,7 @@ contract DeployLocal is DeployBase {
             issuerWallet,
             cooldown,
             responseFlaggingPeriod,
-            minimumAuctionDuration,
+            auctionMinimumDuration,
             bidAuctionExtension,
             holderTaxNumerator,
             saleRoyaltiesNumerator,
