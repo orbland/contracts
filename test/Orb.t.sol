@@ -262,7 +262,7 @@ contract BidTest is OrbTestBase {
         assertEq(orb.price(), orb.workaround_maxPrice());
     }
 
-    event NewBid(address indexed from, uint256 price);
+    event AuctionBid(address indexed bidder, uint256 bid);
 
     function test_bidSetsCorrectState() public {
         orb.startAuction();
@@ -275,7 +275,7 @@ contract BidTest is OrbTestBase {
         uint256 auctionEndTime = orb.auctionEndTime();
 
         vm.expectEmit(true, false, false, true);
-        emit NewBid(user, amount);
+        emit AuctionBid(user, amount);
         prankAndBid(user, amount);
 
         assertEq(orb.leadingBid(), amount);
@@ -303,7 +303,7 @@ contract BidTest is OrbTestBase {
             fundsOfUser[bidder] += funds;
 
             vm.expectEmit(true, false, false, true);
-            emit NewBid(bidder, amount);
+            emit AuctionBid(bidder, amount);
             prankAndBid(bidder, amount);
             contractBalance += funds;
 

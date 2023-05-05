@@ -61,7 +61,7 @@ contract Orb is ERC721, Ownable {
 
     // Auction Events
     event AuctionStarted(uint256 auctionStartTime, uint256 auctionEndTime);
-    event NewBid(address indexed from, uint256 price);
+    event AuctionBid(address indexed bidder, uint256 bid);
     event UpdatedAuctionEnd(uint256 auctionEndTime);
     event AuctionFinalized(address indexed winner, uint256 price);
 
@@ -471,7 +471,7 @@ contract Orb is ERC721, Ownable {
      * @notice  Bids the provided amount, if there's enough funds across funds on contract and transaction value.
      *          Might extend the auction if the bid is near the end.
      *          Important: the winning bidder will not be able to withdraw funds until someone outbids them.
-     * @dev     Emits NewBid().
+     * @dev     Emits AuctionBid().
      * @param   amount  The value to bid.
      * @param   priceIfWon  Price if the bid wins. Must be less than MAX_PRICE.
      */
@@ -499,7 +499,7 @@ contract Orb is ERC721, Ownable {
         leadingBid = amount;
         price = priceIfWon;
 
-        emit NewBid(msg.sender, amount);
+        emit AuctionBid(msg.sender, amount);
 
         if (block.timestamp + auctionBidExtension > auctionEndTime) {
             auctionEndTime = block.timestamp + auctionBidExtension;
