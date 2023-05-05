@@ -1252,7 +1252,7 @@ contract InvokeWthHashTest is OrbTestBase {
     }
 }
 
-contract RecordTriggerCleartext is OrbTestBase {
+contract RecordInvocationCleartext is OrbTestBase {
     event CleartextRecorded(uint256 indexed triggerId, string cleartext);
 
     function test_revertWhen_NotHolder() public {
@@ -1260,11 +1260,11 @@ contract RecordTriggerCleartext is OrbTestBase {
         string memory cleartext = "this is a cleartext";
         vm.prank(user2);
         vm.expectRevert(Orb.NotHolder.selector);
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
 
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
     }
 
     function test_revertWhen_HolderInsolvent() public {
@@ -1273,12 +1273,12 @@ contract RecordTriggerCleartext is OrbTestBase {
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
         vm.expectRevert(Orb.HolderInsolvent.selector);
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
 
         vm.warp(block.timestamp - 13130000 days);
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
     }
 
     function test_revertWhen_incorrectLength() public {
@@ -1290,12 +1290,12 @@ contract RecordTriggerCleartext is OrbTestBase {
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         uint256 length = bytes(cleartext).length;
         vm.expectRevert(abi.encodeWithSelector(Orb.CleartextTooLong.selector, length, max));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
 
         vm.warp(block.timestamp + orb.cooldown() + 1);
         cleartext = "this is a cleartext";
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(1, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
     }
 
     function test_revertWhen_cleartextMismatch() public {
@@ -1309,9 +1309,9 @@ contract RecordTriggerCleartext is OrbTestBase {
                 Orb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
             )
         );
-        orb.recordTriggerCleartext(0, cleartext2);
+        orb.recordInvocationCleartext(0, cleartext2);
 
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
     }
 
     function test_success() public {
@@ -1321,7 +1321,7 @@ contract RecordTriggerCleartext is OrbTestBase {
         vm.expectEmit(true, false, false, true);
         emit CleartextRecorded(0, cleartext);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
     }
 }
 
@@ -1334,7 +1334,7 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
         vm.expectRevert("Ownable: caller is not the owner");
         orb.respond(0, response);
         vm.stopPrank();
@@ -1351,7 +1351,7 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
         vm.stopPrank();
 
         vm.prank(owner);
@@ -1368,7 +1368,7 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
         vm.stopPrank();
 
         vm.startPrank(owner);
@@ -1383,7 +1383,7 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordTriggerCleartext(0, cleartext);
+        orb.recordInvocationCleartext(0, cleartext);
         vm.stopPrank();
 
         vm.prank(owner);
