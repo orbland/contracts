@@ -124,7 +124,7 @@ contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
         orb.startAuction();
-        assertEq(orb.minimumBid(), orb.startingPrice());
+        assertEq(orb.minimumBid(), orb.auctionStartingPrice());
         prankAndBid(user, bidAmount);
         assertEq(orb.minimumBid(), bidAmount + orb.minimumBidStep());
     }
@@ -452,7 +452,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
 
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice());
-        amount2 = bound(amount2, orb.startingPrice(), amount1 - orb.minimumBidStep());
+        amount2 = bound(amount2, orb.auctionStartingPrice(), amount1 - orb.minimumBidStep());
         uint256 funds1 = fundsRequiredToBidOneYear(amount1);
         uint256 funds2 = fundsRequiredToBidOneYear(amount2);
         orb.startAuction();
@@ -686,7 +686,7 @@ contract WithdrawTest is OrbTestBase {
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
-        bidAmount = bound(bidAmount, orb.startingPrice(), orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, orb.auctionStartingPrice(), orb.workaround_maxPrice());
         makeHolderAndWarp(user, bidAmount);
 
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
@@ -743,7 +743,7 @@ contract SettleTest is OrbTestBase {
     }
 
     function testFuzz_settleCorrect(uint96 bid, uint96 time) public {
-        uint256 amount = bound(bid, orb.startingPrice(), orb.workaround_maxPrice());
+        uint256 amount = bound(bid, orb.auctionStartingPrice(), orb.workaround_maxPrice());
         // warp ahead a random amount of time
         // remain under 1 year in total, so solvent
         uint256 timeOffset = bound(time, 0, 300 days);
