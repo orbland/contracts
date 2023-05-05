@@ -114,7 +114,7 @@ contract Orb is ERC721, Ownable {
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error CleartextHashMismatch(bytes32 cleartextHash, bytes32 recordedContentHash);
     error InvocationNotFound(uint256 invocationId);
-    error ResponseNotFound(uint256 triggerId);
+    error ResponseNotFound(uint256 invocationId);
     error ResponseExists(uint256 triggerId);
     error FlaggingPeriodExpired(uint256 triggerId, uint256 currentTimeValue, uint256 timeValueLimit);
     error ResponseAlreadyFlagged(uint256 triggerId);
