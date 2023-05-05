@@ -376,7 +376,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.price(), 0);
     }
 
-    event NewPrice(uint256 oldPrice, uint256 newPrice);
+    event PriceUpdated(uint256 previousPrice, uint256 newPrice);
 
     function test_finalizeAuctionWithWinner() public {
         orb.startAuction();
@@ -396,7 +396,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         vm.expectEmit(true, false, false, true);
         emit AuctionFinalized(user, amount);
         vm.expectEmit(false, false, false, true);
-        emit NewPrice(0, amount);
+        emit PriceUpdated(0, amount);
 
         orb.finalizeAuction();
 
@@ -865,7 +865,7 @@ contract SetPriceTest is OrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
-    event NewPrice(uint256 oldPrice, uint256 newPrice);
+    event PriceUpdated(uint256 previousPrice, uint256 newPrice);
 
     function test_setPriceRevertsIfMaxPrice() public {
         uint256 maxPrice = orb.workaround_maxPrice();
@@ -876,7 +876,7 @@ contract SetPriceTest is OrbTestBase {
         orb.setPrice(maxPrice + 1);
 
         vm.expectEmit(false, false, false, true);
-        emit NewPrice(10 ether, maxPrice);
+        emit PriceUpdated(10 ether, maxPrice);
         orb.setPrice(maxPrice);
     }
 }
@@ -942,7 +942,7 @@ contract PurchaseTest is OrbTestBase {
 
     event Purchase(address indexed from, address indexed to, uint256 price);
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
-    event NewPrice(uint256 from, uint256 to);
+    event PriceUpdated(uint256 previousPrice, uint256 newPrice);
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
 
     function test_beneficiaryAllProceedsIfOwnerSells() public {
@@ -993,7 +993,7 @@ contract PurchaseTest is OrbTestBase {
         // we just settled above
         emit Settlement(user, beneficiary, 0);
         vm.expectEmit(false, false, false, true);
-        emit NewPrice(bidAmount, newPrice);
+        emit PriceUpdated(bidAmount, newPrice);
         vm.expectEmit(true, true, false, true);
         emit Purchase(user, user2, bidAmount);
         vm.expectEmit(true, true, true, false);
@@ -1033,7 +1033,7 @@ contract PurchaseTest is OrbTestBase {
         // we just settled above
         emit Settlement(user, beneficiary, 0);
         vm.expectEmit(false, false, false, true);
-        emit NewPrice(bidAmount, newPrice);
+        emit PriceUpdated(bidAmount, newPrice);
         vm.expectEmit(true, true, false, true);
         emit Purchase(user, user2, bidAmount);
         vm.expectEmit(true, true, true, false);
