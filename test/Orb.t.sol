@@ -139,14 +139,14 @@ contract StartAuctionTest is OrbTestBase {
         assertEq(orb.auctionStartTime(), block.timestamp);
     }
 
-    event AuctionStarted(uint256 auctionStartTime, uint256 auctionEndTime);
+    event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
 
     function test_startAuctionCorrectly() public {
         assertEq(orb.auctionStartTime(), 0);
         orb.workaround_setLeadingBid(10);
         orb.workaround_setLeadingBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
+        emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
         assertEq(orb.auctionStartTime(), block.timestamp);
         assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
@@ -160,13 +160,13 @@ contract StartAuctionTest is OrbTestBase {
         orb.startAuction();
         orb.workaround_setOrbHolder(address(orb));
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
+        emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
     }
 
     function test_startAuctionNotDuringAuction() public {
         vm.expectEmit(true, true, false, false);
-        emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
+        emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
         vm.expectRevert(Orb.AuctionRunning.selector);
         orb.startAuction();
