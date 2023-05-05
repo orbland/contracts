@@ -1326,7 +1326,7 @@ contract RecordInvocationCleartext is OrbTestBase {
 }
 
 contract RespondTest is OrbTestBase {
-    event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
 
     function test_revertWhen_notOwner() public {
         makeHolderAndWarp(user, 1 ether);
@@ -1341,7 +1341,7 @@ contract RespondTest is OrbTestBase {
 
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Responded(owner, 0, response, block.timestamp);
+        emit Response(owner, 0, response, block.timestamp);
         orb.respond(0, response);
     }
 
@@ -1388,7 +1388,7 @@ contract RespondTest is OrbTestBase {
 
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Responded(owner, 0, response, block.timestamp);
+        emit Response(owner, 0, response, block.timestamp);
         orb.respond(0, response);
         (bytes32 hash, uint256 time) = orb.responses(0);
         assertEq(hash, response);

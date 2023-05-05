@@ -75,7 +75,7 @@ contract Orb is ERC721, Ownable {
 
     // Triggering and Responding Events
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
-    event Responded(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event CleartextRecorded(uint256 indexed triggerId, string cleartext);
     event ResponseFlagged(address indexed from, uint256 indexed responseId);
 
@@ -921,7 +921,7 @@ contract Orb is ERC721, Ownable {
      * @notice  The Orb issuer can use this function to respond to any existing trigger, no matter how long ago
      *          it was made. A response to a trigger can only be written once. There is no way to record response
      *          cleartext on-chain.
-     * @dev     Emits Responded().
+     * @dev     Emits Response().
      * @param   triggerId  ID of a trigger to which the response is being made.
      * @param   contentHash  keccak256 hash of the response text.
      */
@@ -936,7 +936,7 @@ contract Orb is ERC721, Ownable {
 
         responses[triggerId] = HashTime(contentHash, block.timestamp);
 
-        emit Responded(msg.sender, triggerId, contentHash, block.timestamp);
+        emit Response(msg.sender, triggerId, contentHash, block.timestamp);
     }
 
     /**
