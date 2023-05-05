@@ -152,7 +152,7 @@ contract Orb is ERC721, Ownable {
     // Auction will run for at least this long.
     uint256 public immutable auctionMinimumDuration;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
-    uint256 public immutable bidAuctionExtension;
+    uint256 public immutable auctionBidExtension;
 
     // Internal Constants
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
@@ -227,7 +227,7 @@ contract Orb is ERC721, Ownable {
      * @param cooldown_  How often Orb can be triggered.
      * @param responseFlaggingPeriod_  How long after resonse was recorded it can be flagged by the holder.
      * @param auctionMinimumDuration_  Minimum length for an auction.
-     * @param bidAuctionExtension_  If remaining time is less than this after a bid is made,
+     * @param auctionBidExtension_  If remaining time is less than this after a bid is made,
      *        auction will continue for at least this long.
      * @param beneficiary_  Beneficiary receives all Orb proceeds.
      */
@@ -235,7 +235,7 @@ contract Orb is ERC721, Ownable {
         uint256 cooldown_,
         uint256 responseFlaggingPeriod_,
         uint256 auctionMinimumDuration_,
-        uint256 bidAuctionExtension_,
+        uint256 auctionBidExtension_,
         address beneficiary_,
         uint256 holderTaxNumerator_,
         uint256 saleRoyaltiesNumerator_,
@@ -245,7 +245,7 @@ contract Orb is ERC721, Ownable {
         cooldown = cooldown_;
         responseFlaggingPeriod = responseFlaggingPeriod_;
         auctionMinimumDuration = auctionMinimumDuration_;
-        bidAuctionExtension = bidAuctionExtension_;
+        auctionBidExtension = auctionBidExtension_;
         beneficiary = beneficiary_;
         holderTaxNumerator = holderTaxNumerator_;
         saleRoyaltiesNumerator = saleRoyaltiesNumerator_;
@@ -501,8 +501,8 @@ contract Orb is ERC721, Ownable {
 
         emit NewBid(msg.sender, amount);
 
-        if (block.timestamp + bidAuctionExtension > endTime) {
-            endTime = block.timestamp + bidAuctionExtension;
+        if (block.timestamp + auctionBidExtension > endTime) {
+            endTime = block.timestamp + auctionBidExtension;
             emit UpdatedAuctionEnd(endTime);
         }
     }
