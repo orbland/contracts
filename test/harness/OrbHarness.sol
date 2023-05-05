@@ -9,7 +9,7 @@ contract OrbHarness is
         7 days, // cooldown
         7 days, // responseFlaggingPeriod
         1 days, // auctionMinimumDuration
-        30 minutes, // bidAuctionExtension
+        30 minutes, // auctionBidExtension
         address(0xC0FFEE), // beneficiary
         1000, // holderTaxNumerator
         1000, // saleRoyaltiesNumerator

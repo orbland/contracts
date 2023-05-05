@@ -325,16 +325,16 @@ contract BidTest is OrbTestBase {
         uint256 amount = orb.minimumBid();
         // endTime = block.timestamp + auctionMinimumDuration
         uint256 endTime = orb.endTime();
-        // set block.timestamp to endTime - bidAuctionExtension
-        vm.warp(endTime - orb.bidAuctionExtension());
+        // set block.timestamp to endTime - auctionBidExtension
+        vm.warp(endTime - orb.auctionBidExtension());
         prankAndBid(user, amount);
-        // didn't change because block.timestamp + bidAuctionExtension  = endTime
+        // didn't change because block.timestamp + auctionBidExtension  = endTime
         assertEq(orb.endTime(), endTime);
 
-        vm.warp(endTime - orb.bidAuctionExtension() + 50);
+        vm.warp(endTime - orb.auctionBidExtension() + 50);
         amount = orb.minimumBid();
         prankAndBid(user, amount);
-        // change because block.timestamp + bidAuctionExtension + 50 >  endTime
+        // change because block.timestamp + auctionBidExtension + 50 >  endTime
         assertEq(orb.endTime(), endTime + 50);
     }
 }
