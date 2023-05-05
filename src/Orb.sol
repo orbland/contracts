@@ -150,7 +150,7 @@ contract Orb is ERC721, Ownable {
     // Each bid has to increase over previous bid by at least this much.
     uint256 public immutable auctionMinimumBidStep;
     // Auction will run for at least this long.
-    uint256 public immutable minimumAuctionDuration;
+    uint256 public immutable auctionMinimumDuration;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
     uint256 public immutable bidAuctionExtension;
 
@@ -226,7 +226,7 @@ contract Orb is ERC721, Ownable {
      *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
      * @param cooldown_  How often Orb can be triggered.
      * @param responseFlaggingPeriod_  How long after resonse was recorded it can be flagged by the holder.
-     * @param minimumAuctionDuration_  Minimum length for an auction.
+     * @param auctionMinimumDuration_  Minimum length for an auction.
      * @param bidAuctionExtension_  If remaining time is less than this after a bid is made,
      *        auction will continue for at least this long.
      * @param beneficiary_  Beneficiary receives all Orb proceeds.
@@ -234,7 +234,7 @@ contract Orb is ERC721, Ownable {
     constructor(
         uint256 cooldown_,
         uint256 responseFlaggingPeriod_,
-        uint256 minimumAuctionDuration_,
+        uint256 auctionMinimumDuration_,
         uint256 bidAuctionExtension_,
         address beneficiary_,
         uint256 holderTaxNumerator_,
@@ -244,7 +244,7 @@ contract Orb is ERC721, Ownable {
     ) ERC721("Orb", "ORB") {
         cooldown = cooldown_;
         responseFlaggingPeriod = responseFlaggingPeriod_;
-        minimumAuctionDuration = minimumAuctionDuration_;
+        auctionMinimumDuration = auctionMinimumDuration_;
         bidAuctionExtension = bidAuctionExtension_;
         beneficiary = beneficiary_;
         holderTaxNumerator = holderTaxNumerator_;
@@ -447,7 +447,7 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least minimumAuctionDuration.
+     * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least auctionMinimumDuration.
      * @dev     Prevents repeated starts by checking the endTime.
      *          Important to set endTime to 0 after auction is finalized.
      *          Also, resets winningBidder and winningBid.
@@ -460,7 +460,7 @@ contract Orb is ERC721, Ownable {
         }
 
         startTime = block.timestamp;
-        endTime = block.timestamp + minimumAuctionDuration;
+        endTime = block.timestamp + auctionMinimumDuration;
         winningBidder = address(0);
         winningBid = 0;
 

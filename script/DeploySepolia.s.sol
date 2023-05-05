@@ -16,7 +16,7 @@ contract DeploySepolia is DeployBase {
 
     uint256 private immutable cooldown = 2 minutes;
     uint256 private immutable responseFlaggingPeriod = 2 minutes;
-    uint256 private immutable minimumAuctionDuration = 2 minutes;
+    uint256 private immutable auctionMinimumDuration = 2 minutes;
     uint256 private immutable bidAuctionExtension = 30 seconds;
     uint256 private immutable holderTaxNumerator = 1000;
     uint256 private immutable saleRoyaltiesNumerator = 1000;
@@ -30,7 +30,7 @@ contract DeploySepolia is DeployBase {
             issuerWallet,
             cooldown,
             responseFlaggingPeriod,
-            minimumAuctionDuration,
+            auctionMinimumDuration,
             bidAuctionExtension,
             holderTaxNumerator,
             saleRoyaltiesNumerator,
