@@ -66,7 +66,7 @@ contract Orb is ERC721, Ownable {
     event AuctionFinalized(address indexed winner, uint256 winningBid);
 
     // Fund Management, Holding and Purchasing Events
-    event Deposit(address indexed sender, uint256 amount);
+    event Deposit(address indexed depositor, uint256 amount);
     event Withdrawal(address indexed recipient, uint256 amount);
     event Settlement(address indexed from, address indexed to, uint256 amount);
     event NewPrice(uint256 from, uint256 to);

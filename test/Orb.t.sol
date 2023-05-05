@@ -482,7 +482,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
 }
 
 contract DepositTest is OrbTestBase {
-    event Deposit(address indexed user, uint256 amount);
+    event Deposit(address indexed depositor, uint256 amount);
 
     function test_depositRandomUser() public {
         assertEq(orb.fundsOf(user), 0);
