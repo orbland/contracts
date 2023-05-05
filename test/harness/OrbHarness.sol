@@ -14,7 +14,7 @@ contract OrbHarness is
         1000, // holderTaxNumerator
         1000, // saleRoyaltiesNumerator
         0.1 ether, // auctionStartingPrice
-        0.1 ether // minimumBidStep
+        0.1 ether // auctionMinimumBidStep
     )
 {
     function workaround_orbId() public pure returns (uint256) {

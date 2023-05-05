@@ -126,7 +126,7 @@ contract MinimumBidTest is OrbTestBase {
         orb.startAuction();
         assertEq(orb.minimumBid(), orb.auctionStartingPrice());
         prankAndBid(user, bidAmount);
-        assertEq(orb.minimumBid(), bidAmount + orb.minimumBidStep());
+        assertEq(orb.minimumBid(), bidAmount + orb.auctionMinimumBidStep());
     }
 }
 
@@ -452,7 +452,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
 
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice());
-        amount2 = bound(amount2, orb.auctionStartingPrice(), amount1 - orb.minimumBidStep());
+        amount2 = bound(amount2, orb.auctionStartingPrice(), amount1 - orb.auctionMinimumBidStep());
         uint256 funds1 = fundsRequiredToBidOneYear(amount1);
         uint256 funds2 = fundsRequiredToBidOneYear(amount2);
         orb.startAuction();
