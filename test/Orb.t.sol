@@ -1172,7 +1172,7 @@ contract ForeclosureTimeTest is OrbTestBase {
 
 contract InvokeWithCleartextTest is OrbTestBase {
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
-    event CleartextRecorded(uint256 indexed triggerId, string cleartext);
+    event CleartextRecorded(uint256 indexed invocationId, string cleartext);
 
     function test_revertsIfLongLength() public {
         uint256 max = orb.CLEARTEXT_MAXIMUM_LENGTH();
@@ -1253,7 +1253,7 @@ contract InvokeWthHashTest is OrbTestBase {
 }
 
 contract RecordInvocationCleartext is OrbTestBase {
-    event CleartextRecorded(uint256 indexed triggerId, string cleartext);
+    event CleartextRecorded(uint256 indexed invocationId, string cleartext);
 
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
