@@ -204,7 +204,7 @@ contract Orb is ERC721, Ownable {
     // Holder Receive Time: When the orb was last transferred, except to this contract.
     uint256 public holderReceiveTime;
     // Last Trigger Time: when the orb was last triggered. Used together with Cooldown constant.
-    uint256 public lastTriggerTime;
+    uint256 public lastInvocationTime;
     // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
     mapping(uint256 => bytes32) public triggers;
     // Count of triggers made. Used to calculate triggerId of the next trigger.
@@ -509,7 +509,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Finalizes the Auction, transferring the winning bid to the beneficiary, and the orb to the winner.
-     *          Sets lastTriggerTime so that the Orb could be triggered immediately.
+     *          Sets lastInvocationTime so that the Orb could be triggered immediately.
      *          The price has been set when bidding, now becomes relevant.
      *          If no bids were made, resets the state to allow the auction to be started again later.
      * @dev     Critical state transition function. Called after auctionEndTime, but only if it's not 0.
@@ -526,7 +526,7 @@ contract Orb is ERC721, Ownable {
             fundsOf[beneficiary] += leadingBid;
 
             lastSettlementTime = block.timestamp;
-            lastTriggerTime = block.timestamp - cooldown;
+            lastInvocationTime = block.timestamp - cooldown;
 
             emit AuctionFinalized(leadingBidder, leadingBid);
             emit NewPrice(0, price);
@@ -839,7 +839,7 @@ contract Orb is ERC721, Ownable {
      * @return  uint256  Time in seconds until the orb is ready to be triggered.
      */
     function cooldownRemaining() external view returns (uint256) {
-        uint256 cooldownExpires = lastTriggerTime + cooldown;
+        uint256 cooldownExpires = lastInvocationTime + cooldown;
         if (block.timestamp >= cooldownExpires) {
             return 0;
         } else {
@@ -871,14 +871,14 @@ contract Orb is ERC721, Ownable {
      * @param   contentHash  Required keccak256 hash of the cleartext.
      */
     function triggerWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
-        if (block.timestamp < lastTriggerTime + cooldown) {
-            revert CooldownIncomplete(lastTriggerTime + cooldown - block.timestamp);
+        if (block.timestamp < lastInvocationTime + cooldown) {
+            revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
 
         uint256 triggerId = triggersCount;
 
         triggers[triggerId] = contentHash;
-        lastTriggerTime = block.timestamp;
+        lastInvocationTime = block.timestamp;
         triggersCount += 1;
 
         emit Triggered(msg.sender, triggerId, contentHash, block.timestamp);

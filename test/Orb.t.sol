@@ -80,7 +80,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.beneficiary(), address(0xC0FFEE));
 
         assertEq(orb.price(), 0);
-        assertEq(orb.lastTriggerTime(), 0);
+        assertEq(orb.lastInvocationTime(), 0);
         assertEq(orb.triggersCount(), 0);
 
         assertEq(orb.flaggedResponsesCount(), 0);
@@ -413,7 +413,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(beneficiary), amount);
         assertEq(orb.ownerOf(orb.workaround_orbId()), user);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(orb.lastTriggerTime(), block.timestamp - orb.cooldown());
+        assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
         assertEq(orb.fundsOf(user), funds - amount);
         assertEq(orb.price(), amount);
     }
@@ -1247,7 +1247,7 @@ contract TriggerWthHashTest is OrbTestBase {
         emit Triggered(user, 0, hash, block.timestamp);
         orb.triggerWithHash(hash);
         assertEq(orb.triggers(0), hash);
-        assertEq(orb.lastTriggerTime(), block.timestamp);
+        assertEq(orb.lastInvocationTime(), block.timestamp);
         assertEq(orb.triggersCount(), 1);
     }
 }
