@@ -857,7 +857,7 @@ contract Orb is ERC721, Ownable {
             revert CleartextTooLong(length, CLEARTEXT_MAXIMUM_LENGTH);
         }
         emit CleartextRecorded(invocationCount, cleartext);
-        triggerWithHash(keccak256(abi.encodePacked(cleartext)));
+        invokeWithHash(keccak256(abi.encodePacked(cleartext)));
     }
 
     /**
@@ -870,7 +870,7 @@ contract Orb is ERC721, Ownable {
      *          Emits Triggered().
      * @param   contentHash  Required keccak256 hash of the cleartext.
      */
-    function triggerWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
+    function invokeWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
         if (block.timestamp < lastInvocationTime + cooldown) {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
