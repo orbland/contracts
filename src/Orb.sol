@@ -69,7 +69,7 @@ contract Orb is ERC721, Ownable {
     event Deposit(address indexed depositor, uint256 amount);
     event Withdrawal(address indexed recipient, uint256 amount);
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
-    event PriceUpdated(uint256 previousPrice, uint256 newPrice);
+    event PriceUpdate(uint256 previousPrice, uint256 newPrice);
     event Purchase(address indexed seller, address indexed buyer, uint256 price);
     event Foreclosure(address indexed formerHolder, bool indexed voluntary);
 
@@ -514,7 +514,7 @@ contract Orb is ERC721, Ownable {
      *          If no bids were made, resets the state to allow the auction to be started again later.
      * @dev     Critical state transition function. Called after auctionEndTime, but only if it's not 0.
      *          Can be called by anyone, although probably will be called by the issuer or the winner.
-     *          Emits PriceUpdated() and AuctionFinalization().
+     *          Emits PriceUpdate() and AuctionFinalization().
      */
     function finalizeAuction() external notDuringAuction {
         if (auctionEndTime == 0) {
@@ -529,7 +529,7 @@ contract Orb is ERC721, Ownable {
             lastInvocationTime = block.timestamp - cooldown;
 
             emit AuctionFinalization(leadingBidder, leadingBid);
-            emit PriceUpdated(0, price);
+            emit PriceUpdate(0, price);
             // price has been set when bidding
 
             _transferOrb(address(this), leadingBidder);
@@ -685,7 +685,7 @@ contract Orb is ERC721, Ownable {
      *          Settles before adjusting the price, as the new price will change foreclosure time.
      *          Does not check if the new price differs from the previous price: no risk.
      *          Limits the price to MAX_PRICE to prevent potential overflows in math.
-     *          Emits PriceUpdated().
+     *          Emits PriceUpdate().
      * @param   newPrice  New price for the orb.
      */
     function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent settles {
@@ -705,7 +705,7 @@ contract Orb is ERC721, Ownable {
      *          profit from the purchase.
      *          Does not modify last trigger time, unlike buying from the auction.
      *          Does not allow purchasing from yourself.
-     *          Emits PriceUpdated() and Purchase().
+     *          Emits PriceUpdate() and Purchase().
      * @param   currentPrice  Current price, to prevent front-running.
      * @param   newPrice  New price to use after the purchase.
      */
@@ -768,7 +768,7 @@ contract Orb is ERC721, Ownable {
         uint256 oldPrice = price;
         price = newPrice_;
 
-        emit PriceUpdated(oldPrice, newPrice_);
+        emit PriceUpdate(oldPrice, newPrice_);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
