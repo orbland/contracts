@@ -1355,7 +1355,7 @@ contract RespondTest is OrbTestBase {
         vm.stopPrank();
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.TriggerNotFound.selector, 1));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvocationNotFound.selector, 1));
         orb.respond(1, response);
 
         vm.prank(owner);
