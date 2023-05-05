@@ -288,7 +288,7 @@ contract BidTest is OrbTestBase {
 
     mapping(address => uint256) internal fundsOfUser;
 
-    event AuctionFinalized(address indexed winner, uint256 winningBid);
+    event AuctionFinalization(address indexed winner, uint256 winningBid);
 
     function testFuzz_bidSetsCorrectState(address[16] memory bidders, uint128[16] memory amounts) public {
         orb.startAuction();
@@ -314,7 +314,7 @@ contract BidTest is OrbTestBase {
             assertEq(address(orb).balance, contractBalance);
         }
         vm.expectEmit(true, false, false, true);
-        emit AuctionFinalized(orb.leadingBidder(), orb.leadingBid());
+        emit AuctionFinalization(orb.leadingBidder(), orb.leadingBid());
         vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
     }
@@ -340,7 +340,7 @@ contract BidTest is OrbTestBase {
 }
 
 contract FinalizeAuctionTest is OrbTestBase {
-    event AuctionFinalized(address indexed winner, uint256 winningBid);
+    event AuctionFinalization(address indexed winner, uint256 winningBid);
 
     function test_finalizeAuctionRevertsDuringAuction() public {
         orb.startAuction();
@@ -349,7 +349,7 @@ contract FinalizeAuctionTest is OrbTestBase {
 
         vm.warp(orb.auctionEndTime() + 1);
         vm.expectEmit(true, false, false, true);
-        emit AuctionFinalized(address(0), 0);
+        emit AuctionFinalization(address(0), 0);
         orb.finalizeAuction();
     }
 
@@ -367,7 +367,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         orb.startAuction();
         vm.warp(orb.auctionEndTime() + 1);
         vm.expectEmit(true, false, false, true);
-        emit AuctionFinalized(address(0), 0);
+        emit AuctionFinalization(address(0), 0);
         orb.finalizeAuction();
         assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.auctionStartTime(), 0);
@@ -394,7 +394,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(address(orb)), 0);
 
         vm.expectEmit(true, false, false, true);
-        emit AuctionFinalized(user, amount);
+        emit AuctionFinalization(user, amount);
         vm.expectEmit(false, false, false, true);
         emit PriceUpdated(0, amount);
 
