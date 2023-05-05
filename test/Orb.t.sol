@@ -1088,7 +1088,7 @@ contract RelinquishmentTest is OrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
-    event Foreclosure(address indexed from, bool indexed voluntary);
+    event Foreclosure(address indexed formerHolder, bool indexed voluntary);
     event Withdrawal(address indexed recipient, uint256 amount);
 
     function test_succeedsCorrectly() public {
@@ -1121,7 +1121,7 @@ contract ForecloseTest is OrbTestBase {
         assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
     }
 
-    event Foreclosure(address indexed from, bool indexed voluntary);
+    event Foreclosure(address indexed formerHolder, bool indexed voluntary);
 
     function test_revertsifHolderSolvent() public {
         uint256 leadingBid = 10 ether;
