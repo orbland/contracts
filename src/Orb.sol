@@ -60,9 +60,9 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     // Auction Events
-    event AuctionStarted(uint256 auctionStartTime, uint256 endTime);
+    event AuctionStarted(uint256 auctionStartTime, uint256 auctionEndTime);
     event NewBid(address indexed from, uint256 price);
-    event UpdatedAuctionEnd(uint256 endTime);
+    event UpdatedAuctionEnd(uint256 auctionEndTime);
     event AuctionFinalized(address indexed winner, uint256 price);
 
     // Fund Management, Holding and Purchasing Events
@@ -184,7 +184,7 @@ contract Orb is ERC721, Ownable {
     // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
     uint256 public auctionStartTime;
     // End Time: when the auction ends, can be extended by late bids. 0 not during the auction.
-    uint256 public endTime;
+    uint256 public auctionEndTime;
     // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
     address public winningBidder;
     // Winning Bid: highest current bid. 0 not during the auction and before first bid.
@@ -422,13 +422,13 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @notice  Returns if the auction is currently running. Use endTime() to check when it ends.
+     * @notice  Returns if the auction is currently running. Use auctionEndTime() to check when it ends.
      * @dev     Start time will always be less than timestamp, as it resets to 0.
      *          Start time is only updated for auction progress tracking, not critical functionality.
      * @return  bool  If the auction is running.
      */
     function auctionRunning() public view returns (bool) {
-        return endTime > block.timestamp && address(this) == ERC721.ownerOf(TOKEN_ID);
+        return auctionEndTime > block.timestamp && address(this) == ERC721.ownerOf(TOKEN_ID);
     }
 
     /**
@@ -448,23 +448,23 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least auctionMinimumDuration.
-     * @dev     Prevents repeated starts by checking the endTime.
-     *          Important to set endTime to 0 after auction is finalized.
+     * @dev     Prevents repeated starts by checking the auctionEndTime.
+     *          Important to set auctionEndTime to 0 after auction is finalized.
      *          Also, resets winningBidder and winningBid.
      *          Should not be necessary, as {finalizeAuction()} also does that.
      *          Emits AuctionStarted().
      */
     function startAuction() external onlyOwner onlyContractHeld notDuringAuction {
-        if (endTime > 0) {
+        if (auctionEndTime > 0) {
             revert AuctionRunning();
         }
 
         auctionStartTime = block.timestamp;
-        endTime = block.timestamp + auctionMinimumDuration;
+        auctionEndTime = block.timestamp + auctionMinimumDuration;
         winningBidder = address(0);
         winningBid = 0;
 
-        emit AuctionStarted(auctionStartTime, endTime);
+        emit AuctionStarted(auctionStartTime, auctionEndTime);
     }
 
     /**
@@ -501,9 +501,9 @@ contract Orb is ERC721, Ownable {
 
         emit NewBid(msg.sender, amount);
 
-        if (block.timestamp + auctionBidExtension > endTime) {
-            endTime = block.timestamp + auctionBidExtension;
-            emit UpdatedAuctionEnd(endTime);
+        if (block.timestamp + auctionBidExtension > auctionEndTime) {
+            auctionEndTime = block.timestamp + auctionBidExtension;
+            emit UpdatedAuctionEnd(auctionEndTime);
         }
     }
 
@@ -512,12 +512,12 @@ contract Orb is ERC721, Ownable {
      *          Sets lastTriggerTime so that the Orb could be triggered immediately.
      *          The price has been set when bidding, now becomes relevant.
      *          If no bids were made, resets the state to allow the auction to be started again later.
-     * @dev     Critical state transition function. Called after endTime, but only if it's not 0.
+     * @dev     Critical state transition function. Called after auctionEndTime, but only if it's not 0.
      *          Can be called by anyone, although probably will be called by the issuer or the winner.
      *          Emits NewPrice() and AuctionFinalized().
      */
     function finalizeAuction() external notDuringAuction {
-        if (endTime == 0) {
+        if (auctionEndTime == 0) {
             revert AuctionNotStarted();
         }
 
@@ -541,7 +541,7 @@ contract Orb is ERC721, Ownable {
         }
 
         auctionStartTime = 0;
-        endTime = 0;
+        auctionEndTime = 0;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
