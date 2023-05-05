@@ -19,7 +19,7 @@ abstract contract DeployBase is Script {
     uint256 private immutable holderTaxNumerator;
     uint256 private immutable saleRoyaltiesNumerator;
     uint256 private immutable auctionStartingPrice;
-    uint256 private immutable minimumBidStep;
+    uint256 private immutable auctionMinimumBidStep;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
@@ -36,7 +36,7 @@ abstract contract DeployBase is Script {
         uint256 _holderTaxNumerator,
         uint256 _saleRoyaltiesNumerator,
         uint256 _auctionStartingPrice,
-        uint256 _minimumBidStep
+        uint256 _auctionMinimumBidStep
     ) {
         contributorWallets = _contributorWallets;
         contributorShares = _contributorShares;
@@ -48,7 +48,7 @@ abstract contract DeployBase is Script {
         holderTaxNumerator = _holderTaxNumerator;
         saleRoyaltiesNumerator = _saleRoyaltiesNumerator;
         auctionStartingPrice = _auctionStartingPrice;
-        minimumBidStep = _minimumBidStep;
+        auctionMinimumBidStep = _auctionMinimumBidStep;
     }
 
     function run() external {
@@ -68,7 +68,7 @@ abstract contract DeployBase is Script {
             holderTaxNumerator,
             saleRoyaltiesNumerator,
             auctionStartingPrice,
-            minimumBidStep
+            auctionMinimumBidStep
         );
         orb.transferOwnership(issuerWallet);
 
