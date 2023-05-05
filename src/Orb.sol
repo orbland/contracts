@@ -634,19 +634,19 @@ contract Orb is ERC721, Ownable {
      *          to user's wallet. The only function in the contract that sends value and has re-entrancy risk.
      *          Does not check if the address is payable, as the Address library reverts if it is not.
      *          Emits Withdrawal().
-     * @param   receiver  The address to send the value to.
+     * @param   recipient_  The address to send the value to.
      * @param   amount_  The value in wei to withdraw from the contract.
      */
-    function _withdraw(address receiver, uint256 amount_) internal {
-        if (fundsOf[receiver] < amount_) {
-            revert InsufficientFunds(fundsOf[receiver], amount_);
+    function _withdraw(address recipient_, uint256 amount_) internal {
+        if (fundsOf[recipient_] < amount_) {
+            revert InsufficientFunds(fundsOf[recipient_], amount_);
         }
 
-        fundsOf[receiver] -= amount_;
+        fundsOf[recipient_] -= amount_;
 
-        emit Withdrawal(receiver, amount_);
+        emit Withdrawal(recipient_, amount_);
 
-        Address.sendValue(payable(receiver), amount_);
+        Address.sendValue(payable(recipient_), amount_);
     }
 
     /**
