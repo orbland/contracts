@@ -1225,7 +1225,7 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         orb.invokeWithHash(hash);
-        assertEq(orb.triggers(0), hash);
+        assertEq(orb.invocations(0), hash);
         vm.warp(block.timestamp + 1 days);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1233,10 +1233,10 @@ contract InvokeWthHashTest is OrbTestBase {
             )
         );
         orb.invokeWithHash(hash);
-        assertEq(orb.triggers(1), bytes32(0));
+        assertEq(orb.invocations(1), bytes32(0));
         vm.warp(block.timestamp + orb.cooldown() - 1 days + 1);
         orb.invokeWithHash(hash);
-        assertEq(orb.triggers(1), hash);
+        assertEq(orb.invocations(1), hash);
     }
 
     function test_success() public {
@@ -1246,7 +1246,7 @@ contract InvokeWthHashTest is OrbTestBase {
         vm.expectEmit(true, true, false, true);
         emit Invocation(user, 0, hash, block.timestamp);
         orb.invokeWithHash(hash);
-        assertEq(orb.triggers(0), hash);
+        assertEq(orb.invocations(0), hash);
         assertEq(orb.lastInvocationTime(), block.timestamp);
         assertEq(orb.invocationCount(), 1);
     }
