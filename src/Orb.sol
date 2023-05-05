@@ -76,7 +76,7 @@ contract Orb is ERC721, Ownable {
     // Triggering and Responding Events
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
-    event CleartextRecorded(uint256 indexed triggerId, string cleartext);
+    event CleartextRecorded(uint256 indexed invocationId, string cleartext);
     event ResponseFlagged(address indexed from, uint256 indexed responseId);
 
     ////////////////////////////////////////////////////////////////////////////////
