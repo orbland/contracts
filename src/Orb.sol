@@ -60,7 +60,7 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     // Auction Events
-    event AuctionStarted(uint256 startTime, uint256 endTime);
+    event AuctionStarted(uint256 auctionStartTime, uint256 endTime);
     event NewBid(address indexed from, uint256 price);
     event UpdatedAuctionEnd(uint256 endTime);
     event AuctionFinalized(address indexed winner, uint256 price);
@@ -182,7 +182,7 @@ contract Orb is ERC721, Ownable {
 
     // Auction State Variables
     // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
-    uint256 public startTime;
+    uint256 public auctionStartTime;
     // End Time: when the auction ends, can be extended by late bids. 0 not during the auction.
     uint256 public endTime;
     // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
@@ -459,12 +459,12 @@ contract Orb is ERC721, Ownable {
             revert AuctionRunning();
         }
 
-        startTime = block.timestamp;
+        auctionStartTime = block.timestamp;
         endTime = block.timestamp + auctionMinimumDuration;
         winningBidder = address(0);
         winningBid = 0;
 
-        emit AuctionStarted(startTime, endTime);
+        emit AuctionStarted(auctionStartTime, endTime);
     }
 
     /**
@@ -540,7 +540,7 @@ contract Orb is ERC721, Ownable {
             emit AuctionFinalized(winningBidder, winningBid);
         }
 
-        startTime = 0;
+        auctionStartTime = 0;
         endTime = 0;
     }
 
