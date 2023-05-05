@@ -85,7 +85,7 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.flaggedResponsesCount(), 0);
 
-        assertEq(orb.startTime(), 0);
+        assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.endTime(), 0);
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.winningBid(), 0);
@@ -136,19 +136,19 @@ contract StartAuctionTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.startAuction();
         orb.startAuction();
-        assertEq(orb.startTime(), block.timestamp);
+        assertEq(orb.auctionStartTime(), block.timestamp);
     }
 
-    event AuctionStarted(uint256 startTime, uint256 endTime);
+    event AuctionStarted(uint256 auctionStartTime, uint256 endTime);
 
     function test_startAuctionCorrectly() public {
-        assertEq(orb.startTime(), 0);
+        assertEq(orb.auctionStartTime(), 0);
         orb.workaround_setWinningBid(10);
         orb.workaround_setWinningBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
         emit AuctionStarted(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
-        assertEq(orb.startTime(), block.timestamp);
+        assertEq(orb.auctionStartTime(), block.timestamp);
         assertEq(orb.endTime(), block.timestamp + orb.auctionMinimumDuration());
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
@@ -370,7 +370,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         emit AuctionFinalized(address(0), 0);
         orb.finalizeAuction();
         assertEq(orb.endTime(), 0);
-        assertEq(orb.startTime(), 0);
+        assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.price(), 0);
@@ -403,7 +403,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         // Assert storage after
         // storage that is reset
         assertEq(orb.endTime(), 0);
-        assertEq(orb.startTime(), 0);
+        assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.winningBid(), 0);
         assertEq(orb.winningBidder(), address(0));
         assertEq(orb.price(), amount);
