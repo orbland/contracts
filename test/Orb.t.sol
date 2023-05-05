@@ -1172,7 +1172,7 @@ contract ForeclosureTimeTest is OrbTestBase {
 
 contract InvokeWithCleartextTest is OrbTestBase {
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
-    event CleartextRecorded(uint256 indexed invocationId, string cleartext);
+    event CleartextRecording(uint256 indexed invocationId, string cleartext);
 
     function test_revertsIfLongLength() public {
         uint256 max = orb.CLEARTEXT_MAXIMUM_LENGTH();
@@ -1187,7 +1187,7 @@ contract InvokeWithCleartextTest is OrbTestBase {
         string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
         makeHolderAndWarp(user, 1 ether);
         vm.expectEmit(true, false, false, true);
-        emit CleartextRecorded(0, text);
+        emit CleartextRecording(0, text);
         vm.expectEmit(true, true, false, true);
         emit Invocation(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.prank(user);
@@ -1253,7 +1253,7 @@ contract InvokeWthHashTest is OrbTestBase {
 }
 
 contract RecordInvocationCleartext is OrbTestBase {
-    event CleartextRecorded(uint256 indexed invocationId, string cleartext);
+    event CleartextRecording(uint256 indexed invocationId, string cleartext);
 
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
@@ -1319,7 +1319,7 @@ contract RecordInvocationCleartext is OrbTestBase {
         string memory cleartext = "this is a cleartext";
         vm.startPrank(user);
         vm.expectEmit(true, false, false, true);
-        emit CleartextRecorded(0, cleartext);
+        emit CleartextRecording(0, cleartext);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         orb.recordInvocationCleartext(0, cleartext);
     }
