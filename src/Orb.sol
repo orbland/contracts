@@ -63,7 +63,7 @@ contract Orb is ERC721, Ownable {
     event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
     event AuctionBid(address indexed bidder, uint256 bid);
     event AuctionExtension(uint256 newAuctionEndTime);
-    event AuctionFinalized(address indexed winner, uint256 winningBid);
+    event AuctionFinalization(address indexed winner, uint256 winningBid);
 
     // Fund Management, Holding and Purchasing Events
     event Deposit(address indexed depositor, uint256 amount);
@@ -514,7 +514,7 @@ contract Orb is ERC721, Ownable {
      *          If no bids were made, resets the state to allow the auction to be started again later.
      * @dev     Critical state transition function. Called after auctionEndTime, but only if it's not 0.
      *          Can be called by anyone, although probably will be called by the issuer or the winner.
-     *          Emits PriceUpdated() and AuctionFinalized().
+     *          Emits PriceUpdated() and AuctionFinalization().
      */
     function finalizeAuction() external notDuringAuction {
         if (auctionEndTime == 0) {
@@ -528,7 +528,7 @@ contract Orb is ERC721, Ownable {
             lastSettlementTime = block.timestamp;
             lastInvocationTime = block.timestamp - cooldown;
 
-            emit AuctionFinalized(leadingBidder, leadingBid);
+            emit AuctionFinalization(leadingBidder, leadingBid);
             emit PriceUpdated(0, price);
             // price has been set when bidding
 
@@ -537,7 +537,7 @@ contract Orb is ERC721, Ownable {
             leadingBid = 0;
         } else {
             price = 0;
-            emit AuctionFinalized(leadingBidder, leadingBid);
+            emit AuctionFinalization(leadingBidder, leadingBid);
         }
 
         auctionStartTime = 0;
