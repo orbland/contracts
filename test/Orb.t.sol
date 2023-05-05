@@ -1171,7 +1171,7 @@ contract ForeclosureTimeTest is OrbTestBase {
 }
 
 contract InvokeWithCleartextTest is OrbTestBase {
-    event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event CleartextRecorded(uint256 indexed triggerId, string cleartext);
 
     function test_revertsIfLongLength() public {
@@ -1189,14 +1189,14 @@ contract InvokeWithCleartextTest is OrbTestBase {
         vm.expectEmit(true, false, false, true);
         emit CleartextRecorded(0, text);
         vm.expectEmit(true, true, false, true);
-        emit Triggered(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
+        emit Invocation(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
         vm.prank(user);
         orb.invokeWithCleartext(text);
     }
 }
 
 contract InvokeWthHashTest is OrbTestBase {
-    event Triggered(address indexed from, uint256 indexed triggerId, bytes32 contentHash, uint256 time);
+    event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
 
     function test_revertWhen_NotHolder() public {
         makeHolderAndWarp(user, 1 ether);
@@ -1206,7 +1206,7 @@ contract InvokeWthHashTest is OrbTestBase {
         orb.invokeWithHash(hash);
 
         vm.expectEmit(true, false, false, true);
-        emit Triggered(user, 0, hash, block.timestamp);
+        emit Invocation(user, 0, hash, block.timestamp);
         vm.prank(user);
         orb.invokeWithHash(hash);
     }
@@ -1244,7 +1244,7 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         vm.expectEmit(true, true, false, true);
-        emit Triggered(user, 0, hash, block.timestamp);
+        emit Invocation(user, 0, hash, block.timestamp);
         orb.invokeWithHash(hash);
         assertEq(orb.triggers(0), hash);
         assertEq(orb.lastInvocationTime(), block.timestamp);
