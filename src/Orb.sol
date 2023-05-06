@@ -877,13 +877,13 @@ contract Orb is ERC721, Ownable {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
 
-        uint256 triggerId = invocationCount;
+        uint256 invocationId = invocationCount;
 
-        invocations[triggerId] = contentHash;
+        invocations[invocationId] = contentHash;
         lastInvocationTime = block.timestamp;
         invocationCount += 1;
 
-        emit Invocation(msg.sender, triggerId, contentHash, block.timestamp);
+        emit Invocation(msg.sender, invocationId, contentHash, block.timestamp);
     }
 
     /**
