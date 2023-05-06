@@ -924,21 +924,21 @@ contract Orb is ERC721, Ownable {
      *          it was made. A response to a trigger can only be written once. There is no way to record response
      *          cleartext on-chain.
      * @dev     Emits Response().
-     * @param   triggerId  ID of a trigger to which the response is being made.
+     * @param   invocationId  ID of a trigger to which the response is being made.
      * @param   contentHash  keccak256 hash of the response text.
      */
-    function respond(uint256 triggerId, bytes32 contentHash) external onlyOwner {
-        if (triggerId >= invocationCount) {
-            revert InvocationNotFound(triggerId);
+    function respond(uint256 invocationId, bytes32 contentHash) external onlyOwner {
+        if (invocationId >= invocationCount) {
+            revert InvocationNotFound(invocationId);
         }
 
-        if (_responseExists(triggerId)) {
-            revert ResponseExists(triggerId);
+        if (_responseExists(invocationId)) {
+            revert ResponseExists(invocationId);
         }
 
-        responses[triggerId] = HashTime(contentHash, block.timestamp);
+        responses[invocationId] = HashTime(contentHash, block.timestamp);
 
-        emit Response(msg.sender, triggerId, contentHash, block.timestamp);
+        emit Response(msg.sender, invocationId, contentHash, block.timestamp);
     }
 
     /**
