@@ -43,7 +43,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
  * @title   Orb - Harberger Tax NFT with auction and on-chain invocations and responses
  * @author  Jonas Lekevicius, Eric Wall
  * @dev     Supports ERC-721 interface, does not support token transfers.
- *          Uses {Ownable}'s {owner()} to identify the issuer of the Orb.
+ *          Uses {Ownable}'s {owner()} to identify the creator of the Orb.
  * @notice  This is a basic Q&A-type Orb. The holder has the right to submit a text-based question to the
  *          creator and the right to receive a text-based response. The question is limited in length but
  *          responses may come in any length. Questions and answers are hash-committed to the Ethereum blockchain
@@ -223,7 +223,7 @@ contract Orb is ERC721, Ownable {
     /**
      * @dev  When deployed, contract mints the only token that will ever exist, to itself.
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
-     *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
+     *       {Ownable} sets the deployer to be the owner, and also the creator in the orb context.
      * @param cooldown_  How often Orb can be invoked.
      * @param responseFlaggingPeriod_  How long after resonse was recorded it can be flagged by the holder.
      * @param auctionMinimumDuration_  Minimum length for an auction.
@@ -447,7 +447,7 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Allow the Orb issuer to start the Orb Auction. Will run for at least auctionMinimumDuration.
+     * @notice  Allow the Orb creator to start the Orb Auction. Will run for at least auctionMinimumDuration.
      * @dev     Prevents repeated starts by checking the auctionEndTime.
      *          Important to set auctionEndTime to 0 after auction is finalized.
      *          Also, resets leadingBidder and leadingBid.
@@ -513,7 +513,7 @@ contract Orb is ERC721, Ownable {
      *          The price has been set when bidding, now becomes relevant.
      *          If no bids were made, resets the state to allow the auction to be started again later.
      * @dev     Critical state transition function. Called after auctionEndTime, but only if it's not 0.
-     *          Can be called by anyone, although probably will be called by the issuer or the winner.
+     *          Can be called by anyone, although probably will be called by the creator or the winner.
      *          Emits PriceUpdate() and AuctionFinalization().
      */
     function finalizeAuction() external notDuringAuction {
@@ -590,14 +590,14 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Settlements transfer funds from orb holder to the beneficiary.
+     * @notice  Settlements transfer funds from Orb holder to the beneficiary.
      *          Orb accounting minimizes required transactions: orb holder's foreclosure time is only
      *          dependent on the price and available funds. Fund transfers are not necessary unless
      *          these variables (price, holder funds) are being changed. Settlement transfers funds owed
      *          since the last settlement, and a new period of virtual accounting begins.
      * @dev     Holder might owe more than they have funds available: it means that the holder is foreclosable.
      *          Settlement would transfer all holder funds to the beneficiary, but not more.
-     *          Does nothing if the issuer holds the orb. Reverts if contract holds the orb.
+     *          Does nothing if the creator holds the Orb. Reverts if contract holds the orb.
      *          Emits Settlement().
      */
     function settle() external onlyHolderHeld {
@@ -606,7 +606,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @dev     Returns if the current orb holder has enough funds to cover Harberger tax until now.
-     *          Always true is issuer holds the orb.
+     *          Always true is creator holds the orb.
      * @return  bool  If the current holder is solvent.
      */
     function holderSolvent() public view returns (bool) {
@@ -618,11 +618,11 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @dev     Calculates how much money orb holder owes orb issuer. This amount would be transferred between
+     * @dev     Calculates how much money orb holder owes orb beneficiary. This amount would be transferred between
      *          accounts during settlement.
      *          Owed amount can be higher than hodler's funds! It's important to check if holder has enough funds
      *          before transferring.
-     * @return  bool  Wei orb holders owes orb issuer since the last settlement time.
+     * @return  bool  Wei orb holders owes orb beneficiary since the last settlement time.
      */
     function _owedSinceLastSettlement() internal view returns (uint256) {
         uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime;
@@ -777,8 +777,8 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Relinquishment is a voluntary giving up of the orb. It's a combination of withdrawing all funds
-     *          not owed to the issuer since last settlement, and foreclosing yourself after.
-     *          Most useful if the issuer themselves hold the orb and want to re-auction it.
+     *          not owed to the beneficiary since last settlement, and foreclosing yourself after.
+     *          Most useful if the creator themselves hold the orb and want to re-auction it.
      *          For any other holder, setting the price to zero would be more practical.
      * @dev     Calls _withdraw(), which does value transfer from the contract.
      *          Emits Foreclosure() and Withdrawal().
@@ -810,7 +810,7 @@ contract Orb is ERC721, Ownable {
      * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
      *          Harberger tax and can be foreclosed.
      * @dev     Only valid if someone, not the contract, holds the orb.
-     *          If orb is held by the issuer or if the price is zero, foreclosure time is a special value INFINITY.
+     *          If orb is held by the creator or if the price is zero, foreclosure time is a special value INFINITY.
      * @return  uint256  Timestamp of the foreclosure time.
      */
     function foreclosureTime() external view returns (uint256) {
@@ -864,7 +864,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Invokes the orb. Allows the holder to submit content hash, that represents a question to the orb
-     *          issuer. Puts the orb on cooldown. The Orb can only be invoked by solvent holders.
+     *          creator. Puts the orb on cooldown. The Orb can only be invoked by solvent holders.
      * @dev     Content hash is keccak256 of the cleartext.
      *          invocationCount is used to track the id of the next invocation.
      *          Emits Invocation().
@@ -886,7 +886,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Function allows the holder to reveal cleartext later, either because it was challenged by the
-     *          issuer, or just for posterity. This function can also be used to reveal empty-string content hashes.
+     *          creator, or just for posterity. This function can also be used to reveal empty-string content hashes.
      * @dev     Only holders can reveal cleartext on-chain. Anyone could potentially figure out the invocation
      *          cleartext from the content hash via brute force, but publishing this on-chain is only allowed by the
      *          holder themselves, introducing a reasonable privacy protection.
@@ -919,7 +919,7 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  The Orb issuer can use this function to respond to any existing invocation, no matter how long ago
+     * @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
      *          it was made. A response to an invocation can only be written once. There is no way to record response
      *          cleartext on-chain.
      * @dev     Emits Response().

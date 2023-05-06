@@ -131,7 +131,7 @@ contract MinimumBidTest is OrbTestBase {
 }
 
 contract StartAuctionTest is OrbTestBase {
-    function test_startAuctionOnlyOrbIssuer() public {
+    function test_startAuctionOnlyOrbCreator() public {
         vm.prank(address(0xBEEF));
         vm.expectRevert("Ownable: caller is not the owner");
         orb.startAuction();
@@ -434,7 +434,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
 
         // One day has passed since the orb holder got the orb
         // for bid = 1 ether. That means that the price of the
-        // orb is now 1 ether. Thus the Orb issuer is owed the tax
+        // orb is now 1 ether. Thus the Orb beneficiary is owed the tax
         // for 1 day.
 
         // The user actually transfered `funds1` and `funds2` respectively
