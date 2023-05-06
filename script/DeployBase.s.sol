@@ -8,8 +8,8 @@ import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.s
 
 abstract contract DeployBase is Script {
     // Environment specific variables.
-    address[] private contributorWallets;
-    uint256[] private contributorShares;
+    address[] private beneficiaryAddresses;
+    uint256[] private beneficiaryShares;
 
     address private immutable creatorAddress;
     uint256 private immutable tokenId;
@@ -19,13 +19,13 @@ abstract contract DeployBase is Script {
     Orb public orb;
 
     constructor(
-        address[] memory _contributorWallets,
-        uint256[] memory _contributorShares,
+        address[] memory _beneficiaryAddresses,
+        uint256[] memory _beneficiaryShares,
         address _creatorAddress,
         uint256 _tokenId
     ) {
-        contributorWallets = _contributorWallets;
-        contributorShares = _contributorShares;
+        beneficiaryAddresses = _beneficiaryAddresses;
+        beneficiaryShares = _beneficiaryShares;
         creatorAddress = _creatorAddress;
         tokenId = _tokenId;
     }
@@ -35,7 +35,7 @@ abstract contract DeployBase is Script {
 
         vm.startBroadcast(deployerKey);
 
-        orbBeneficiary = new PaymentSplitter(contributorWallets, contributorShares);
+        orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
         address splitterAddress = address(orbBeneficiary);
 
         orb = new Orb(
