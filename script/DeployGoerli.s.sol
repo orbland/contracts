@@ -13,11 +13,9 @@ contract DeployGoerli is DeployBase {
 
     // our test issuer
     address private immutable issuerWallet = 0xC0A00c8c9EF6fe6F0a79B8a616183384dbaf8EC8;
-
     uint256 private immutable tokenId = 1;
-    uint256 private immutable cooldown = 30 minutes;
 
-    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, tokenId, cooldown) 
+    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, tokenId) 
     /* solhint-disable no-empty-blocks */
     {}
     /* solhint-enable no-empty-blocks */

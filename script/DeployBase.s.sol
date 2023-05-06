@@ -12,7 +12,6 @@ abstract contract DeployBase is Script {
     uint256[] private contributorShares;
 
     address private immutable issuerWallet;
-    uint256 private immutable cooldown;
     uint256 private immutable tokenId;
 
     // Deploy addresses.
@@ -23,14 +22,12 @@ abstract contract DeployBase is Script {
         address[] memory _contributorWallets,
         uint256[] memory _contributorShares,
         address _issuerWallet,
-        uint256 _tokenId,
-        uint256 _cooldown
+        uint256 _tokenId
     ) {
         contributorWallets = _contributorWallets;
         contributorShares = _contributorShares;
         issuerWallet = _issuerWallet;
         tokenId = _tokenId;
-        cooldown = _cooldown;
     }
 
     function run() external {
@@ -43,7 +40,6 @@ abstract contract DeployBase is Script {
 
         orb = new Orb(
             tokenId,
-            cooldown,
             splitterAddress // beneficiary
         );
         orb.transferOwnership(issuerWallet);

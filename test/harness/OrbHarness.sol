@@ -7,7 +7,6 @@ import {Orb} from "src/Orb.sol";
 contract OrbHarness is
     Orb(
         69, // tokenId
-        7 days, // cooldown
         address(0xC0FFEE) // beneficiary
     )
 {
