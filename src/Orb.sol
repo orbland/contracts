@@ -154,6 +154,12 @@ contract Orb is ERC721, Ownable {
     // If Orb is held by the creator, funds are not subtracted, as Harberger Tax does not apply to the creator.
     mapping(address => uint256) public fundsOf;
 
+    // Taxes State Variables
+
+    // Harberger Tax for holding. Initial value is 10%.
+    uint256 public holderTaxNumerator = 1_000;
+    // Secondary sale royalty paid to beneficiary, based on sale price.
+    uint256 public royaltyNumerator = 1_000;
     // Price of the Orb. No need for mapping, as only one token is ever minted.
     // Also used during auction to store future purchase price.
     // Shouldn't be useful if the Orb is held by the contract.
@@ -161,12 +167,9 @@ contract Orb is ERC721, Ownable {
     // Last time Orb holder's funds were settled.
     // Shouldn't be useful if the Orb is held by the contract.
     uint256 public lastSettlementTime;
-    // Harberger Tax for holding. Initial value is 10%.
-    uint256 public holderTaxNumerator = 1_000;
-    // Secondary sale royalty paid to beneficiary, based on sale price.
-    uint256 public royaltyNumerator = 1_000;
 
     // Auction State Variables
+
     // Auction starting price.
     uint256 public auctionStartingPrice = 0.1 ether;
     // Each bid has to increase over previous bid by at least this much.
@@ -195,15 +198,14 @@ contract Orb is ERC721, Ownable {
         uint256 timestamp;
     }
 
+    // Cooldown: how often Orb can be invoked.
+    uint256 public cooldown = 7 days;
+    // Maximum length for invocation cleartext content.
+    uint256 public cleartextMaximumLength = 280;
     // Holder Receive Time: When the Orb was last transferred, except to this contract.
     uint256 public holderReceiveTime;
     // Last Invocation Time: when the Orb was last invoked. Used together with Cooldown constant.
     uint256 public lastInvocationTime;
-
-    // Cooldown: how often Orb can be invoked.
-    uint256 public cooldown;
-    // Maximum length for invocation cleartext content.
-    uint256 public cleartextMaximumLength = 280;
 
     // Mapping for Invocation: invocationId to contentHash (bytes32).
     mapping(uint256 => bytes32) public invocations;
