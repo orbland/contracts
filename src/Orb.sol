@@ -129,8 +129,6 @@ contract Orb is ERC721, Ownable {
     address public immutable beneficiary;
 
     // Public Constants
-    // Cooldown: how often Orb can be invoked.
-    uint256 public immutable cooldown;
     // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
     uint256 public immutable responseFlaggingPeriod;
     // Maximum length for invocation cleartext content.
@@ -165,6 +163,9 @@ contract Orb is ERC721, Ownable {
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
     // STATE
+
+    // Cooldown: how often Orb can be invoked.
+    uint256 public cooldown;
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
     // The value is without settlement. It means effective user funds (withdrawable) would be different
