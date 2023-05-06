@@ -324,8 +324,8 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @dev  Ensures that the caller is not currently winning the auction.
-     *       User winning the auction cannot withdraw funds, as funds include user's bid.
+     * @dev  Ensures that the caller is not currently leading the auction.
+     *       User leading the auction cannot withdraw funds, as funds include user's bid.
      */
     modifier notLeadingBidder() {
         if (msg.sender == leadingBidder) {
@@ -470,7 +470,7 @@ contract Orb is ERC721, Ownable {
     /**
      * @notice  Bids the provided amount, if there's enough funds across funds on contract and transaction value.
      *          Might extend the auction if the bid is near the end.
-     *          Important: the winning bidder will not be able to withdraw funds until someone outbids them.
+     *          Important: the leading bidder will not be able to withdraw funds until someone outbids them.
      * @dev     Emits AuctionBid().
      * @param   amount      The value to bid.
      * @param   priceIfWon  Price if the bid wins. Must be less than MAX_PRICE.
@@ -566,7 +566,7 @@ contract Orb is ERC721, Ownable {
     /**
      * @notice  Function to withdraw all funds on the contract.
      *          Not recommended for current Orb holders, they should call relinquish() to take out their funds.
-     * @dev     Not allowed for the winning auction bidder.
+     * @dev     Not allowed for the leading auction bidder.
      */
     function withdrawAll() external notLeadingBidder settlesIfHolder {
         _withdraw(msg.sender, fundsOf[msg.sender]);
@@ -575,7 +575,7 @@ contract Orb is ERC721, Ownable {
     /**
      * @notice  Function to withdraw given amount from the contract.
      *          For current Orb holders, reduces the time until foreclosure.
-     * @dev     Not allowed for the winning auction bidder.
+     * @dev     Not allowed for the leading auction bidder.
      */
     function withdraw(uint256 amount) external notLeadingBidder settlesIfHolder {
         _withdraw(msg.sender, amount);
