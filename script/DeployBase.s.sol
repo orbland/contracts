@@ -13,10 +13,6 @@ abstract contract DeployBase is Script {
 
     address private immutable issuerWallet;
     uint256 private immutable cooldown;
-    uint256 private immutable auctionMinimumDuration;
-    uint256 private immutable auctionBidExtension;
-    uint256 private immutable auctionStartingPrice;
-    uint256 private immutable auctionMinimumBidStep;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
@@ -26,20 +22,12 @@ abstract contract DeployBase is Script {
         address[] memory _contributorWallets,
         uint256[] memory _contributorShares,
         address _issuerWallet,
-        uint256 _cooldown,
-        uint256 _auctionMinimumDuration,
-        uint256 _auctionBidExtension,
-        uint256 _auctionStartingPrice,
-        uint256 _auctionMinimumBidStep
+        uint256 _cooldown
     ) {
         contributorWallets = _contributorWallets;
         contributorShares = _contributorShares;
         issuerWallet = _issuerWallet;
         cooldown = _cooldown;
-        auctionMinimumDuration = _auctionMinimumDuration;
-        auctionBidExtension = _auctionBidExtension;
-        auctionStartingPrice = _auctionStartingPrice;
-        auctionMinimumBidStep = _auctionMinimumBidStep;
     }
 
     function run() external {
@@ -52,11 +40,7 @@ abstract contract DeployBase is Script {
 
         orb = new Orb(
             cooldown,
-            auctionMinimumDuration,
-            auctionBidExtension,
-            splitterAddress, // beneficiary
-            auctionStartingPrice,
-            auctionMinimumBidStep
+            splitterAddress // beneficiary
         );
         orb.transferOwnership(issuerWallet);
 
