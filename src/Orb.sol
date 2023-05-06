@@ -59,6 +59,8 @@ contract Orb is ERC721, Ownable {
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////
 
+    event Creation(bytes32 oathHash, uint256 honoredUntil);
+
     // Auction Events
     event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
     event AuctionBid(address indexed bidder, uint256 bid);
@@ -145,6 +147,9 @@ contract Orb is ERC721, Ownable {
 
     // STATE
 
+    // Honored Until: timestamp until which the Orb Oath is honored for the holder.
+    uint256 public honoredUntil;
+
     // Base URL for tokenURL JSONs.
     string internal baseURL = "https://static.orb.land/orb/";
 
@@ -226,16 +231,26 @@ contract Orb is ERC721, Ownable {
      * @dev  When deployed, contract mints the only token that will ever exist, to itself.
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the creator in the Orb context.
-     * @param name_         Orb name, used in ERC-721 metadata.
-     * @param symbol_       Orb symbol or ticker, used in ERC-721 metadata.
-     * @param tokenId_      ERC-721 token ID of the Orb.
-     * @param beneficiary_  Beneficiary receives all Orb proceeds.
+     * @param name_          Orb name, used in ERC-721 metadata.
+     * @param symbol_        Orb symbol or ticker, used in ERC-721 metadata.
+     * @param tokenId_       ERC-721 token ID of the Orb.
+     * @param beneficiary_   Beneficiary receives all Orb proceeds.
+     * @param oathHash_      Hash of the Oath taken to create the Orb.
+     * @param honoredUntil_  Date until which the Orb creator will honor the Oath for the Orb holder.
      */
-    constructor(string memory name_, string memory symbol_, uint256 tokenId_, address beneficiary_)
-        ERC721(name_, symbol_)
-    {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 tokenId_,
+        address beneficiary_,
+        bytes32 oathHash_,
+        uint256 honoredUntil_
+    ) ERC721(name_, symbol_) {
         tokenId = tokenId_;
         beneficiary = beneficiary_;
+        honoredUntil = honoredUntil_;
+
+        emit Creation(oathHash_, honoredUntil_);
 
         _safeMint(address(this), tokenId);
     }
