@@ -15,22 +15,8 @@ contract DeployLocal is DeployBase {
     address public immutable issuerWallet = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
     uint256 public immutable cooldown = 2 minutes;
-    uint256 public immutable auctionMinimumDuration = 2 minutes;
-    uint256 public immutable auctionBidExtension = 30 seconds;
-    uint256 private immutable auctionStartingPrice = 0.1 ether;
-    uint256 private immutable auctionMinimumBidStep = 0.1 ether;
 
-    constructor()
-        DeployBase(
-            contributorWallets,
-            contributorShares,
-            issuerWallet,
-            cooldown,
-            auctionMinimumDuration,
-            auctionBidExtension,
-            auctionStartingPrice,
-            auctionMinimumBidStep
-        )
+    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, cooldown) 
     /* solhint-disable no-empty-blocks */
     {}
     /* solhint-enable no-empty-blocks */

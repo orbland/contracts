@@ -7,11 +7,7 @@ import {Orb} from "src/Orb.sol";
 contract OrbHarness is
     Orb(
         7 days, // cooldown
-        1 days, // auctionMinimumDuration
-        30 minutes, // auctionBidExtension
-        address(0xC0FFEE), // beneficiary
-        0.1 ether, // auctionStartingPrice
-        0.1 ether // auctionMinimumBidStep
+        address(0xC0FFEE) // beneficiary
     )
 {
     function workaround_orbId() public pure returns (uint256) {
