@@ -11,7 +11,7 @@ abstract contract DeployBase is Script {
     address[] private contributorWallets;
     uint256[] private contributorShares;
 
-    address private immutable issuerWallet;
+    address private immutable creatorAddress;
     uint256 private immutable tokenId;
 
     // Deploy addresses.
@@ -21,12 +21,12 @@ abstract contract DeployBase is Script {
     constructor(
         address[] memory _contributorWallets,
         uint256[] memory _contributorShares,
-        address _issuerWallet,
+        address _creatorAddress,
         uint256 _tokenId
     ) {
         contributorWallets = _contributorWallets;
         contributorShares = _contributorShares;
-        issuerWallet = _issuerWallet;
+        creatorAddress = _creatorAddress;
         tokenId = _tokenId;
     }
 
@@ -42,7 +42,7 @@ abstract contract DeployBase is Script {
             tokenId,
             splitterAddress // beneficiary
         );
-        orb.transferOwnership(issuerWallet);
+        orb.transferOwnership(creatorAddress);
 
         vm.stopBroadcast();
     }

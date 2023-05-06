@@ -12,10 +12,10 @@ contract DeployLocal is DeployBase {
     uint256[] public contributorShares = [65, 20, 15];
 
     // would be ercwl.eth for mainnet
-    address public immutable issuerWallet = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    address public immutable creatorAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     uint256 private immutable tokenId = 1;
 
-    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, tokenId) 
+    constructor() DeployBase(contributorWallets, contributorShares, creatorAddress, tokenId) 
     /* solhint-disable no-empty-blocks */
     {}
     /* solhint-enable no-empty-blocks */

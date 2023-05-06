@@ -18,7 +18,7 @@ contract DeployMainnetTest is Test {
     }
 
     function testOrbOwnership() public {
-        assertEq(deployScript.orb().owner(), deployScript.issuerWallet());
+        assertEq(deployScript.orb().owner(), deployScript.creatorAddress());
     }
 
     function testBeneficiary() public {
