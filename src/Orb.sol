@@ -128,10 +128,9 @@ contract Orb is ERC721, Ownable {
     // Beneficiary receives all Orb proceeds.
     address public immutable beneficiary;
 
-    // Public Constants
-
     // Fee Nominator: basis points. Other fees are in relation to this.
-    uint256 public constant FEE_DENOMINATOR = 10000;
+    uint256 public constant FEE_DENOMINATOR = 10_000;
+
     // Harberger Tax for holding.
     uint256 public immutable holderTaxNumerator;
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
