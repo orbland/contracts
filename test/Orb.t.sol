@@ -79,6 +79,8 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
 
+        assertEq(orb.cleartextMaximumLength(), 280);
+
         assertEq(orb.price(), 0);
         assertEq(orb.lastInvocationTime(), 0);
         assertEq(orb.invocationCount(), 0);
@@ -95,8 +97,6 @@ contract InitialStateTest is OrbTestBase {
     }
 
     function test_constants() public {
-        assertEq(orb.CLEARTEXT_MAXIMUM_LENGTH(), 280);
-
         assertEq(orb.FEE_DENOMINATOR(), 10000);
         assertEq(orb.HOLDER_TAX_PERIOD(), 365 days);
 
@@ -1175,7 +1175,7 @@ contract InvokeWithCleartextTest is OrbTestBase {
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
 
     function test_revertsIfLongLength() public {
-        uint256 max = orb.CLEARTEXT_MAXIMUM_LENGTH();
+        uint256 max = orb.cleartextMaximumLength();
         string memory text =
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         uint256 length = bytes(text).length;
@@ -1284,7 +1284,7 @@ contract RecordInvocationCleartext is OrbTestBase {
     function test_revertWhen_incorrectLength() public {
         makeHolderAndWarp(user, 1 ether);
         vm.startPrank(user);
-        uint256 max = orb.CLEARTEXT_MAXIMUM_LENGTH();
+        uint256 max = orb.cleartextMaximumLength();
         string memory cleartext =
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         orb.invokeWithHash(keccak256(bytes(cleartext)));

@@ -129,8 +129,6 @@ contract Orb is ERC721, Ownable {
     address public immutable beneficiary;
 
     // Public Constants
-    // Maximum length for invocation cleartext content.
-    uint256 public constant CLEARTEXT_MAXIMUM_LENGTH = 280;
 
     // Fee Nominator: basis points. Other fees are in relation to this.
     uint256 public constant FEE_DENOMINATOR = 10000;
@@ -161,9 +159,6 @@ contract Orb is ERC721, Ownable {
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
     // STATE
-
-    // Cooldown: how often Orb can be invoked.
-    uint256 public cooldown;
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
     // The value is without settlement. It means effective user funds (withdrawable) would be different
@@ -204,6 +199,12 @@ contract Orb is ERC721, Ownable {
     uint256 public holderReceiveTime;
     // Last Invocation Time: when the Orb was last invoked. Used together with Cooldown constant.
     uint256 public lastInvocationTime;
+
+    // Cooldown: how often Orb can be invoked.
+    uint256 public cooldown;
+    // Maximum length for invocation cleartext content.
+    uint256 public cleartextMaximumLength = 280;
+
     // Mapping for Invocation: invocationId to contentHash (bytes32).
     mapping(uint256 => bytes32) public invocations;
     // Count of invocations made. Used to calculate invocationId of the next invocation.
@@ -851,8 +852,8 @@ contract Orb is ERC721, Ownable {
      */
     function invokeWithCleartext(string memory cleartext) external {
         uint256 length = bytes(cleartext).length;
-        if (length > CLEARTEXT_MAXIMUM_LENGTH) {
-            revert CleartextTooLong(length, CLEARTEXT_MAXIMUM_LENGTH);
+        if (length > cleartextMaximumLength) {
+            revert CleartextTooLong(length, cleartextMaximumLength);
         }
         emit CleartextRecording(invocationCount, cleartext);
         invokeWithHash(keccak256(abi.encodePacked(cleartext)));
@@ -900,8 +901,8 @@ contract Orb is ERC721, Ownable {
     {
         uint256 cleartextLength = bytes(cleartext).length;
 
-        if (cleartextLength > CLEARTEXT_MAXIMUM_LENGTH) {
-            revert CleartextTooLong(cleartextLength, CLEARTEXT_MAXIMUM_LENGTH);
+        if (cleartextLength > cleartextMaximumLength) {
+            revert CleartextTooLong(cleartextLength, cleartextMaximumLength);
         }
 
         bytes32 recordedContentHash = invocations[invocationId];
