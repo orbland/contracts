@@ -951,29 +951,29 @@ contract Orb is ERC721, Ownable {
      *          Also, the holder must have received the orb after the response was made;
      *          this is to prevent holders from flagging responses that were made in response to others' triggers.
      *          Emits ResponseFlagging().
-     * @param   triggerId  ID of a trigger to which the response is being flagged.
+     * @param   invocationId  ID of a trigger to which the response is being flagged.
      */
-    function flagResponse(uint256 triggerId) external onlyHolder onlyHolderSolvent {
-        if (!_responseExists(triggerId)) {
-            revert ResponseNotFound(triggerId);
+    function flagResponse(uint256 invocationId) external onlyHolder onlyHolderSolvent {
+        if (!_responseExists(invocationId)) {
+            revert ResponseNotFound(invocationId);
         }
 
         // Response Flagging Period starts counting from when the response is made.
-        uint256 responseTime = responses[triggerId].timestamp;
+        uint256 responseTime = responses[invocationId].timestamp;
         if (block.timestamp - responseTime > responseFlaggingPeriod) {
-            revert FlaggingPeriodExpired(triggerId, block.timestamp - responseTime, responseFlaggingPeriod);
+            revert FlaggingPeriodExpired(invocationId, block.timestamp - responseTime, responseFlaggingPeriod);
         }
         if (holderReceiveTime >= responseTime) {
-            revert FlaggingPeriodExpired(triggerId, holderReceiveTime, responseTime);
+            revert FlaggingPeriodExpired(invocationId, holderReceiveTime, responseTime);
         }
-        if (responseFlagged[triggerId]) {
-            revert ResponseAlreadyFlagged(triggerId);
+        if (responseFlagged[invocationId]) {
+            revert ResponseAlreadyFlagged(invocationId);
         }
 
-        responseFlagged[triggerId] = true;
+        responseFlagged[invocationId] = true;
         flaggedResponsesCount += 1;
 
-        emit ResponseFlagging(msg.sender, triggerId);
+        emit ResponseFlagging(msg.sender, invocationId);
     }
 
     /**
