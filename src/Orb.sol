@@ -40,7 +40,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @title   Orb - Harberger Tax NFT with auction and on-chain triggers and responses
+ * @title   Orb - Harberger Tax NFT with auction and on-chain invocations and responses
  * @author  Jonas Lekevicius, Eric Wall
  * @dev     Supports ERC-721 interface, does not support token transfers.
  *          Uses {Ownable}'s {owner()} to identify the issuer of the Orb.
@@ -73,7 +73,7 @@ contract Orb is ERC721, Ownable {
     event Purchase(address indexed seller, address indexed buyer, uint256 price);
     event Foreclosure(address indexed formerHolder, bool indexed voluntary);
 
-    // Triggering and Responding Events
+    // Invoking and Responding Events
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
@@ -109,7 +109,7 @@ contract Orb is ERC721, Ownable {
     error CurrentPriceIncorrect(uint256 priceProvided, uint256 currentPrice);
     error InvalidNewPrice(uint256 priceProvided);
 
-    // Triggering and Responding Errors
+    // Invoking and Responding Errors
     error CooldownIncomplete(uint256 timeRemaining);
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error CleartextHashMismatch(bytes32 cleartextHash, bytes32 recordedContentHash);
@@ -129,11 +129,11 @@ contract Orb is ERC721, Ownable {
     address public immutable beneficiary;
 
     // Public Constants
-    // Cooldown: how often Orb can be triggered.
+    // Cooldown: how often Orb can be invoked.
     uint256 public immutable cooldown;
     // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
     uint256 public immutable responseFlaggingPeriod;
-    // Maximum length for trigger cleartext content.
+    // Maximum length for invocation cleartext content.
     uint256 public constant CLEARTEXT_MAXIMUM_LENGTH = 280;
 
     // Fee Nominator: basis points. Other fees are in relation to this.
@@ -190,11 +190,11 @@ contract Orb is ERC721, Ownable {
     // Winning Bid: highest current bid. 0 not during the auction and before first bid.
     uint256 public leadingBid;
 
-    // Trigger and Response State Variables
+    // Invocation and Response State Variables
 
     // Struct used to track response information: content hash and timestamp.
     // Timestamp is used to determine if the response can be flagged by the holder.
-    // Trigger timestamp doesn't need to be tracked, as nothing is done with it.
+    // Invocation timestamp doesn't need to be tracked, as nothing is done with it.
     struct HashTime {
         // keccak256 hash of the cleartext
         bytes32 contentHash;
@@ -203,13 +203,13 @@ contract Orb is ERC721, Ownable {
 
     // Holder Receive Time: When the orb was last transferred, except to this contract.
     uint256 public holderReceiveTime;
-    // Last Trigger Time: when the orb was last triggered. Used together with Cooldown constant.
+    // Last Invocation Time: when the orb was last invoked. Used together with Cooldown constant.
     uint256 public lastInvocationTime;
-    // Mapping for Triggers (Orb Invocations): triggerId to contentHash (bytes32).
+    // Mapping for Invocation: invocationId to contentHash (bytes32).
     mapping(uint256 => bytes32) public invocations;
-    // Count of triggers made. Used to calculate triggerId of the next trigger.
+    // Count of invocations made. Used to calculate invocationId of the next invocation.
     uint256 public invocationCount = 0;
-    // Mapping for Responses (Replies to Triggers): matching triggerId to HashTime struct.
+    // Mapping for Responses (Answers to Invocations): matching invocationId to HashTime struct.
     mapping(uint256 => HashTime) public responses;
     // Additional mapping for flagged (reported) Responses. Used by the holder not satisfied with a response.
     mapping(uint256 => bool) public responseFlagged;
@@ -224,12 +224,12 @@ contract Orb is ERC721, Ownable {
      * @dev  When deployed, contract mints the only token that will ever exist, to itself.
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the issuer in the orb context.
-     * @param cooldown_  How often Orb can be triggered.
+     * @param cooldown_  How often Orb can be invoked.
      * @param responseFlaggingPeriod_  How long after resonse was recorded it can be flagged by the holder.
      * @param auctionMinimumDuration_  Minimum length for an auction.
-     * @param auctionBidExtension_  If remaining time is less than this after a bid is made,
-     *        auction will continue for at least this long.
-     * @param beneficiary_  Beneficiary receives all Orb proceeds.
+     * @param auctionBidExtension_     If remaining time is less than this after a bid is made,
+     *                                 auction will continue for at least this long.
+     * @param beneficiary_             Beneficiary receives all Orb proceeds.
      */
     constructor(
         uint256 cooldown_,
@@ -472,7 +472,7 @@ contract Orb is ERC721, Ownable {
      *          Might extend the auction if the bid is near the end.
      *          Important: the winning bidder will not be able to withdraw funds until someone outbids them.
      * @dev     Emits AuctionBid().
-     * @param   amount  The value to bid.
+     * @param   amount      The value to bid.
      * @param   priceIfWon  Price if the bid wins. Must be less than MAX_PRICE.
      */
     function bid(uint256 amount, uint256 priceIfWon) external payable onlyDuringAuction {
@@ -509,7 +509,7 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @notice  Finalizes the Auction, transferring the winning bid to the beneficiary, and the orb to the winner.
-     *          Sets lastInvocationTime so that the Orb could be triggered immediately.
+     *          Sets lastInvocationTime so that the Orb could be invoked immediately.
      *          The price has been set when bidding, now becomes relevant.
      *          If no bids were made, resets the state to allow the auction to be started again later.
      * @dev     Critical state transition function. Called after auctionEndTime, but only if it's not 0.
@@ -635,7 +635,7 @@ contract Orb is ERC721, Ownable {
      *          Does not check if the address is payable, as the Address library reverts if it is not.
      *          Emits Withdrawal().
      * @param   recipient_  The address to send the value to.
-     * @param   amount_  The value in wei to withdraw from the contract.
+     * @param   amount_     The value in wei to withdraw from the contract.
      */
     function _withdraw(address recipient_, uint256 amount_) internal {
         if (fundsOf[recipient_] < amount_) {
@@ -703,11 +703,11 @@ contract Orb is ERC721, Ownable {
      * @dev     Requires to provide the current price as the first parameter to prevent front-running: without current
      *          price requirement someone could purchase the orb ahead of someone else, set the price higher, and
      *          profit from the purchase.
-     *          Does not modify last trigger time, unlike buying from the auction.
+     *          Does not modify last invocation time, unlike buying from the auction.
      *          Does not allow purchasing from yourself.
      *          Emits PriceUpdate() and Purchase().
      * @param   currentPrice  Current price, to prevent front-running.
-     * @param   newPrice  New price to use after the purchase.
+     * @param   newPrice      New price to use after the purchase.
      */
     function purchase(uint256 currentPrice, uint256 newPrice)
         external
@@ -830,15 +830,15 @@ contract Orb is ERC721, Ownable {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    //  FUNCTIONS: TRIGGERING AND RESPONDING
+    //  FUNCTIONS: INVOKING AND RESPONDING
     ////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @notice  Time remaining until the orb can be triggered again.
+     * @notice  Time remaining until the orb can be invoked again.
      *          Returns zero if the cooldown has expired and the orb is ready.
      * @dev     This function is only meaningful if the orb is not held by contract, and the holder is solvent.
-     *          Contract itself cannot trigger the orb, so the response would be meaningless.
-     * @return  uint256  Time in seconds until the orb is ready to be triggered.
+     *          Contract itself cannot invoke the orb, so the response would be meaningless.
+     * @return  uint256  Time in seconds until the orb is ready to be invoked.
      */
     function cooldownRemaining() external view returns (uint256) {
         uint256 cooldownExpires = lastInvocationTime + cooldown;
@@ -850,7 +850,7 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
+     * @notice  Invokes the orb (otherwise known as Orb Invocation). Allows the holder to submit cleartext.
      * @param   cleartext  Required cleartext.
      */
     function invokeWithCleartext(string memory cleartext) external {
@@ -863,12 +863,10 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Triggers the orb (otherwise known as Orb Invocation). Allows the holder to submit content hash,
-     *          that represents a question to the orb issuer.
-     *          Puts the orb on cooldown.
-     *          The Orb can only be triggered by solvent holders.
+     * @notice  Invokes the orb. Allows the holder to submit content hash, that represents a question to the orb
+     *          issuer. Puts the orb on cooldown. The Orb can only be invoked by solvent holders.
      * @dev     Content hash is keccak256 of the cleartext.
-     *          invocationCount is used to track the id of the next trigger.
+     *          invocationCount is used to track the id of the next invocation.
      *          Emits Invocation().
      * @param   contentHash  Required keccak256 hash of the cleartext.
      */
@@ -889,14 +887,15 @@ contract Orb is ERC721, Ownable {
     /**
      * @notice  Function allows the holder to reveal cleartext later, either because it was challenged by the
      *          issuer, or just for posterity. This function can also be used to reveal empty-string content hashes.
-     * @dev     Only holders can reveal cleartext on-chain. Anyone could potentially figure out the trigger cleartext
-     *          from the content hash via brute force, but publishing this on-chain is only allowed by the holder
-     *          themselves, introducing a reasonable privacy protection.
+     * @dev     Only holders can reveal cleartext on-chain. Anyone could potentially figure out the invocation
+     *          cleartext from the content hash via brute force, but publishing this on-chain is only allowed by the
+     *          holder themselves, introducing a reasonable privacy protection.
      *          If the content hash is of a cleartext that is longer than maximum cleartext length, the contract will
      *          never record this cleartext, as it is invalid.
      *          Allows overwriting. Assuming no hash collisions, this poses no risk, just wastes holder gas.
-     * @param   invocationId  Triggred id, matching the one that was emitted when calling {trigger()}.
-     * @param   cleartext  Cleartext, limited in length. Must match the content hash.
+     * @param   invocationId  Invocation id, matching the one that was emitted when calling
+     *                        {invokeWithCleartext()} or {invokeWithHash()}.
+     * @param   cleartext     Cleartext, limited in length. Must match the content hash.
      */
     function recordInvocationCleartext(uint256 invocationId, string memory cleartext)
         external
@@ -920,12 +919,12 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  The Orb issuer can use this function to respond to any existing trigger, no matter how long ago
-     *          it was made. A response to a trigger can only be written once. There is no way to record response
+     * @notice  The Orb issuer can use this function to respond to any existing invocation, no matter how long ago
+     *          it was made. A response to an invocation can only be written once. There is no way to record response
      *          cleartext on-chain.
      * @dev     Emits Response().
-     * @param   invocationId  ID of a trigger to which the response is being made.
-     * @param   contentHash  keccak256 hash of the response text.
+     * @param   invocationId  ID of an invocation to which the response is being made.
+     * @param   contentHash   keccak256 hash of the response text.
      */
     function respond(uint256 invocationId, bytes32 contentHash) external onlyOwner {
         if (invocationId >= invocationCount) {
@@ -947,11 +946,12 @@ contract Orb is ERC721, Ownable {
      *          This is meant to act as a social signal to future orb holders. It also increments flaggedResponsesCount,
      *          allowing anyone to quickly look up how many responses were flagged.
      * @dev     Only existing responses (with non-zero timestamps) can be flagged.
-     *          Responses can only be flagged by solvent holders to keep it consistent with {trigger()}.
+     *          Responses can only be flagged by solvent holders to keep it consistent with {invokeWithHash()} or
+     *          {invokeWithCleartext()}.
      *          Also, the holder must have received the orb after the response was made;
-     *          this is to prevent holders from flagging responses that were made in response to others' triggers.
+     *          this is to prevent holders from flagging responses that were made in response to others' invocations.
      *          Emits ResponseFlagging().
-     * @param   invocationId  ID of a trigger to which the response is being flagged.
+     * @param   invocationId  ID of an invocation to which the response is being flagged.
      */
     function flagResponse(uint256 invocationId) external onlyHolder onlyHolderSolvent {
         if (!_responseExists(invocationId)) {
@@ -977,9 +977,9 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @dev     Returns if a response to a trigger exists, based on the timestamp of the response being non-zero.
-     * @param   invocationId_  ID of a trigger to which to check the existance of a response of.
-     * @return  bool  If a response to a trigger exists or not.
+     * @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
+     * @param   invocationId_  ID of an invocation to which to check the existance of a response of.
+     * @return  bool  If a response to an invocation exists or not.
      */
     function _responseExists(uint256 invocationId_) internal view returns (bool) {
         if (responses[invocationId_].timestamp != 0) {
