@@ -978,11 +978,11 @@ contract Orb is ERC721, Ownable {
 
     /**
      * @dev     Returns if a response to a trigger exists, based on the timestamp of the response being non-zero.
-     * @param   triggerId_  ID of a trigger to which to check the existance of a response of.
+     * @param   invocationId_  ID of a trigger to which to check the existance of a response of.
      * @return  bool  If a response to a trigger exists or not.
      */
-    function _responseExists(uint256 triggerId_) internal view returns (bool) {
-        if (responses[triggerId_].timestamp != 0) {
+    function _responseExists(uint256 invocationId_) internal view returns (bool) {
+        if (responses[invocationId_].timestamp != 0) {
             return true;
         }
         return false;
