@@ -6,12 +6,13 @@ import {Orb} from "src/Orb.sol";
 /* solhint-disable func-name-mixedcase */
 contract OrbHarness is
     Orb(
+        69, // tokenId
         7 days, // cooldown
         address(0xC0FFEE) // beneficiary
     )
 {
-    function workaround_orbId() public pure returns (uint256) {
-        return TOKEN_ID;
+    function workaround_tokenId() public view returns (uint256) {
+        return tokenId;
     }
 
     function workaround_infinity() public pure returns (uint256) {
@@ -43,7 +44,7 @@ contract OrbHarness is
     }
 
     function workaround_setOrbHolder(address holder) public {
-        _transferOrb(ownerOf(TOKEN_ID), holder);
+        _transferOrb(ownerOf(tokenId), holder);
     }
 
     function workaround_owedSinceLastSettlement() public view returns (uint256) {

@@ -48,7 +48,7 @@ contract OrbTestBase is Test {
 
     function effectiveFundsOf(address user_) public view returns (uint256) {
         uint256 unadjustedFunds = orb.fundsOf(user_);
-        address holder = orb.ownerOf(orb.workaround_orbId());
+        address holder = orb.ownerOf(orb.workaround_tokenId());
 
         if (user_ == orb.owner()) {
             return unadjustedFunds;
@@ -74,7 +74,7 @@ contract OrbTestBase is Test {
 contract InitialStateTest is OrbTestBase {
     // Test that the initial state is correct
     function test_initialState() public {
-        assertEq(address(orb), orb.ownerOf(orb.workaround_orbId()));
+        assertEq(address(orb), orb.ownerOf(orb.workaround_tokenId()));
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
@@ -107,7 +107,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.FEE_DENOMINATOR(), 10000);
         assertEq(orb.HOLDER_TAX_PERIOD(), 365 days);
 
-        assertEq(orb.workaround_orbId(), 69);
+        assertEq(orb.workaround_tokenId(), 69);
         assertEq(orb.workaround_infinity(), type(uint256).max);
         assertEq(orb.workaround_maxPrice(), 2 ** 128);
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
@@ -117,7 +117,7 @@ contract InitialStateTest is OrbTestBase {
 contract TransfersRevertTest is OrbTestBase {
     function test_transfersRevert() public {
         address newOwner = address(0xBEEF);
-        uint256 id = orb.workaround_orbId();
+        uint256 id = orb.workaround_tokenId();
         vm.expectRevert(Orb.TransferringNotSupported.selector);
         orb.transferFrom(address(this), newOwner, id);
         vm.expectRevert(Orb.TransferringNotSupported.selector);
@@ -418,7 +418,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         // storage that persists
         assertEq(address(orb).balance, funds);
         assertEq(orb.fundsOf(beneficiary), amount);
-        assertEq(orb.ownerOf(orb.workaround_orbId()), user);
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), user);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
         assertEq(orb.fundsOf(user), funds - amount);
@@ -969,7 +969,7 @@ contract PurchaseTest is OrbTestBase {
         vm.expectEmit(true, true, false, false);
         emit Purchase(owner, user, bidAmount);
         vm.expectEmit(true, true, true, false);
-        emit Transfer(owner, user, orb.workaround_orbId());
+        emit Transfer(owner, user, orb.workaround_tokenId());
         // The Orb is purchased with purchaseAmount
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
@@ -1004,7 +1004,7 @@ contract PurchaseTest is OrbTestBase {
         vm.expectEmit(true, true, false, true);
         emit Purchase(user, user2, bidAmount);
         vm.expectEmit(true, true, true, false);
-        emit Transfer(user, user2, orb.workaround_orbId());
+        emit Transfer(user, user2, orb.workaround_tokenId());
         // The Orb is purchased with purchaseAmount
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
@@ -1044,7 +1044,7 @@ contract PurchaseTest is OrbTestBase {
         vm.expectEmit(true, true, false, true);
         emit Purchase(user, user2, bidAmount);
         vm.expectEmit(true, true, true, false);
-        emit Transfer(user, user2, orb.workaround_orbId());
+        emit Transfer(user, user2, orb.workaround_tokenId());
         // The Orb is purchased with purchaseAmount
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
@@ -1071,7 +1071,7 @@ contract RelinquishmentTest is OrbTestBase {
 
         vm.prank(user);
         orb.relinquish();
-        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
     }
 
     function test_revertsIfHolderInsolvent() public {
@@ -1083,7 +1083,7 @@ contract RelinquishmentTest is OrbTestBase {
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
         orb.relinquish();
-        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
     }
 
     function test_settlesFirst() public {
@@ -1101,7 +1101,7 @@ contract RelinquishmentTest is OrbTestBase {
     function test_succeedsCorrectly() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user);
-        assertEq(orb.ownerOf(orb.workaround_orbId()), user);
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), user);
         vm.expectEmit(true, true, false, false);
         emit Foreclosure(user, true);
         vm.expectEmit(true, false, false, true);
@@ -1109,7 +1109,7 @@ contract RelinquishmentTest is OrbTestBase {
         emit Withdrawal(user, effectiveFunds);
         vm.prank(user);
         orb.relinquish();
-        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
         assertEq(orb.price(), 0);
     }
 }
@@ -1125,7 +1125,7 @@ contract ForecloseTest is OrbTestBase {
         vm.warp(block.timestamp + 100000 days);
         vm.prank(user2);
         orb.foreclose();
-        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
     }
 
     event Foreclosure(address indexed formerHolder, bool indexed voluntary);
@@ -1147,9 +1147,9 @@ contract ForecloseTest is OrbTestBase {
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, true, false, false);
         emit Foreclosure(user, false);
-        assertEq(orb.ownerOf(orb.workaround_orbId()), user);
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), user);
         orb.foreclose();
-        assertEq(orb.ownerOf(orb.workaround_orbId()), address(orb));
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
         assertEq(orb.price(), 0);
     }
 }

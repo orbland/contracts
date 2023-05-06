@@ -130,13 +130,14 @@ contract Orb is ERC721, Ownable {
 
     // Fee Nominator: basis points. Other fees are in relation to this.
     uint256 public constant FEE_DENOMINATOR = 10_000;
-
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
     uint256 public constant HOLDER_TAX_PERIOD = 365 days;
 
-    // Internal Constants
+    // Internal Immutables and Constants
+
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
-    uint256 internal constant TOKEN_ID = 69;
+    uint256 internal immutable tokenId;
+
     // Base URL for tokenURL JSONs.
     string internal constant BASE_URL = "https://static.orb.land/orb/";
     // Special value returned when foreclosure time is "never".
@@ -225,11 +226,12 @@ contract Orb is ERC721, Ownable {
      * @param cooldown_  How often Orb can be invoked.
      * @param beneficiary_             Beneficiary receives all Orb proceeds.
      */
-    constructor(uint256 cooldown_, address beneficiary_) ERC721("Orb", "ORB") {
+    constructor(uint256 tokenId_, uint256 cooldown_, address beneficiary_) ERC721("Orb", "ORB") {
+        tokenId = tokenId_;
         cooldown = cooldown_;
         beneficiary = beneficiary_;
 
-        _safeMint(address(this), TOKEN_ID);
+        _safeMint(address(this), tokenId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +250,7 @@ contract Orb is ERC721, Ownable {
      *       otherwise does not make sense.
      */
     modifier onlyHolder() {
-        if (msg.sender != ERC721.ownerOf(TOKEN_ID)) {
+        if (msg.sender != ERC721.ownerOf(tokenId)) {
             revert NotHolder();
         }
         _;
@@ -260,7 +262,7 @@ contract Orb is ERC721, Ownable {
      * @dev  Ensures that the Orb belongs to someone, not the contract itself.
      */
     modifier onlyHolderHeld() {
-        if (address(this) == ERC721.ownerOf(TOKEN_ID)) {
+        if (address(this) == ERC721.ownerOf(tokenId)) {
             revert ContractHoldsOrb();
         }
         _;
@@ -271,7 +273,7 @@ contract Orb is ERC721, Ownable {
      *       or because it has returned to the contract due to {relinquish()} or {foreclose()}
      */
     modifier onlyContractHeld() {
-        if (address(this) != ERC721.ownerOf(TOKEN_ID)) {
+        if (address(this) != ERC721.ownerOf(tokenId)) {
             revert ContractDoesNotHoldOrb();
         }
         _;
@@ -346,7 +348,7 @@ contract Orb is ERC721, Ownable {
      *       only if the caller is the Orb holder. Useful for holder withdrawals.
      */
     modifier settlesIfHolder() {
-        if (msg.sender == ERC721.ownerOf(TOKEN_ID)) {
+        if (msg.sender == ERC721.ownerOf(tokenId)) {
             _settle();
         }
         _;
@@ -388,7 +390,7 @@ contract Orb is ERC721, Ownable {
      *          holderReceiveTime is used to limit response flagging window.
      */
     function _transferOrb(address from_, address to_) internal {
-        _transfer(from_, to_, TOKEN_ID);
+        _transfer(from_, to_, tokenId);
         if (to_ != address(this)) {
             holderReceiveTime = block.timestamp;
         }
@@ -405,7 +407,7 @@ contract Orb is ERC721, Ownable {
      * @return  bool  If the auction is running.
      */
     function auctionRunning() public view returns (bool) {
-        return auctionEndTime > block.timestamp && address(this) == ERC721.ownerOf(TOKEN_ID);
+        return auctionEndTime > block.timestamp && address(this) == ERC721.ownerOf(tokenId);
     }
 
     /**
@@ -532,7 +534,7 @@ contract Orb is ERC721, Ownable {
      *          Emits Deposit().
      */
     function deposit() external payable {
-        if (msg.sender == ERC721.ownerOf(TOKEN_ID) && !holderSolvent()) {
+        if (msg.sender == ERC721.ownerOf(tokenId) && !holderSolvent()) {
             revert HolderInsolvent();
         }
 
@@ -587,7 +589,7 @@ contract Orb is ERC721, Ownable {
      * @return  bool  If the current holder is solvent.
      */
     function holderSolvent() public view returns (bool) {
-        address holder = ERC721.ownerOf(TOKEN_ID);
+        address holder = ERC721.ownerOf(tokenId);
         if (owner() == holder) {
             return true;
         }
@@ -630,7 +632,7 @@ contract Orb is ERC721, Ownable {
      * @dev  See {settle()}.
      */
     function _settle() internal {
-        address holder = ERC721.ownerOf(TOKEN_ID);
+        address holder = ERC721.ownerOf(tokenId);
 
         if (owner() == holder) {
             return;
@@ -697,7 +699,7 @@ contract Orb is ERC721, Ownable {
             revert CurrentPriceIncorrect(currentPrice, price);
         }
 
-        address holder = ERC721.ownerOf(TOKEN_ID);
+        address holder = ERC721.ownerOf(tokenId);
 
         if (msg.sender == holder) {
             revert AlreadyHolder();
@@ -775,7 +777,7 @@ contract Orb is ERC721, Ownable {
      * @dev     Emits Foreclosure().
      */
     function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
-        address holder = ERC721.ownerOf(TOKEN_ID);
+        address holder = ERC721.ownerOf(tokenId);
         price = 0;
 
         emit Foreclosure(holder, false);
@@ -791,7 +793,7 @@ contract Orb is ERC721, Ownable {
      * @return  uint256  Timestamp of the foreclosure time.
      */
     function foreclosureTime() external view returns (uint256) {
-        address holder = ERC721.ownerOf(TOKEN_ID);
+        address holder = ERC721.ownerOf(tokenId);
         if (owner() == holder) {
             return INFINITY;
         }

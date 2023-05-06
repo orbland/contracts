@@ -13,6 +13,7 @@ abstract contract DeployBase is Script {
 
     address private immutable issuerWallet;
     uint256 private immutable cooldown;
+    uint256 private immutable tokenId;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
@@ -22,11 +23,13 @@ abstract contract DeployBase is Script {
         address[] memory _contributorWallets,
         uint256[] memory _contributorShares,
         address _issuerWallet,
+        uint256 _tokenId,
         uint256 _cooldown
     ) {
         contributorWallets = _contributorWallets;
         contributorShares = _contributorShares;
         issuerWallet = _issuerWallet;
+        tokenId = _tokenId;
         cooldown = _cooldown;
     }
 
@@ -39,6 +42,7 @@ abstract contract DeployBase is Script {
         address splitterAddress = address(orbBeneficiary);
 
         orb = new Orb(
+            tokenId,
             cooldown,
             splitterAddress // beneficiary
         );
