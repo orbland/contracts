@@ -13,11 +13,9 @@ contract DeploySepolia is DeployBase {
 
     // would be ercwl.eth for mainnet
     address private immutable issuerWallet = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-
     uint256 private immutable tokenId = 1;
-    uint256 private immutable cooldown = 2 minutes;
 
-    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, tokenId, cooldown) 
+    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, tokenId) 
     /* solhint-disable no-empty-blocks */
     {}
     /* solhint-enable no-empty-blocks */
