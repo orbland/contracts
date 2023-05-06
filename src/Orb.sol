@@ -800,7 +800,9 @@ contract Orb is ERC721, Ownable {
     function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
         address holder = ERC721.ownerOf(TOKEN_ID);
         price = 0;
+
         emit Foreclosure(holder, false);
+
         _transferOrb(holder, address(this));
     }
 
