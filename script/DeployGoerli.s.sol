@@ -15,22 +15,8 @@ contract DeployGoerli is DeployBase {
     address private immutable issuerWallet = 0xC0A00c8c9EF6fe6F0a79B8a616183384dbaf8EC8;
 
     uint256 private immutable cooldown = 30 minutes;
-    uint256 private immutable auctionMinimumDuration = 30 minutes;
-    uint256 private immutable auctionBidExtension = 2 minutes;
-    uint256 private immutable auctionStartingPrice = 0.1 ether;
-    uint256 private immutable auctionMinimumBidStep = 0.1 ether;
 
-    constructor()
-        DeployBase(
-            contributorWallets,
-            contributorShares,
-            issuerWallet,
-            cooldown,
-            auctionMinimumDuration,
-            auctionBidExtension,
-            auctionStartingPrice,
-            auctionMinimumBidStep
-        )
+    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, cooldown) 
     /* solhint-disable no-empty-blocks */
     {}
     /* solhint-enable no-empty-blocks */

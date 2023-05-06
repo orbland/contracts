@@ -89,6 +89,11 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.flaggedResponsesCount(), 0);
 
+        assertEq(orb.auctionStartingPrice(), 0.1 ether);
+        assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
+        assertEq(orb.auctionMinimumDuration(), 1 days);
+        assertEq(orb.auctionBidExtension(), 5 minutes);
+
         assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.leadingBidder(), address(0));

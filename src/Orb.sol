@@ -134,15 +134,6 @@ contract Orb is ERC721, Ownable {
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
     uint256 public constant HOLDER_TAX_PERIOD = 365 days;
 
-    // Auction starting price.
-    uint256 public immutable auctionStartingPrice;
-    // Each bid has to increase over previous bid by at least this much.
-    uint256 public immutable auctionMinimumBidStep;
-    // Auction will run for at least this long.
-    uint256 public immutable auctionMinimumDuration;
-    // If remaining time is less than this after a bid is made, auction will continue for at least this long.
-    uint256 public immutable auctionBidExtension;
-
     // Internal Constants
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
     uint256 internal constant TOKEN_ID = 69;
@@ -174,6 +165,14 @@ contract Orb is ERC721, Ownable {
     uint256 public royaltyNumerator = 1_000;
 
     // Auction State Variables
+    // Auction starting price.
+    uint256 public auctionStartingPrice = 0.1 ether;
+    // Each bid has to increase over previous bid by at least this much.
+    uint256 public auctionMinimumBidStep = 0.1 ether;
+    // Auction will run for at least this long.
+    uint256 public auctionMinimumDuration = 1 days;
+    // If remaining time is less than this after a bid is made, auction will continue for at least this long.
+    uint256 public auctionBidExtension = 5 minutes;
     // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
     uint256 public auctionStartTime;
     // End Time: when the auction ends, can be extended by late bids. 0 not during the auction.
@@ -224,25 +223,11 @@ contract Orb is ERC721, Ownable {
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the creator in the Orb context.
      * @param cooldown_  How often Orb can be invoked.
-     * @param auctionMinimumDuration_  Minimum length for an auction.
-     * @param auctionBidExtension_     If remaining time is less than this after a bid is made,
-     *                                 auction will continue for at least this long.
      * @param beneficiary_             Beneficiary receives all Orb proceeds.
      */
-    constructor(
-        uint256 cooldown_,
-        uint256 auctionMinimumDuration_,
-        uint256 auctionBidExtension_,
-        address beneficiary_,
-        uint256 auctionStartingPrice_,
-        uint256 auctionMinimumBidStep_
-    ) ERC721("Orb", "ORB") {
+    constructor(uint256 cooldown_, address beneficiary_) ERC721("Orb", "ORB") {
         cooldown = cooldown_;
-        auctionMinimumDuration = auctionMinimumDuration_;
-        auctionBidExtension = auctionBidExtension_;
         beneficiary = beneficiary_;
-        auctionStartingPrice = auctionStartingPrice_;
-        auctionMinimumBidStep = auctionMinimumBidStep_;
 
         _safeMint(address(this), TOKEN_ID);
     }
