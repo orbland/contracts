@@ -17,8 +17,6 @@ contract DeployGoerli is DeployBase {
     uint256 private immutable cooldown = 30 minutes;
     uint256 private immutable auctionMinimumDuration = 30 minutes;
     uint256 private immutable auctionBidExtension = 2 minutes;
-    uint256 private immutable holderTaxNumerator = 1000;
-    uint256 private immutable royaltyNumerator = 1000;
     uint256 private immutable auctionStartingPrice = 0.1 ether;
     uint256 private immutable auctionMinimumBidStep = 0.1 ether;
 
@@ -30,8 +28,6 @@ contract DeployGoerli is DeployBase {
             cooldown,
             auctionMinimumDuration,
             auctionBidExtension,
-            holderTaxNumerator,
-            royaltyNumerator,
             auctionStartingPrice,
             auctionMinimumBidStep
         )
