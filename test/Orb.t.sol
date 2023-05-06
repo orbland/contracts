@@ -432,9 +432,9 @@ contract EffectiveFundsOfTest is OrbTestBase {
         orb.finalizeAuction();
         vm.warp(block.timestamp + 1 days);
 
-        // One day has passed since the orb holder got the orb
+        // One day has passed since the Orb holder got the orb
         // for bid = 1 ether. That means that the price of the
-        // orb is now 1 ether. Thus the Orb beneficiary is owed the tax
+        // Orb is now 1 ether. Thus the Orb beneficiary is owed the tax
         // for 1 day.
 
         // The user actually transfered `funds1` and `funds2` respectively
@@ -462,16 +462,16 @@ contract EffectiveFundsOfTest is OrbTestBase {
         orb.finalizeAuction();
         vm.warp(block.timestamp + 1 days);
 
-        // One day has passed since the orb holder got the orb
+        // One day has passed since the Orb holder got the Orb
         // for bid = 1 ether. That means that the price of the
-        // orb is now 1 ether. Thus the Orb beneficiary is owed the tax
+        // Orb is now 1 ether. Thus the Orb beneficiary is owed the tax
         // for 1 day.
 
         // The user actually transfered `funds1` and `funds2` respectively
         // ether to the contract
         uint256 owed = orb.workaround_owedSinceLastSettlement();
         assertEq(effectiveFundsOf(beneficiary), owed + amount1);
-        // The user that won the auction and is holding the orb
+        // The user that won the auction and is holding the Orb
         // has the funds they deposited, minus the tax and minus the bid
         // amount
         assertEq(effectiveFundsOf(user), funds1 - owed - amount1);
@@ -898,7 +898,7 @@ contract PurchaseTest is OrbTestBase {
 
     function test_purchaseSettlesFirst() public {
         makeHolderAndWarp(user, 1 ether);
-        // after making `user` the current holder of the orb, `makeHolderAndWarp(user, )` warps 30 days into the future
+        // after making `user` the current holder of the Orb, `makeHolderAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user2);
         orb.purchase{value: 1.1 ether}(1 ether, 2 ether);
@@ -1081,7 +1081,7 @@ contract RelinquishmentTest is OrbTestBase {
 
     function test_settlesFirst() public {
         makeHolderAndWarp(user, 1 ether);
-        // after making `user` the current holder of the orb, `makeHolderAndWarp(user, )` warps 30 days into the future
+        // after making `user` the current holder of the Orb, `makeHolderAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user);
         orb.relinquish();
