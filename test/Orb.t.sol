@@ -1183,7 +1183,7 @@ contract InvokeWithCleartextTest is OrbTestBase {
         orb.invokeWithCleartext(text);
     }
 
-    function test_callsTriggerHashCorrectly() public {
+    function test_callsInvokeWithHashCorrectly() public {
         string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
         makeHolderAndWarp(user, 1 ether);
         vm.expectEmit(true, false, false, true);
@@ -1345,7 +1345,7 @@ contract RespondTest is OrbTestBase {
         orb.respond(0, response);
     }
 
-    function test_revertWhen_triggerIdIncorrect() public {
+    function test_revertWhen_invocationIdIncorrect() public {
         makeHolderAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
