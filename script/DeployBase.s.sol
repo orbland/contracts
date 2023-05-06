@@ -13,7 +13,6 @@ abstract contract DeployBase is Script {
 
     address private immutable issuerWallet;
     uint256 private immutable cooldown;
-    uint256 private immutable responseFlaggingPeriod;
     uint256 private immutable auctionMinimumDuration;
     uint256 private immutable auctionBidExtension;
     uint256 private immutable holderTaxNumerator;
@@ -30,7 +29,6 @@ abstract contract DeployBase is Script {
         uint256[] memory _contributorShares,
         address _issuerWallet,
         uint256 _cooldown,
-        uint256 _responseFlaggingPeriod,
         uint256 _auctionMinimumDuration,
         uint256 _auctionBidExtension,
         uint256 _holderTaxNumerator,
@@ -42,7 +40,6 @@ abstract contract DeployBase is Script {
         contributorShares = _contributorShares;
         issuerWallet = _issuerWallet;
         cooldown = _cooldown;
-        responseFlaggingPeriod = _responseFlaggingPeriod;
         auctionMinimumDuration = _auctionMinimumDuration;
         auctionBidExtension = _auctionBidExtension;
         holderTaxNumerator = _holderTaxNumerator;
@@ -61,7 +58,6 @@ abstract contract DeployBase is Script {
 
         orb = new Orb(
             cooldown,
-            responseFlaggingPeriod,
             auctionMinimumDuration,
             auctionBidExtension,
             splitterAddress, // beneficiary
