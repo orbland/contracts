@@ -133,8 +133,6 @@ contract Orb is ERC721, Ownable {
 
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
     uint256 public constant HOLDER_TAX_PERIOD = 365 days;
-    // Secondary sale royalty paid to beneficiary, based on sale price.
-    uint256 public immutable royaltyNumerator;
 
     // Auction starting price.
     uint256 public immutable auctionStartingPrice;
@@ -172,6 +170,8 @@ contract Orb is ERC721, Ownable {
     uint256 public lastSettlementTime;
     // Harberger Tax for holding. Initial value is 10%.
     uint256 public holderTaxNumerator = 1_000;
+    // Secondary sale royalty paid to beneficiary, based on sale price.
+    uint256 public royaltyNumerator = 1_000;
 
     // Auction State Variables
     // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
@@ -234,8 +234,6 @@ contract Orb is ERC721, Ownable {
         uint256 auctionMinimumDuration_,
         uint256 auctionBidExtension_,
         address beneficiary_,
-        uint256 holderTaxNumerator_,
-        uint256 royaltyNumerator_,
         uint256 auctionStartingPrice_,
         uint256 auctionMinimumBidStep_
     ) ERC721("Orb", "ORB") {
@@ -243,8 +241,6 @@ contract Orb is ERC721, Ownable {
         auctionMinimumDuration = auctionMinimumDuration_;
         auctionBidExtension = auctionBidExtension_;
         beneficiary = beneficiary_;
-        holderTaxNumerator = holderTaxNumerator_;
-        royaltyNumerator = royaltyNumerator_;
         auctionStartingPrice = auctionStartingPrice_;
         auctionMinimumBidStep = auctionMinimumBidStep_;
 
