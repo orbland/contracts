@@ -223,7 +223,7 @@ contract BidTest is OrbTestBase {
         orb.bid{value: amount}(amount, amount);
         assertEq(orb.leadingBid(), amount);
 
-        // minimum bid will be the winning bid + MINIMUM_BID_STEP
+        // minimum bid will be the leading bid + MINIMUM_BID_STEP
         amount = orb.minimumBid() - 1;
         vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientBid.selector, amount, orb.minimumBid()));
         vm.prank(user);
@@ -605,7 +605,7 @@ contract WithdrawTest is OrbTestBase {
         orb.startAuction();
         // user2 bids
         prankAndBid(user2, smallBidAmount);
-        // user1 bids and becomes the winning bidder
+        // user1 bids and becomes the leading bidder
         prankAndBid(user, bidAmount);
         vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
@@ -651,7 +651,7 @@ contract WithdrawTest is OrbTestBase {
         orb.startAuction();
         // user2 bids
         prankAndBid(user2, smallBidAmount);
-        // user1 bids and becomes the winning bidder
+        // user1 bids and becomes the leading bidder
         prankAndBid(user, bidAmount);
         vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
