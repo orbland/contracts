@@ -895,10 +895,10 @@ contract Orb is ERC721, Ownable {
      *          If the content hash is of a cleartext that is longer than maximum cleartext length, the contract will
      *          never record this cleartext, as it is invalid.
      *          Allows overwriting. Assuming no hash collisions, this poses no risk, just wastes holder gas.
-     * @param   triggerId  Triggred id, matching the one that was emitted when calling {trigger()}.
+     * @param   invocationId  Triggred id, matching the one that was emitted when calling {trigger()}.
      * @param   cleartext  Cleartext, limited in length. Must match the content hash.
      */
-    function recordInvocationCleartext(uint256 triggerId, string memory cleartext)
+    function recordInvocationCleartext(uint256 invocationId, string memory cleartext)
         external
         onlyHolder
         onlyHolderSolvent
@@ -909,14 +909,14 @@ contract Orb is ERC721, Ownable {
             revert CleartextTooLong(cleartextLength, CLEARTEXT_MAXIMUM_LENGTH);
         }
 
-        bytes32 recordedContentHash = invocations[triggerId];
+        bytes32 recordedContentHash = invocations[invocationId];
         bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
 
         if (recordedContentHash != cleartextHash) {
             revert CleartextHashMismatch(cleartextHash, recordedContentHash);
         }
 
-        emit CleartextRecording(triggerId, cleartext);
+        emit CleartextRecording(invocationId, cleartext);
     }
 
     /**
