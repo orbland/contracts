@@ -6,6 +6,8 @@ import {Orb} from "src/Orb.sol";
 /* solhint-disable func-name-mixedcase */
 contract OrbHarness is
     Orb(
+        "Orb", // name
+        "ORB", // symbol
         69, // tokenId
         address(0xC0FFEE) // beneficiary
     )

@@ -39,7 +39,9 @@ abstract contract DeployBase is Script {
         address splitterAddress = address(orbBeneficiary);
 
         orb = new Orb(
-            tokenId,
+            "Orb", // name
+            "ORB", // symbol
+            tokenId, // tokenId
             splitterAddress // beneficiary
         );
         orb.transferOwnership(creatorAddress);

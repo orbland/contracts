@@ -226,10 +226,14 @@ contract Orb is ERC721, Ownable {
      * @dev  When deployed, contract mints the only token that will ever exist, to itself.
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the creator in the Orb context.
+     * @param name_         Orb name, used in ERC-721 metadata.
+     * @param symbol_       Orb symbol or ticker, used in ERC-721 metadata.
      * @param tokenId_      ERC-721 token ID of the Orb.
      * @param beneficiary_  Beneficiary receives all Orb proceeds.
      */
-    constructor(uint256 tokenId_, address beneficiary_) ERC721("Orb", "ORB") {
+    constructor(string memory name_, string memory symbol_, uint256 tokenId_, address beneficiary_)
+        ERC721(name_, symbol_)
+    {
         tokenId = tokenId_;
         beneficiary = beneficiary_;
 
