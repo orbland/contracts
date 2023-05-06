@@ -9,5 +9,11 @@
     ],
     "solidity.formatter": "forge",
     "git.detectSubmodules": false,
-    "git.enableCommitSigning": true
+    "git.enableCommitSigning": true,
+    "search.exclude": {
+        ".git": true,
+        "lib": true,
+        "cache": true,
+        "out": true
+    }
 }
