@@ -129,8 +129,6 @@ contract Orb is ERC721, Ownable {
     address public immutable beneficiary;
 
     // Public Constants
-    // Response Flagging Period: how long after resonse was recorded it can be flagged by the holder.
-    uint256 public immutable responseFlaggingPeriod;
     // Maximum length for invocation cleartext content.
     uint256 public constant CLEARTEXT_MAXIMUM_LENGTH = 280;
 
@@ -226,7 +224,6 @@ contract Orb is ERC721, Ownable {
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the creator in the Orb context.
      * @param cooldown_  How often Orb can be invoked.
-     * @param responseFlaggingPeriod_  How long after resonse was recorded it can be flagged by the holder.
      * @param auctionMinimumDuration_  Minimum length for an auction.
      * @param auctionBidExtension_     If remaining time is less than this after a bid is made,
      *                                 auction will continue for at least this long.
@@ -234,7 +231,6 @@ contract Orb is ERC721, Ownable {
      */
     constructor(
         uint256 cooldown_,
-        uint256 responseFlaggingPeriod_,
         uint256 auctionMinimumDuration_,
         uint256 auctionBidExtension_,
         address beneficiary_,
@@ -244,7 +240,6 @@ contract Orb is ERC721, Ownable {
         uint256 auctionMinimumBidStep_
     ) ERC721("Orb", "ORB") {
         cooldown = cooldown_;
-        responseFlaggingPeriod = responseFlaggingPeriod_;
         auctionMinimumDuration = auctionMinimumDuration_;
         auctionBidExtension = auctionBidExtension_;
         beneficiary = beneficiary_;
@@ -960,9 +955,10 @@ contract Orb is ERC721, Ownable {
         }
 
         // Response Flagging Period starts counting from when the response is made.
+        // Its value matches the cooldown of the Orb.
         uint256 responseTime = responses[invocationId].timestamp;
-        if (block.timestamp - responseTime > responseFlaggingPeriod) {
-            revert FlaggingPeriodExpired(invocationId, block.timestamp - responseTime, responseFlaggingPeriod);
+        if (block.timestamp - responseTime > cooldown) {
+            revert FlaggingPeriodExpired(invocationId, block.timestamp - responseTime, cooldown);
         }
         if (holderReceiveTime >= responseTime) {
             revert FlaggingPeriodExpired(invocationId, holderReceiveTime, responseTime);

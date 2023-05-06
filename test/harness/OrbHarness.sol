@@ -7,7 +7,6 @@ import {Orb} from "src/Orb.sol";
 contract OrbHarness is
     Orb(
         7 days, // cooldown
-        7 days, // responseFlaggingPeriod
         1 days, // auctionMinimumDuration
         30 minutes, // auctionBidExtension
         address(0xC0FFEE), // beneficiary

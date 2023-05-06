@@ -1460,12 +1460,10 @@ contract FlagResponseTest is OrbTestBase {
 
         vm.warp(block.timestamp + 100 days);
         vm.startPrank(user);
-        vm.expectRevert(
-            abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 0, 100 days, orb.responseFlaggingPeriod())
-        );
+        vm.expectRevert(abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 0, 100 days, orb.cooldown()));
         orb.flagResponse(0);
 
-        vm.warp(block.timestamp - (100 days - orb.responseFlaggingPeriod()));
+        vm.warp(block.timestamp - (100 days - orb.cooldown()));
         orb.flagResponse(0);
     }
 
