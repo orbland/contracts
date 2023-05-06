@@ -16,7 +16,12 @@ contract OrbTestBase is Test {
 
     uint256 internal startingBalance;
 
+    event Creation(bytes32 oathHash, uint256 honoredUntil);
+
     function setUp() public {
+        vm.expectEmit(false, false, false, true);
+        // keccak hash of "test oath"
+        emit Creation(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 1_700_000_000);
         orb = new OrbHarness();
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
@@ -78,6 +83,7 @@ contract InitialStateTest is OrbTestBase {
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
+        assertEq(orb.honoredUntil(), 1_700_000_000);
 
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
 
