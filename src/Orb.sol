@@ -138,14 +138,15 @@ contract Orb is ERC721, Ownable {
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
     uint256 internal immutable tokenId;
 
-    // Base URL for tokenURL JSONs.
-    string internal constant BASE_URL = "https://static.orb.land/orb/";
     // Special value returned when foreclosure time is "never".
     uint256 internal constant INFINITY = type(uint256).max;
     // Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
     // STATE
+
+    // Base URL for tokenURL JSONs.
+    string internal baseURL = "https://static.orb.land/orb/";
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
     // The value is without settlement. It means effective user funds (withdrawable) would be different
@@ -358,8 +359,8 @@ contract Orb is ERC721, Ownable {
     //  FUNCTIONS: ERC-721 OVERRIDES
     ////////////////////////////////////////////////////////////////////////////////
 
-    function _baseURI() internal pure override returns (string memory) {
-        return BASE_URL;
+    function _baseURI() internal view override returns (string memory) {
+        return baseURL;
     }
 
     /**

@@ -23,8 +23,8 @@ contract OrbHarness is
         return MAX_PRICE;
     }
 
-    function workaround_baseUrl() public pure returns (string memory) {
-        return BASE_URL;
+    function workaround_baseUrl() public view returns (string memory) {
+        return baseURL;
     }
 
     function workaround_setLeadingBidder(address bidder) public {

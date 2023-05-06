@@ -79,6 +79,8 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
 
+        assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
+
         assertEq(orb.cleartextMaximumLength(), 280);
 
         assertEq(orb.price(), 0);
@@ -110,7 +112,6 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.workaround_tokenId(), 69);
         assertEq(orb.workaround_infinity(), type(uint256).max);
         assertEq(orb.workaround_maxPrice(), 2 ** 128);
-        assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
     }
 }
 
