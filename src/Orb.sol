@@ -93,6 +93,7 @@ contract Orb is ERC721, Ownable {
     error NotHolder();
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
+    error CreatorDoesNotControlOrb();
     error BeneficiaryDisallowed();
 
     // Funds-Related Authorization Errors
@@ -296,6 +297,18 @@ contract Orb is ERC721, Ownable {
     modifier onlyContractHeld() {
         if (address(this) != ERC721.ownerOf(tokenId)) {
             revert ContractDoesNotHoldOrb();
+        }
+        _;
+    }
+
+    /**
+     * @dev  Ensures that the Orb belongs to the contract itself or the creator.
+     *       All setting-adjusting functions should use this modifier.
+     *       It means that the Orb properties cannot be modified while it is held by the holder.
+     */
+    modifier onlyCreatorControlled() {
+        if (address(this) != ERC721.ownerOf(tokenId) || owner() != ERC721.ownerOf(tokenId)) {
+            revert CreatorDoesNotControlOrb();
         }
         _;
     }
