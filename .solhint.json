@@ -1,10 +1,7 @@
 {
     "extends": "solhint:recommended",
     "rules": {
-        "max-states-count": [
-            "warn",
-            15
-        ],
+        "max-states-count": "off",
         "max-line-length": [
             "error",
             120
