@@ -17,8 +17,6 @@ contract DeployLocal is DeployBase {
     uint256 public immutable cooldown = 2 minutes;
     uint256 public immutable auctionMinimumDuration = 2 minutes;
     uint256 public immutable auctionBidExtension = 30 seconds;
-    uint256 private immutable holderTaxNumerator = 1000;
-    uint256 private immutable royaltyNumerator = 1000;
     uint256 private immutable auctionStartingPrice = 0.1 ether;
     uint256 private immutable auctionMinimumBidStep = 0.1 ether;
 
@@ -30,8 +28,6 @@ contract DeployLocal is DeployBase {
             cooldown,
             auctionMinimumDuration,
             auctionBidExtension,
-            holderTaxNumerator,
-            royaltyNumerator,
             auctionStartingPrice,
             auctionMinimumBidStep
         )

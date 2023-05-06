@@ -83,6 +83,7 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.price(), 0);
         assertEq(orb.holderTaxNumerator(), 1_000);
+        assertEq(orb.royaltyNumerator(), 1_000);
         assertEq(orb.lastInvocationTime(), 0);
         assertEq(orb.invocationCount(), 0);
 

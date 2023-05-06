@@ -10,8 +10,6 @@ contract OrbHarness is
         1 days, // auctionMinimumDuration
         30 minutes, // auctionBidExtension
         address(0xC0FFEE), // beneficiary
-        1000, // holderTaxNumerator
-        1000, // royaltyNumerator
         0.1 ether, // auctionStartingPrice
         0.1 ether // auctionMinimumBidStep
     )
