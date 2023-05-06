@@ -15,7 +15,6 @@ contract DeployGoerli is DeployBase {
     address private immutable issuerWallet = 0xC0A00c8c9EF6fe6F0a79B8a616183384dbaf8EC8;
 
     uint256 private immutable cooldown = 30 minutes;
-    uint256 private immutable responseFlaggingPeriod = 30 minutes;
     uint256 private immutable auctionMinimumDuration = 30 minutes;
     uint256 private immutable auctionBidExtension = 2 minutes;
     uint256 private immutable holderTaxNumerator = 1000;
@@ -29,7 +28,6 @@ contract DeployGoerli is DeployBase {
             contributorShares,
             issuerWallet,
             cooldown,
-            responseFlaggingPeriod,
             auctionMinimumDuration,
             auctionBidExtension,
             holderTaxNumerator,
