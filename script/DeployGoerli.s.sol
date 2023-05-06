@@ -12,10 +12,10 @@ contract DeployGoerli is DeployBase {
     uint256[] private contributorShares = [65, 20, 15];
 
     // our test issuer
-    address private immutable issuerWallet = 0xC0A00c8c9EF6fe6F0a79B8a616183384dbaf8EC8;
+    address private immutable creatorAddress = 0xC0A00c8c9EF6fe6F0a79B8a616183384dbaf8EC8;
     uint256 private immutable tokenId = 1;
 
-    constructor() DeployBase(contributorWallets, contributorShares, issuerWallet, tokenId) 
+    constructor() DeployBase(contributorWallets, contributorShares, creatorAddress, tokenId) 
     /* solhint-disable no-empty-blocks */
     {}
     /* solhint-enable no-empty-blocks */
