@@ -834,22 +834,6 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @notice  Time remaining until the Orb can be invoked again.
-     *          Returns zero if the cooldown has expired and the Orb is ready.
-     * @dev     This function is only meaningful if the Orb is not held by contract, and the holder is solvent.
-     *          Contract itself cannot invoke the Orb, so the response would be meaningless.
-     * @return  uint256  Time in seconds until the Orb is ready to be invoked.
-     */
-    function cooldownRemaining() external view returns (uint256) {
-        uint256 cooldownExpires = lastInvocationTime + cooldown;
-        if (block.timestamp >= cooldownExpires) {
-            return 0;
-        } else {
-            return cooldownExpires - block.timestamp;
-        }
-    }
-
-    /**
      * @notice  Invokes the Orb. Allows the holder to submit cleartext.
      * @param   cleartext  Required cleartext.
      */
