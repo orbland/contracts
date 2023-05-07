@@ -334,17 +334,6 @@ contract Orb is ERC721, Ownable {
         _;
     }
 
-    /**
-     * @dev  Ensures that the caller is not currently leading the auction.
-     *       User leading the auction cannot withdraw funds, as funds include user's bid.
-     */
-    modifier notLeadingBidder() {
-        if (msg.sender == leadingBidder) {
-            revert NotPermittedForLeadingBidder();
-        }
-        _;
-    }
-
     // FUNDS-RELATED MODIFIERS
 
     /**
@@ -372,17 +361,6 @@ contract Orb is ERC721, Ownable {
      */
     modifier settles() {
         _settle();
-        _;
-    }
-
-    /**
-     * @dev  Modifier settles current Orb holder's debt before executing the rest of the function,
-     *       only if the caller is the Orb holder. Useful for holder withdrawals.
-     */
-    modifier settlesIfHolder() {
-        if (msg.sender == ERC721.ownerOf(tokenId)) {
-            _settle();
-        }
         _;
     }
 
@@ -613,7 +591,7 @@ contract Orb is ERC721, Ownable {
      *          Not recommended for current Orb holders, they should call relinquish() to take out their funds.
      * @dev     Not allowed for the leading auction bidder.
      */
-    function withdrawAll() external notLeadingBidder settlesIfHolder {
+    function withdrawAll() external {
         _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
@@ -622,7 +600,7 @@ contract Orb is ERC721, Ownable {
      *          For current Orb holders, reduces the time until foreclosure.
      * @dev     Not allowed for the leading auction bidder.
      */
-    function withdraw(uint256 amount) external notLeadingBidder settlesIfHolder {
+    function withdraw(uint256 amount) external {
         _withdraw(msg.sender, amount);
     }
 
@@ -683,6 +661,14 @@ contract Orb is ERC721, Ownable {
      * @param   amount_     The value in wei to withdraw from the contract.
      */
     function _withdraw(address recipient_, uint256 amount_) internal {
+        if (msg.sender == leadingBidder) {
+            revert NotPermittedForLeadingBidder();
+        }
+
+        if (msg.sender == ERC721.ownerOf(tokenId)) {
+            _settle();
+        }
+
         if (fundsOf[recipient_] < amount_) {
             revert InsufficientFunds(fundsOf[recipient_], amount_);
         }
