@@ -149,8 +149,6 @@ contract Orb is ERC721, Ownable {
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
     uint256 internal immutable tokenId;
 
-    // Special value returned when foreclosure time is "never".
-    uint256 internal constant INFINITY = type(uint256).max;
     // Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
@@ -829,29 +827,6 @@ contract Orb is ERC721, Ownable {
         emit Foreclosure(holder);
 
         _transferOrb(holder, address(this));
-    }
-
-    /**
-     * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
-     *          Harberger tax and can be foreclosed.
-     * @dev     Only valid if someone, not the contract, holds the Orb.
-     *          If the Orb is held by the creator or if the price is zero, foreclosure time is INFINITY constant.
-     * @return  uint256  Timestamp of the foreclosure time.
-     */
-    function foreclosureTime() external view returns (uint256) {
-        address holder = ERC721.ownerOf(tokenId);
-        if (owner() == holder) {
-            return INFINITY;
-        }
-
-        // Avoid division by zero.
-        if (price == 0) {
-            return INFINITY;
-        }
-
-        uint256 remainingSeconds =
-            (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (price * holderTaxNumerator);
-        return lastSettlementTime + remainingSeconds;
     }
 
     ////////////////////////////////////////////////////////////////////////////////

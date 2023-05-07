@@ -1214,29 +1214,6 @@ contract ForecloseTest is OrbTestBase {
     }
 }
 
-contract ForeclosureTimeTest is OrbTestBase {
-    function test_returnsInfinityIfOwner() public {
-        assertEq(orb.foreclosureTime(), type(uint256).max);
-    }
-
-    function test_returnsInfinityIfPriceZero() public {
-        uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        orb.workaround_setPrice(0);
-        assertEq(orb.foreclosureTime(), type(uint256).max);
-    }
-
-    function test_correctCalculation() public {
-        // uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR)
-        //                             / (_price * HOLDER_TAX_NUMERATOR);
-        uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        uint256 remaining = (orb.fundsOf(user) * 365 days * 10_000) / (leadingBid * 1_000);
-        uint256 lastSettlementTime = block.timestamp - 30 days;
-        assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
-    }
-}
-
 contract InvokeWithCleartextTest is OrbTestBase {
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
