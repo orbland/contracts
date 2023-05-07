@@ -347,16 +347,6 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @dev  Ensures that the current Orb holder has run out of funds to cover Harberger tax.
-     */
-    modifier onlyHolderInsolvent() {
-        if (holderSolvent()) {
-            revert HolderSolvent();
-        }
-        _;
-    }
-
-    /**
      * @dev  Modifier settles current Orb holder's debt before executing the rest of the function.
      */
     modifier settles() {
@@ -828,7 +818,11 @@ contract Orb is ERC721, Ownable {
      *          It returns the Orb to the contract, readying it for re-auction.
      * @dev     Emits Foreclosure().
      */
-    function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
+    function foreclose() external onlyHolderHeld settles {
+        if (holderSolvent()) {
+            revert HolderSolvent();
+        }
+
         address holder = ERC721.ownerOf(tokenId);
         price = 0;
 
