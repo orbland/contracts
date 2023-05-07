@@ -73,7 +73,8 @@ contract Orb is ERC721, Ownable {
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
     event PriceUpdate(uint256 previousPrice, uint256 newPrice);
     event Purchase(address indexed seller, address indexed buyer, uint256 price);
-    event Foreclosure(address indexed formerHolder, bool indexed voluntary);
+    event Foreclosure(address indexed formerHolder);
+    event Relinquishment(address indexed formerHolder);
 
     // Invoking and Responding Events
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
@@ -836,7 +837,7 @@ contract Orb is ERC721, Ownable {
     function relinquish() external onlyHolder onlyHolderSolvent settles {
         price = 0;
 
-        emit Foreclosure(msg.sender, true);
+        emit Relinquishment(msg.sender);
 
         _transferOrb(msg.sender, address(this));
         _withdraw(msg.sender, fundsOf[msg.sender]);
@@ -851,7 +852,7 @@ contract Orb is ERC721, Ownable {
         address holder = ERC721.ownerOf(tokenId);
         price = 0;
 
-        emit Foreclosure(holder, false);
+        emit Foreclosure(holder);
 
         _transferOrb(holder, address(this));
     }
