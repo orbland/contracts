@@ -81,6 +81,10 @@ contract Orb is ERC721, Ownable {
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
 
+    // Orb Parameter Events
+    event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
+    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
+
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +99,9 @@ contract Orb is ERC721, Ownable {
     error ContractDoesNotHoldOrb();
     error CreatorDoesNotControlOrb();
     error BeneficiaryDisallowed();
+
+    // Orb Parameter Errors
+    error HonoredUntilNotDecreasable();
 
     // Funds-Related Authorization Errors
     error HolderSolvent();
@@ -307,7 +314,7 @@ contract Orb is ERC721, Ownable {
      *       It means that the Orb properties cannot be modified while it is held by the holder.
      */
     modifier onlyCreatorControlled() {
-        if (address(this) != ERC721.ownerOf(tokenId) || owner() != ERC721.ownerOf(tokenId)) {
+        if (address(this) != ERC721.ownerOf(tokenId) && owner() != ERC721.ownerOf(tokenId)) {
             revert CreatorDoesNotControlOrb();
         }
         _;
@@ -428,6 +435,36 @@ contract Orb is ERC721, Ownable {
         if (to_ != address(this)) {
             holderReceiveTime = block.timestamp;
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: ORB PARAMETERS
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @notice  Allows re-swearing of the oath and set a new honoredUntil date.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     *          HonoredUntil date can be decreased, unlike with the {extendHonoredUntil()} function.
+     * @dev     Emits {OathSwearing} event.
+     */
+    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner onlyCreatorControlled {
+        honoredUntil = newHonoredUntil;
+        emit OathSwearing(oathHash, newHonoredUntil);
+    }
+
+    /**
+     * @notice  Allows the Orb creator to extend the honoredUntil date.
+     *          This function can be called by the Orb creator anytime and only allows extending
+     *          the honoredUntil date.
+     * @dev     Emits {HonoredUntilUpdate} event.
+     */
+    function extendHonoredUntil(uint256 newHonoredUntil) external onlyOwner {
+        if (newHonoredUntil < honoredUntil) {
+            revert HonoredUntilNotDecreasable();
+        }
+        uint256 previousHonoredUntil = honoredUntil;
+        honoredUntil = newHonoredUntil;
+        emit HonoredUntilUpdate(previousHonoredUntil, newHonoredUntil);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
