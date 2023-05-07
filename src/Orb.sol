@@ -324,16 +324,6 @@ contract Orb is ERC721, Ownable {
     // AUCTION MODIFIERS
 
     /**
-     * @dev  Ensures that an auction is currently running.
-     */
-    modifier onlyDuringAuction() {
-        if (!auctionRunning()) {
-            revert AuctionNotRunning();
-        }
-        _;
-    }
-
-    /**
      * @dev  Ensures that an auction is currently not running.
      *       Can be multiple states: auction not started, auction over but not finalized, or auction finalized.
      */
@@ -526,7 +516,11 @@ contract Orb is ERC721, Ownable {
      * @param   amount      The value to bid.
      * @param   priceIfWon  Price if the bid wins. Must be less than MAX_PRICE.
      */
-    function bid(uint256 amount, uint256 priceIfWon) external payable onlyDuringAuction {
+    function bid(uint256 amount, uint256 priceIfWon) external payable {
+        if (!auctionRunning()) {
+            revert AuctionNotRunning();
+        }
+
         if (msg.sender == beneficiary) {
             revert BeneficiaryDisallowed();
         }
