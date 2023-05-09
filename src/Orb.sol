@@ -333,14 +333,6 @@ contract Orb is ERC721, Ownable {
         _;
     }
 
-    /**
-     * @dev  Modifier settles current Orb holder's debt before executing the rest of the function.
-     */
-    modifier settles() {
-        _settle();
-        _;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: ERC-721 OVERRIDES
     ////////////////////////////////////////////////////////////////////////////////
@@ -700,7 +692,8 @@ contract Orb is ERC721, Ownable {
      *          Emits PriceUpdate().
      * @param   newPrice  New price for the Orb.
      */
-    function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent settles {
+    function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent {
+        _settle();
         _setPrice(newPrice);
     }
 
@@ -721,16 +714,12 @@ contract Orb is ERC721, Ownable {
      * @param   currentPrice  Current price, to prevent front-running.
      * @param   newPrice      New price to use after the purchase.
      */
-    function purchase(uint256 currentPrice, uint256 newPrice)
-        external
-        payable
-        onlyHolderHeld
-        onlyHolderSolvent
-        settles
-    {
+    function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent {
         if (currentPrice != price) {
             revert CurrentPriceIncorrect(currentPrice, price);
         }
+
+        _settle();
 
         address holder = ERC721.ownerOf(tokenId);
 
@@ -795,7 +784,9 @@ contract Orb is ERC721, Ownable {
      * @dev     Calls _withdraw(), which does value transfer from the contract.
      *          Emits Foreclosure() and Withdrawal().
      */
-    function relinquish() external onlyHolder onlyHolderSolvent settles {
+    function relinquish() external onlyHolder onlyHolderSolvent {
+        _settle();
+
         price = 0;
 
         emit Relinquishment(msg.sender);
@@ -809,10 +800,12 @@ contract Orb is ERC721, Ownable {
      *          It returns the Orb to the contract, readying it for re-auction.
      * @dev     Emits Foreclosure().
      */
-    function foreclose() external onlyHolderHeld settles {
+    function foreclose() external onlyHolderHeld {
         if (holderSolvent()) {
             revert HolderSolvent();
         }
+
+        _settle();
 
         address holder = ERC721.ownerOf(tokenId);
         price = 0;
