@@ -16,7 +16,12 @@ contract OrbTestBase is Test {
 
     uint256 internal startingBalance;
 
+    event Creation(bytes32 oathHash, uint256 honoredUntil);
+
     function setUp() public {
+        vm.expectEmit(false, false, false, true);
+        // keccak hash of "test oath"
+        emit Creation(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
         orb = new OrbHarness();
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
@@ -78,6 +83,7 @@ contract InitialStateTest is OrbTestBase {
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
+        assertEq(orb.honoredUntil(), 100); // 1_700_000_000
 
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
 
@@ -125,6 +131,59 @@ contract TransfersRevertTest is OrbTestBase {
         orb.safeTransferFrom(address(this), newOwner, id);
         vm.expectRevert(Orb.TransferringNotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, id, bytes(""));
+    }
+}
+
+contract SwearOathTest is OrbTestBase {
+    event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
+
+    function test_swearOathOnlyOwnerControlled() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+    }
+
+    function test_swearOathCorrectly() public {
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        // keccak hash of "test oath"
+        emit OathSwearing(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+        assertEq(orb.honoredUntil(), 100);
+    }
+}
+
+contract ExtendHonoredUntilTest is OrbTestBase {
+    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
+
+    function test_extendHonoredUntilOnlyOwner() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.extendHonoredUntil(101);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.extendHonoredUntil(101);
+    }
+
+    function test_extendHonoredUntilNotDecrease() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.HonoredUntilNotDecreasable.selector);
+        orb.extendHonoredUntil(99);
+    }
+
+    function test_extendHonoredUntilCorrectly() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit HonoredUntilUpdate(100, 101);
+        orb.extendHonoredUntil(101);
     }
 }
 
@@ -1096,15 +1155,15 @@ contract RelinquishmentTest is OrbTestBase {
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
-    event Foreclosure(address indexed formerHolder, bool indexed voluntary);
+    event Relinquishment(address indexed formerHolder);
     event Withdrawal(address indexed recipient, uint256 amount);
 
     function test_succeedsCorrectly() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user);
         assertEq(orb.ownerOf(orb.workaround_tokenId()), user);
-        vm.expectEmit(true, true, false, false);
-        emit Foreclosure(user, true);
+        vm.expectEmit(true, false, false, false);
+        emit Relinquishment(user);
         vm.expectEmit(true, false, false, true);
         uint256 effectiveFunds = effectiveFundsOf(user);
         emit Withdrawal(user, effectiveFunds);
@@ -1129,7 +1188,7 @@ contract ForecloseTest is OrbTestBase {
         assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
     }
 
-    event Foreclosure(address indexed formerHolder, bool indexed voluntary);
+    event Foreclosure(address indexed formerHolder);
 
     function test_revertsifHolderSolvent() public {
         uint256 leadingBid = 10 ether;
@@ -1137,8 +1196,8 @@ contract ForecloseTest is OrbTestBase {
         vm.expectRevert(Orb.HolderSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
-        vm.expectEmit(true, true, false, false);
-        emit Foreclosure(user, false);
+        vm.expectEmit(true, false, false, false);
+        emit Foreclosure(user);
         orb.foreclose();
     }
 
@@ -1146,35 +1205,12 @@ contract ForecloseTest is OrbTestBase {
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 10000 days);
-        vm.expectEmit(true, true, false, false);
-        emit Foreclosure(user, false);
+        vm.expectEmit(true, false, false, false);
+        emit Foreclosure(user);
         assertEq(orb.ownerOf(orb.workaround_tokenId()), user);
         orb.foreclose();
         assertEq(orb.ownerOf(orb.workaround_tokenId()), address(orb));
         assertEq(orb.price(), 0);
-    }
-}
-
-contract ForeclosureTimeTest is OrbTestBase {
-    function test_returnsInfinityIfOwner() public {
-        assertEq(orb.foreclosureTime(), type(uint256).max);
-    }
-
-    function test_returnsInfinityIfPriceZero() public {
-        uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        orb.workaround_setPrice(0);
-        assertEq(orb.foreclosureTime(), type(uint256).max);
-    }
-
-    function test_correctCalculation() public {
-        // uint256 remainingSeconds = (_funds[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR)
-        //                             / (_price * HOLDER_TAX_NUMERATOR);
-        uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        uint256 remaining = (orb.fundsOf(user) * 365 days * 10_000) / (leadingBid * 1_000);
-        uint256 lastSettlementTime = block.timestamp - 30 days;
-        assertEq(orb.foreclosureTime(), remaining + lastSettlementTime);
     }
 }
 

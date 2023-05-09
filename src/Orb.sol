@@ -59,6 +59,8 @@ contract Orb is ERC721, Ownable {
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////
 
+    event Creation(bytes32 oathHash, uint256 honoredUntil);
+
     // Auction Events
     event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
     event AuctionBid(address indexed bidder, uint256 bid);
@@ -71,13 +73,18 @@ contract Orb is ERC721, Ownable {
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
     event PriceUpdate(uint256 previousPrice, uint256 newPrice);
     event Purchase(address indexed seller, address indexed buyer, uint256 price);
-    event Foreclosure(address indexed formerHolder, bool indexed voluntary);
+    event Foreclosure(address indexed formerHolder);
+    event Relinquishment(address indexed formerHolder);
 
     // Invoking and Responding Events
     event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
+
+    // Orb Parameter Events
+    event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
+    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -91,7 +98,11 @@ contract Orb is ERC721, Ownable {
     error NotHolder();
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
+    error CreatorDoesNotControlOrb();
     error BeneficiaryDisallowed();
+
+    // Orb Parameter Errors
+    error HonoredUntilNotDecreasable();
 
     // Funds-Related Authorization Errors
     error HolderSolvent();
@@ -138,12 +149,13 @@ contract Orb is ERC721, Ownable {
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
     uint256 internal immutable tokenId;
 
-    // Special value returned when foreclosure time is "never".
-    uint256 internal constant INFINITY = type(uint256).max;
     // Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
     // STATE
+
+    // Honored Until: timestamp until which the Orb Oath is honored for the holder.
+    uint256 public honoredUntil;
 
     // Base URL for tokenURL JSONs.
     string internal baseURL = "https://static.orb.land/orb/";
@@ -226,12 +238,26 @@ contract Orb is ERC721, Ownable {
      * @dev  When deployed, contract mints the only token that will ever exist, to itself.
      *       This token represents the Orb and is called the Orb elsewhere in the contract.
      *       {Ownable} sets the deployer to be the owner, and also the creator in the Orb context.
-     * @param tokenId_      ERC-721 token ID of the Orb.
-     * @param beneficiary_  Beneficiary receives all Orb proceeds.
+     * @param name_          Orb name, used in ERC-721 metadata.
+     * @param symbol_        Orb symbol or ticker, used in ERC-721 metadata.
+     * @param tokenId_       ERC-721 token ID of the Orb.
+     * @param beneficiary_   Beneficiary receives all Orb proceeds.
+     * @param oathHash_      Hash of the Oath taken to create the Orb.
+     * @param honoredUntil_  Date until which the Orb creator will honor the Oath for the Orb holder.
      */
-    constructor(uint256 tokenId_, address beneficiary_) ERC721("Orb", "ORB") {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 tokenId_,
+        address beneficiary_,
+        bytes32 oathHash_,
+        uint256 honoredUntil_
+    ) ERC721(name_, symbol_) {
         tokenId = tokenId_;
         beneficiary = beneficiary_;
+        honoredUntil = honoredUntil_;
+
+        emit Creation(oathHash_, honoredUntil_);
 
         _safeMint(address(this), tokenId);
     }
@@ -270,17 +296,19 @@ contract Orb is ERC721, Ownable {
         _;
     }
 
-    // AUCTION MODIFIERS
-
     /**
-     * @dev  Ensures that an auction is currently running.
+     * @dev  Ensures that the Orb belongs to the contract itself or the creator.
+     *       All setting-adjusting functions should use this modifier.
+     *       It means that the Orb properties cannot be modified while it is held by the holder.
      */
-    modifier onlyDuringAuction() {
-        if (!auctionRunning()) {
-            revert AuctionNotRunning();
+    modifier onlyCreatorControlled() {
+        if (address(this) != ERC721.ownerOf(tokenId) && owner() != ERC721.ownerOf(tokenId)) {
+            revert CreatorDoesNotControlOrb();
         }
         _;
     }
+
+    // AUCTION MODIFIERS
 
     /**
      * @dev  Ensures that an auction is currently not running.
@@ -289,17 +317,6 @@ contract Orb is ERC721, Ownable {
     modifier notDuringAuction() {
         if (auctionRunning()) {
             revert AuctionRunning();
-        }
-        _;
-    }
-
-    /**
-     * @dev  Ensures that the caller is not currently leading the auction.
-     *       User leading the auction cannot withdraw funds, as funds include user's bid.
-     */
-    modifier notLeadingBidder() {
-        if (msg.sender == leadingBidder) {
-            revert NotPermittedForLeadingBidder();
         }
         _;
     }
@@ -317,31 +334,10 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @dev  Ensures that the current Orb holder has run out of funds to cover Harberger tax.
-     */
-    modifier onlyHolderInsolvent() {
-        if (holderSolvent()) {
-            revert HolderSolvent();
-        }
-        _;
-    }
-
-    /**
      * @dev  Modifier settles current Orb holder's debt before executing the rest of the function.
      */
     modifier settles() {
         _settle();
-        _;
-    }
-
-    /**
-     * @dev  Modifier settles current Orb holder's debt before executing the rest of the function,
-     *       only if the caller is the Orb holder. Useful for holder withdrawals.
-     */
-    modifier settlesIfHolder() {
-        if (msg.sender == ERC721.ownerOf(tokenId)) {
-            _settle();
-        }
         _;
     }
 
@@ -385,6 +381,36 @@ contract Orb is ERC721, Ownable {
         if (to_ != address(this)) {
             holderReceiveTime = block.timestamp;
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: ORB PARAMETERS
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @notice  Allows re-swearing of the oath and set a new honoredUntil date.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     *          HonoredUntil date can be decreased, unlike with the {extendHonoredUntil()} function.
+     * @dev     Emits {OathSwearing} event.
+     */
+    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner onlyCreatorControlled {
+        honoredUntil = newHonoredUntil;
+        emit OathSwearing(oathHash, newHonoredUntil);
+    }
+
+    /**
+     * @notice  Allows the Orb creator to extend the honoredUntil date.
+     *          This function can be called by the Orb creator anytime and only allows extending
+     *          the honoredUntil date.
+     * @dev     Emits {HonoredUntilUpdate} event.
+     */
+    function extendHonoredUntil(uint256 newHonoredUntil) external onlyOwner {
+        if (newHonoredUntil < honoredUntil) {
+            revert HonoredUntilNotDecreasable();
+        }
+        uint256 previousHonoredUntil = honoredUntil;
+        honoredUntil = newHonoredUntil;
+        emit HonoredUntilUpdate(previousHonoredUntil, newHonoredUntil);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +475,11 @@ contract Orb is ERC721, Ownable {
      * @param   amount      The value to bid.
      * @param   priceIfWon  Price if the bid wins. Must be less than MAX_PRICE.
      */
-    function bid(uint256 amount, uint256 priceIfWon) external payable onlyDuringAuction {
+    function bid(uint256 amount, uint256 priceIfWon) external payable {
+        if (!auctionRunning()) {
+            revert AuctionNotRunning();
+        }
+
         if (msg.sender == beneficiary) {
             revert BeneficiaryDisallowed();
         }
@@ -542,7 +572,7 @@ contract Orb is ERC721, Ownable {
      *          Not recommended for current Orb holders, they should call relinquish() to take out their funds.
      * @dev     Not allowed for the leading auction bidder.
      */
-    function withdrawAll() external notLeadingBidder settlesIfHolder {
+    function withdrawAll() external {
         _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
@@ -551,7 +581,7 @@ contract Orb is ERC721, Ownable {
      *          For current Orb holders, reduces the time until foreclosure.
      * @dev     Not allowed for the leading auction bidder.
      */
-    function withdraw(uint256 amount) external notLeadingBidder settlesIfHolder {
+    function withdraw(uint256 amount) external {
         _withdraw(msg.sender, amount);
     }
 
@@ -612,6 +642,14 @@ contract Orb is ERC721, Ownable {
      * @param   amount_     The value in wei to withdraw from the contract.
      */
     function _withdraw(address recipient_, uint256 amount_) internal {
+        if (msg.sender == leadingBidder) {
+            revert NotPermittedForLeadingBidder();
+        }
+
+        if (msg.sender == ERC721.ownerOf(tokenId)) {
+            _settle();
+        }
+
         if (fundsOf[recipient_] < amount_) {
             revert InsufficientFunds(fundsOf[recipient_], amount_);
         }
@@ -760,7 +798,7 @@ contract Orb is ERC721, Ownable {
     function relinquish() external onlyHolder onlyHolderSolvent settles {
         price = 0;
 
-        emit Foreclosure(msg.sender, true);
+        emit Relinquishment(msg.sender);
 
         _transferOrb(msg.sender, address(this));
         _withdraw(msg.sender, fundsOf[msg.sender]);
@@ -771,57 +809,22 @@ contract Orb is ERC721, Ownable {
      *          It returns the Orb to the contract, readying it for re-auction.
      * @dev     Emits Foreclosure().
      */
-    function foreclose() external onlyHolderHeld onlyHolderInsolvent settles {
+    function foreclose() external onlyHolderHeld settles {
+        if (holderSolvent()) {
+            revert HolderSolvent();
+        }
+
         address holder = ERC721.ownerOf(tokenId);
         price = 0;
 
-        emit Foreclosure(holder, false);
+        emit Foreclosure(holder);
 
         _transferOrb(holder, address(this));
-    }
-
-    /**
-     * @notice  Foreclosure time is time when the current holder will no longer have enough funds to cover the
-     *          Harberger tax and can be foreclosed.
-     * @dev     Only valid if someone, not the contract, holds the Orb.
-     *          If the Orb is held by the creator or if the price is zero, foreclosure time is INFINITY constant.
-     * @return  uint256  Timestamp of the foreclosure time.
-     */
-    function foreclosureTime() external view returns (uint256) {
-        address holder = ERC721.ownerOf(tokenId);
-        if (owner() == holder) {
-            return INFINITY;
-        }
-
-        // Avoid division by zero.
-        if (price == 0) {
-            return INFINITY;
-        }
-
-        uint256 remainingSeconds =
-            (fundsOf[holder] * HOLDER_TAX_PERIOD * FEE_DENOMINATOR) / (price * holderTaxNumerator);
-        return lastSettlementTime + remainingSeconds;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: INVOKING AND RESPONDING
     ////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * @notice  Time remaining until the Orb can be invoked again.
-     *          Returns zero if the cooldown has expired and the Orb is ready.
-     * @dev     This function is only meaningful if the Orb is not held by contract, and the holder is solvent.
-     *          Contract itself cannot invoke the Orb, so the response would be meaningless.
-     * @return  uint256  Time in seconds until the Orb is ready to be invoked.
-     */
-    function cooldownRemaining() external view returns (uint256) {
-        uint256 cooldownExpires = lastInvocationTime + cooldown;
-        if (block.timestamp >= cooldownExpires) {
-            return 0;
-        } else {
-            return cooldownExpires - block.timestamp;
-        }
-    }
 
     /**
      * @notice  Invokes the Orb. Allows the holder to submit cleartext.
