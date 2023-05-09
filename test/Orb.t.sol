@@ -21,7 +21,7 @@ contract OrbTestBase is Test {
     function setUp() public {
         vm.expectEmit(false, false, false, true);
         // keccak hash of "test oath"
-        emit Creation(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 1_700_000_000);
+        emit Creation(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
         orb = new OrbHarness();
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
@@ -83,7 +83,7 @@ contract InitialStateTest is OrbTestBase {
         assertFalse(orb.auctionRunning());
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
-        assertEq(orb.honoredUntil(), 1_700_000_000);
+        assertEq(orb.honoredUntil(), 100); // 1_700_000_000
 
         assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
 
@@ -131,6 +131,59 @@ contract TransfersRevertTest is OrbTestBase {
         orb.safeTransferFrom(address(this), newOwner, id);
         vm.expectRevert(Orb.TransferringNotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, id, bytes(""));
+    }
+}
+
+contract SwearOathTest is OrbTestBase {
+    event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
+
+    function test_swearOathOnlyOwnerControlled() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+    }
+
+    function test_swearOathCorrectly() public {
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        // keccak hash of "test oath"
+        emit OathSwearing(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+        assertEq(orb.honoredUntil(), 100);
+    }
+}
+
+contract ExtendHonoredUntilTest is OrbTestBase {
+    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
+
+    function test_extendHonoredUntilOnlyOwner() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.extendHonoredUntil(101);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.extendHonoredUntil(101);
+    }
+
+    function test_extendHonoredUntilNotDecrease() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.HonoredUntilNotDecreasable.selector);
+        orb.extendHonoredUntil(99);
+    }
+
+    function test_extendHonoredUntilCorrectly() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit HonoredUntilUpdate(100, 101);
+        orb.extendHonoredUntil(101);
     }
 }
 
