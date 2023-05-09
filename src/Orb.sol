@@ -297,17 +297,6 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @dev  Ensures that the Orb belongs to the contract itself, either because it hasn't been auctioned,
-     *       or because it has returned to the contract due to {relinquish()} or {foreclose()}
-     */
-    modifier onlyContractHeld() {
-        if (address(this) != ERC721.ownerOf(tokenId)) {
-            revert ContractDoesNotHoldOrb();
-        }
-        _;
-    }
-
-    /**
      * @dev  Ensures that the Orb belongs to the contract itself or the creator.
      *       All setting-adjusting functions should use this modifier.
      *       It means that the Orb properties cannot be modified while it is held by the holder.
@@ -461,7 +450,11 @@ contract Orb is ERC721, Ownable {
      *          Should not be necessary, as {finalizeAuction()} also does that.
      *          Emits AuctionStart().
      */
-    function startAuction() external onlyOwner onlyContractHeld notDuringAuction {
+    function startAuction() external onlyOwner notDuringAuction {
+        if (address(this) != ERC721.ownerOf(tokenId)) {
+            revert ContractDoesNotHoldOrb();
+        }
+
         if (auctionEndTime > 0) {
             revert AuctionRunning();
         }
