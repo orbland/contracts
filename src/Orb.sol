@@ -740,6 +740,7 @@ contract Orb is ERC721, Ownable {
         fundsOf[msg.sender] -= currentPrice;
 
         if (owner() == holder) {
+            lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
             uint256 beneficiaryRoyalty = (currentPrice * royaltyNumerator) / FEE_DENOMINATOR;
