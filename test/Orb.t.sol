@@ -867,8 +867,9 @@ contract HolderSolventTest is OrbTestBase {
         assertEq(orb.fundsOf(user), 0);
         assertEq(orb.fundsOf(owner), 0);
         assertEq(orb.lastSettlementTime(), 0);
+        assert(orb.holderSolvent());
         vm.warp(block.timestamp + 4885828483 days);
-        assertFalse(orb.holderSolvent());
+        assert(orb.holderSolvent());
     }
 }
 
