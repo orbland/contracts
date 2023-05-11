@@ -1040,6 +1040,7 @@ contract PurchaseTest is OrbTestBase {
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user), 1);
         assertEq(orb.price(), newPrice);
+        assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
     }
 
     function test_succeedsCorrectly() public {
@@ -1053,6 +1054,7 @@ contract PurchaseTest is OrbTestBase {
         uint256 ownerBefore = orb.fundsOf(owner);
         uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);
+        uint256 lastInvocationTimeBefore = orb.lastInvocationTime();
         vm.startPrank(user2);
         orb.deposit{value: depositAmount}();
         assertEq(orb.fundsOf(user2), depositAmount);
@@ -1076,6 +1078,7 @@ contract PurchaseTest is OrbTestBase {
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user2), 1);
         assertEq(orb.price(), newPrice);
+        assertEq(orb.lastInvocationTime(), lastInvocationTimeBefore);
     }
 
     function testFuzz_succeedsCorrectly(uint256 bidAmount, uint256 newPrice, uint256 buyPrice, uint256 diff) public {
