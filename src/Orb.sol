@@ -416,7 +416,7 @@ contract Orb is ERC721, Ownable {
      * @return  bool  If the auction is running.
      */
     function auctionRunning() public view returns (bool) {
-        return auctionEndTime > block.timestamp && address(this) == ERC721.ownerOf(tokenId);
+        return auctionEndTime > block.timestamp;
     }
 
     /**
