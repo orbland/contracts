@@ -608,7 +608,7 @@ contract Orb is ERC721, Ownable {
         if (owner() == holder) {
             return true;
         }
-        return fundsOf[holder] > _owedSinceLastSettlement();
+        return fundsOf[holder] >= _owedSinceLastSettlement();
     }
 
     /**
