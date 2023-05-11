@@ -210,8 +210,6 @@ contract StartAuctionTest is OrbTestBase {
 
     function test_startAuctionCorrectly() public {
         assertEq(orb.auctionStartTime(), 0);
-        orb.workaround_setLeadingBid(10);
-        orb.workaround_setLeadingBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
         emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();

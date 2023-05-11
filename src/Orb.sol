@@ -453,8 +453,6 @@ contract Orb is ERC721, Ownable {
 
         auctionStartTime = block.timestamp;
         auctionEndTime = block.timestamp + auctionMinimumDuration;
-        leadingBidder = address(0);
-        leadingBid = 0;
 
         emit AuctionStart(auctionStartTime, auctionEndTime);
     }
