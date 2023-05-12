@@ -125,6 +125,7 @@ contract Orb is ERC721, Ownable {
     error CooldownIncomplete(uint256 timeRemaining);
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error CleartextHashMismatch(bytes32 cleartextHash, bytes32 recordedContentHash);
+    error CleartextRecordingNotPermitted(uint256 invocationId);
     error InvocationNotFound(uint256 invocationId);
     error ResponseNotFound(uint256 invocationId);
     error ResponseExists(uint256 invocationId);
@@ -922,6 +923,11 @@ contract Orb is ERC721, Ownable {
 
         if (recordedContentHash != cleartextHash) {
             revert CleartextHashMismatch(cleartextHash, recordedContentHash);
+        }
+
+        uint256 invocationTime = invocations[invocationId].timestamp;
+        if (holderReceiveTime >= invocationTime) {
+            revert CleartextRecordingNotPermitted(invocationId);
         }
 
         emit CleartextRecording(invocationId, cleartext);
