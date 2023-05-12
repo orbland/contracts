@@ -225,6 +225,37 @@ contract SettingCooldownTest is OrbTestBase {
     }
 }
 
+contract SettingFeesTest is OrbTestBase {
+    event FeesUpdate(
+        uint256 previousHolderTaxNumerator,
+        uint256 newHolderTaxNumerator,
+        uint256 previousRoyaltyNumerator,
+        uint256 newRoyaltyNumerator
+    );
+
+    function test_setFeesOnlyOwnerControlled() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.setFees(10_000, 10_000);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        orb.setFees(10_000, 10_000);
+    }
+
+    function test_setFeesSucceedsCorrectly() public {
+        assertEq(orb.holderTaxNumerator(), 1000);
+        assertEq(orb.royaltyNumerator(), 1000);
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit FeesUpdate(1000, 10_000, 1000, 10_000);
+        orb.setFees(10_000, 10_000);
+        assertEq(orb.holderTaxNumerator(), 10_000);
+        assertEq(orb.royaltyNumerator(), 10_000);
+    }
+}
+
 contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
