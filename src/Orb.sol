@@ -220,8 +220,8 @@ contract Orb is ERC721, Ownable {
     // Last Invocation Time: when the Orb was last invoked. Used together with Cooldown constant.
     uint256 public lastInvocationTime;
 
-    // Mapping for Invocation: invocationId to contentHash (bytes32).
-    mapping(uint256 => bytes32) public invocations;
+    // Mapping for Invocation: invocationId to HashTime.
+    mapping(uint256 => HashTime) public invocations;
     // Count of invocations made. Used to calculate invocationId of the next invocation.
     uint256 public invocationCount = 0;
     // Mapping for Responses (Answers to Invocations): matching invocationId to HashTime struct.
@@ -417,7 +417,7 @@ contract Orb is ERC721, Ownable {
      * @return  bool  If the auction is running.
      */
     function auctionRunning() public view returns (bool) {
-        return auctionEndTime > block.timestamp && address(this) == ERC721.ownerOf(tokenId);
+        return auctionEndTime > block.timestamp;
     }
 
     /**
@@ -454,8 +454,6 @@ contract Orb is ERC721, Ownable {
 
         auctionStartTime = block.timestamp;
         auctionEndTime = block.timestamp + auctionMinimumDuration;
-        leadingBidder = address(0);
-        leadingBid = 0;
 
         emit AuctionStart(auctionStartTime, auctionEndTime);
     }
@@ -611,7 +609,7 @@ contract Orb is ERC721, Ownable {
         if (owner() == holder) {
             return true;
         }
-        return fundsOf[holder] > _owedSinceLastSettlement();
+        return fundsOf[holder] >= _owedSinceLastSettlement();
     }
 
     /**
@@ -745,6 +743,7 @@ contract Orb is ERC721, Ownable {
         fundsOf[msg.sender] -= currentPrice;
 
         if (owner() == holder) {
+            lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
             uint256 beneficiaryRoyalty = (currentPrice * royaltyNumerator) / FEE_DENOMINATOR;
@@ -852,7 +851,7 @@ contract Orb is ERC721, Ownable {
 
         uint256 invocationId = invocationCount;
 
-        invocations[invocationId] = contentHash;
+        invocations[invocationId] = HashTime(contentHash, block.timestamp);
         lastInvocationTime = block.timestamp;
         invocationCount += 1;
 
@@ -883,7 +882,7 @@ contract Orb is ERC721, Ownable {
             revert CleartextTooLong(cleartextLength, cleartextMaximumLength);
         }
 
-        bytes32 recordedContentHash = invocations[invocationId];
+        bytes32 recordedContentHash = invocations[invocationId].contentHash;
         bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
 
         if (recordedContentHash != cleartextHash) {

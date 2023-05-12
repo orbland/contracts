@@ -210,8 +210,6 @@ contract StartAuctionTest is OrbTestBase {
 
     function test_startAuctionCorrectly() public {
         assertEq(orb.auctionStartTime(), 0);
-        orb.workaround_setLeadingBid(10);
-        orb.workaround_setLeadingBidder(address(0xBEEF));
         vm.expectEmit(true, true, false, false);
         emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
@@ -869,8 +867,9 @@ contract HolderSolventTest is OrbTestBase {
         assertEq(orb.fundsOf(user), 0);
         assertEq(orb.fundsOf(owner), 0);
         assertEq(orb.lastSettlementTime(), 0);
+        assert(orb.holderSolvent());
         vm.warp(block.timestamp + 4885828483 days);
-        assertFalse(orb.holderSolvent());
+        assert(orb.holderSolvent());
     }
 }
 
@@ -1049,6 +1048,7 @@ contract PurchaseTest is OrbTestBase {
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user), 1);
         assertEq(orb.price(), newPrice);
+        assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
     }
 
     function test_succeedsCorrectly() public {
@@ -1065,6 +1065,7 @@ contract PurchaseTest is OrbTestBase {
         uint256 ownerBefore = orb.fundsOf(owner);
         uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);
+        uint256 lastInvocationTimeBefore = orb.lastInvocationTime();
         vm.warp(block.timestamp + 365 days);
         vm.prank(user2);
         orb.deposit{value: depositAmount}();
@@ -1090,6 +1091,7 @@ contract PurchaseTest is OrbTestBase {
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user2), 1);
         assertEq(orb.price(), newPrice);
+        assertEq(orb.lastInvocationTime(), lastInvocationTimeBefore);
     }
 
     function testFuzz_succeedsCorrectly(uint256 bidAmount, uint256 newPrice, uint256 buyPrice, uint256 diff) public {
@@ -1290,7 +1292,9 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         orb.invokeWithHash(hash);
-        assertEq(orb.invocations(0), hash);
+        (bytes32 invocationHash1, uint256 invocationTimestamp1) = orb.invocations(0);
+        assertEq(invocationHash1, hash);
+        assertEq(invocationTimestamp1, block.timestamp);
         vm.warp(block.timestamp + 1 days);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1298,10 +1302,14 @@ contract InvokeWthHashTest is OrbTestBase {
             )
         );
         orb.invokeWithHash(hash);
-        assertEq(orb.invocations(1), bytes32(0));
+        (bytes32 invocationHash2, uint256 invocationTimestamp2) = orb.invocations(1);
+        assertEq(invocationHash2, bytes32(0));
+        assertEq(invocationTimestamp2, 0);
         vm.warp(block.timestamp + orb.cooldown() - 1 days + 1);
         orb.invokeWithHash(hash);
-        assertEq(orb.invocations(1), hash);
+        (bytes32 invocationHash3, uint256 invocationTimestamp3) = orb.invocations(1);
+        assertEq(invocationHash3, hash);
+        assertEq(invocationTimestamp3, block.timestamp);
     }
 
     function test_success() public {
@@ -1311,7 +1319,9 @@ contract InvokeWthHashTest is OrbTestBase {
         vm.expectEmit(true, true, false, true);
         emit Invocation(user, 0, hash, block.timestamp);
         orb.invokeWithHash(hash);
-        assertEq(orb.invocations(0), hash);
+        (bytes32 invocationHash, uint256 invocationTimestamp) = orb.invocations(0);
+        assertEq(invocationHash, hash);
+        assertEq(invocationTimestamp, block.timestamp);
         assertEq(orb.lastInvocationTime(), block.timestamp);
         assertEq(orb.invocationCount(), 1);
     }
