@@ -701,7 +701,7 @@ contract Orb is ERC721, Ownable {
      * @notice  Lists the Orb for sale at the given price to buy directly from the Orb creator.
      *          This is an alternative to the auction mechanism, and can be used to simply have the Orb for sale
      *          at a fixed price, waiting for the buyer.
-     *          Listing is only allowed if the auction has not been started and is held by the contract.
+     *          Listing is only allowed if the auction has not been started and the Orb is held by the contract.
      *          When the Orb is purchased from the creator, all proceeds go to the beneficiary and the Orb comes
      *          fully charged, with no cooldown.
      * @dev     Emits Transfer() and PriceUpdate().
