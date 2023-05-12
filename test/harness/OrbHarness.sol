@@ -11,7 +11,8 @@ contract OrbHarness is
         69, // tokenId
         address(0xC0FFEE), // beneficiary
         keccak256(abi.encodePacked("test oath")), // oathHash
-        100 // 1_700_000_000 // honoredUntil
+        100, // 1_700_000_000 // honoredUntil
+        "https://static.orb.land/orb/" // baseURI
     )
 {
     function workaround_tokenId() public view returns (uint256) {

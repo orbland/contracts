@@ -159,7 +159,7 @@ contract Orb is ERC721, Ownable {
     uint256 public honoredUntil;
 
     // Base URL for tokenURL JSONs.
-    string internal baseURI = "https://static.orb.land/orb/";
+    string internal baseURI;
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
     // The value is without settlement. It means effective user funds (withdrawable) would be different
@@ -252,11 +252,13 @@ contract Orb is ERC721, Ownable {
         uint256 tokenId_,
         address beneficiary_,
         bytes32 oathHash_,
-        uint256 honoredUntil_
+        uint256 honoredUntil_,
+        string memory baseURI_
     ) ERC721(name_, symbol_) {
         tokenId = tokenId_;
         beneficiary = beneficiary_;
         honoredUntil = honoredUntil_;
+        baseURI = baseURI_;
 
         emit Creation(oathHash_, honoredUntil_);
 
