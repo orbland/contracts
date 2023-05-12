@@ -44,7 +44,8 @@ abstract contract DeployBase is Script {
             tokenId, // tokenId
             splitterAddress, // beneficiary
             keccak256(abi.encodePacked("test oath")), // oathHash
-            1_700_000_000 // honoredUntil
+            1_700_000_000, // honoredUntil
+            "https://static.orb.land/orb/" // baseURI
         );
         orb.transferOwnership(creatorAddress);
 
