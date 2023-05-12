@@ -85,7 +85,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.beneficiary(), address(0xC0FFEE));
         assertEq(orb.honoredUntil(), 100); // 1_700_000_000
 
-        assertEq(orb.workaround_baseUrl(), "https://static.orb.land/orb/");
+        assertEq(orb.workaround_baseURI(), "https://static.orb.land/orb/");
 
         assertEq(orb.cleartextMaximumLength(), 280);
 
