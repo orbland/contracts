@@ -1461,10 +1461,10 @@ contract InvokeWithCleartextTest is OrbTestBase {
     function test_callsInvokeWithHashCorrectly() public {
         string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
         makeHolderAndWarp(user, 1 ether);
-        vm.expectEmit(true, false, false, true);
-        emit CleartextRecording(0, text);
         vm.expectEmit(true, true, false, true);
-        emit Invocation(user, 0, keccak256(abi.encodePacked(text)), block.timestamp);
+        emit Invocation(user, 1, keccak256(abi.encodePacked(text)), block.timestamp);
+        vm.expectEmit(true, false, false, true);
+        emit CleartextRecording(1, text);
         vm.prank(user);
         orb.invokeWithCleartext(text);
     }
@@ -1481,7 +1481,7 @@ contract InvokeWthHashTest is OrbTestBase {
         orb.invokeWithHash(hash);
 
         vm.expectEmit(true, false, false, true);
-        emit Invocation(user, 0, hash, block.timestamp);
+        emit Invocation(user, 1, hash, block.timestamp);
         vm.prank(user);
         orb.invokeWithHash(hash);
     }
@@ -1500,7 +1500,7 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash1, uint256 invocationTimestamp1) = orb.invocations(0);
+        (bytes32 invocationHash1, uint256 invocationTimestamp1) = orb.invocations(1);
         assertEq(invocationHash1, hash);
         assertEq(invocationTimestamp1, block.timestamp);
         vm.warp(block.timestamp + 1 days);
@@ -1510,12 +1510,12 @@ contract InvokeWthHashTest is OrbTestBase {
             )
         );
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash2, uint256 invocationTimestamp2) = orb.invocations(1);
+        (bytes32 invocationHash2, uint256 invocationTimestamp2) = orb.invocations(2);
         assertEq(invocationHash2, bytes32(0));
         assertEq(invocationTimestamp2, 0);
         vm.warp(block.timestamp + orb.cooldown() - 1 days + 1);
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash3, uint256 invocationTimestamp3) = orb.invocations(1);
+        (bytes32 invocationHash3, uint256 invocationTimestamp3) = orb.invocations(2);
         assertEq(invocationHash3, hash);
         assertEq(invocationTimestamp3, block.timestamp);
     }
@@ -1525,9 +1525,9 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         vm.expectEmit(true, true, false, true);
-        emit Invocation(user, 0, hash, block.timestamp);
+        emit Invocation(user, 1, hash, block.timestamp);
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash, uint256 invocationTimestamp) = orb.invocations(0);
+        (bytes32 invocationHash, uint256 invocationTimestamp) = orb.invocations(1);
         assertEq(invocationHash, hash);
         assertEq(invocationTimestamp, block.timestamp);
         assertEq(orb.lastInvocationTime(), block.timestamp);
@@ -1543,11 +1543,11 @@ contract RecordInvocationCleartext is OrbTestBase {
         string memory cleartext = "this is a cleartext";
         vm.prank(user2);
         vm.expectRevert(Orb.NotHolder.selector);
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
 
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
     }
 
     function test_revertWhen_HolderInsolvent() public {
@@ -1556,12 +1556,12 @@ contract RecordInvocationCleartext is OrbTestBase {
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
         vm.expectRevert(Orb.HolderInsolvent.selector);
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
 
         vm.warp(block.timestamp - 13130000 days);
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
     }
 
     function test_revertWhen_recordingPreviousHolderCleartext() public {
@@ -1573,9 +1573,9 @@ contract RecordInvocationCleartext is OrbTestBase {
         vm.deal(user2, 1 ether);
         vm.prank(user2);
         orb.purchase{value: 1 ether}(1 ether, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(Orb.CleartextRecordingNotPermitted.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CleartextRecordingNotPermitted.selector, 1));
         vm.prank(user2);
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
     }
 
     function test_revertWhen_incorrectLength() public {
@@ -1587,12 +1587,12 @@ contract RecordInvocationCleartext is OrbTestBase {
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         uint256 length = bytes(cleartext).length;
         vm.expectRevert(abi.encodeWithSelector(Orb.CleartextTooLong.selector, length, max));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
 
         vm.warp(block.timestamp + orb.cooldown() + 1);
         cleartext = "this is a cleartext";
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
+        orb.recordInvocationCleartext(2, cleartext);
     }
 
     function test_revertWhen_cleartextMismatch() public {
@@ -1606,9 +1606,9 @@ contract RecordInvocationCleartext is OrbTestBase {
                 Orb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
             )
         );
-        orb.recordInvocationCleartext(0, cleartext2);
+        orb.recordInvocationCleartext(1, cleartext2);
 
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
     }
 
     function test_success() public {
@@ -1617,8 +1617,8 @@ contract RecordInvocationCleartext is OrbTestBase {
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.expectEmit(true, false, false, true);
-        emit CleartextRecording(0, cleartext);
-        orb.recordInvocationCleartext(0, cleartext);
+        emit CleartextRecording(1, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
     }
 }
 
@@ -1631,15 +1631,15 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.respond(0, response);
+        orb.respond(1, response);
         vm.stopPrank();
 
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Response(owner, 0, response, block.timestamp);
-        orb.respond(0, response);
+        emit Response(owner, 1, response, block.timestamp);
+        orb.respond(1, response);
     }
 
     function test_revertWhen_invocationIdIncorrect() public {
@@ -1648,15 +1648,15 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
         vm.stopPrank();
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvocationNotFound.selector, 1));
-        orb.respond(1, response);
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvocationNotFound.selector, 2));
+        orb.respond(2, response);
 
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
     }
 
     function test_revertWhen_responseAlreadyExists() public {
@@ -1665,13 +1665,13 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        orb.respond(0, response);
-        vm.expectRevert(abi.encodeWithSelector(Orb.ResponseExists.selector, 0));
-        orb.respond(0, response);
+        orb.respond(1, response);
+        vm.expectRevert(abi.encodeWithSelector(Orb.ResponseExists.selector, 1));
+        orb.respond(1, response);
     }
 
     function test_success() public {
@@ -1680,14 +1680,14 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(0, cleartext);
+        orb.recordInvocationCleartext(1, cleartext);
         vm.stopPrank();
 
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Response(owner, 0, response, block.timestamp);
-        orb.respond(0, response);
-        (bytes32 hash, uint256 time) = orb.responses(0);
+        emit Response(owner, 1, response, block.timestamp);
+        orb.respond(1, response);
+        (bytes32 hash, uint256 time) = orb.responses(1);
         assertEq(hash, response);
         assertEq(time, block.timestamp);
     }
@@ -1703,13 +1703,13 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
         vm.prank(user2);
         vm.expectRevert(Orb.NotHolder.selector);
-        orb.flagResponse(0);
+        orb.flagResponse(1);
 
         vm.prank(user);
-        orb.flagResponse(0);
+        orb.flagResponse(1);
     }
 
     function test_revertWhen_HolderInsolvent() public {
@@ -1719,15 +1719,15 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
         vm.expectRevert(Orb.HolderInsolvent.selector);
-        orb.flagResponse(0);
+        orb.flagResponse(1);
 
         vm.warp(block.timestamp - 13130000 days);
         vm.prank(user);
-        orb.flagResponse(0);
+        orb.flagResponse(1);
     }
 
     function test_revertWhen_ResponseNotExist() public {
@@ -1737,13 +1737,13 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
 
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.ResponseNotFound.selector, 188));
         orb.flagResponse(188);
 
-        orb.flagResponse(0);
+        orb.flagResponse(1);
     }
 
     function test_revertWhen_outsideFlaggingPeriod() public {
@@ -1753,15 +1753,15 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
 
         vm.warp(block.timestamp + 100 days);
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 0, 100 days, orb.cooldown()));
-        orb.flagResponse(0);
+        vm.expectRevert(abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 1, 100 days, orb.cooldown()));
+        orb.flagResponse(1);
 
         vm.warp(block.timestamp - (100 days - orb.cooldown()));
-        orb.flagResponse(0);
+        orb.flagResponse(1);
     }
 
     function test_revertWhen_responseToPreviousHolder() public {
@@ -1771,22 +1771,22 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
 
         vm.startPrank(user2);
         orb.purchase{value: 3 ether}(1 ether, 2 ether);
         vm.expectRevert(
-            abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 0, orb.holderReceiveTime(), block.timestamp)
+            abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 1, orb.holderReceiveTime(), block.timestamp)
         );
-        orb.flagResponse(0);
+        orb.flagResponse(1);
 
         vm.warp(block.timestamp + orb.cooldown());
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.stopPrank();
         vm.prank(owner);
-        orb.respond(1, response);
+        orb.respond(2, response);
         vm.prank(user2);
-        orb.flagResponse(1);
+        orb.flagResponse(2);
     }
 
     function test_success() public {
@@ -1796,15 +1796,15 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.prank(owner);
-        orb.respond(0, response);
+        orb.respond(1, response);
         vm.prank(user);
-        assertEq(orb.responseFlagged(0), false);
+        assertEq(orb.responseFlagged(1), false);
         assertEq(orb.flaggedResponsesCount(), 0);
         vm.expectEmit(true, false, false, true);
-        emit ResponseFlagging(user, 0);
+        emit ResponseFlagging(user, 1);
         vm.prank(user);
-        orb.flagResponse(0);
-        assertEq(orb.responseFlagged(0), true);
+        orb.flagResponse(1);
+        assertEq(orb.responseFlagged(1), true);
         assertEq(orb.flaggedResponsesCount(), 1);
     }
 }
