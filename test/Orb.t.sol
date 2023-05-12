@@ -245,6 +245,23 @@ contract SettingFeesTest is OrbTestBase {
         orb.setFees(10_000, 10_000);
     }
 
+    function test_revertIfRoyaltyNumeratorExceedsDenominator() public {
+        uint256 largeNumerator = orb.FEE_DENOMINATOR() + 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Orb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.FEE_DENOMINATOR()
+            )
+        );
+        vm.prank(owner);
+        orb.setFees(largeNumerator, largeNumerator);
+
+        vm.prank(owner);
+        orb.setFees(largeNumerator, orb.FEE_DENOMINATOR());
+
+        assertEq(orb.holderTaxNumerator(), largeNumerator);
+        assertEq(orb.royaltyNumerator(), orb.FEE_DENOMINATOR());
+    }
+
     function test_setFeesSucceedsCorrectly() public {
         assertEq(orb.holderTaxNumerator(), 1000);
         assertEq(orb.royaltyNumerator(), 1000);
