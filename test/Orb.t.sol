@@ -187,6 +187,20 @@ contract ExtendHonoredUntilTest is OrbTestBase {
     }
 }
 
+contract SettingBaseURITest is OrbTestBase {
+    function test_baseURIrevertsIfUser() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.setBaseURI("https://static.orb.land/new/");
+    }
+
+    function test_baseURISetsCorrectState() public {
+        vm.prank(owner);
+        orb.setBaseURI("https://static.orb.land/new/");
+        assertEq(orb.workaround_baseURI(), "https://static.orb.land/new/");
+    }
+}
+
 contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
