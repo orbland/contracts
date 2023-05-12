@@ -102,6 +102,7 @@ contract Orb is ERC721, Ownable {
         uint256 newRoyaltyNumerator
     );
     event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
+    event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 newCleartextMaximumLength);
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -120,8 +121,9 @@ contract Orb is ERC721, Ownable {
 
     // Orb Parameter Errors
     error HonoredUntilNotDecreasable();
-    error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
     error InvalidAuctionDuration(uint256 auctionDuration);
+    error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
+    error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
 
     // Funds-Related Authorization Errors
     error HolderSolvent();
@@ -518,6 +520,22 @@ contract Orb is ERC721, Ownable {
         uint256 previousCooldown = cooldown;
         cooldown = newCooldown;
         emit CooldownUpdate(previousCooldown, newCooldown);
+    }
+
+    /**
+     * @notice  Allows the Orb creator to set the new cleartext maximum length.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     * @dev     Emits CleartextMaximumLengthUpdate() event.
+     * @param   newCleartextMaximumLength  New cleartext maximum length.
+     */
+    function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external onlyOwner onlyCreatorControlled {
+        if (newCleartextMaximumLength == 0) {
+            revert InvalidCleartextMaximumLength(newCleartextMaximumLength);
+        }
+
+        uint256 previousCleartextMaximumLength = cleartextMaximumLength;
+        cleartextMaximumLength = newCleartextMaximumLength;
+        emit CleartextMaximumLengthUpdate(previousCleartextMaximumLength, newCleartextMaximumLength);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
