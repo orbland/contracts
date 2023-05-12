@@ -202,27 +202,48 @@ contract SettingBaseURITest is OrbTestBase {
     }
 }
 
-contract SettingCooldownTest is OrbTestBase {
-    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
+contract SettingAuctionParametersTest is OrbTestBase {
+    event AuctionParametersUpdate(
+        uint256 previousStartingPrice,
+        uint256 newStartingPrice,
+        uint256 previousMinimumBidStep,
+        uint256 newMinimumBidStep,
+        uint256 previousMinimumDuration,
+        uint256 newMinimumDuration,
+        uint256 previousBidExtension,
+        uint256 newBidExtension
+    );
 
-    function test_setCooldownOnlyOwnerControlled() public {
+    function test_setAuctionParametersOnlyOwnerControlled() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.setCooldown(1 days);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
         vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
-        orb.setCooldown(1 days);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
     }
 
-    function test_setCooldownSucceedsCorrectly() public {
-        assertEq(orb.cooldown(), 7 days);
+    function test_revertIfAuctionDurationZero() public {
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidAuctionDuration.selector, 0));
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 10 minutes);
+    }
+
+    function test_setAuctionParametersSucceedsCorrectly() public {
+        assertEq(orb.auctionStartingPrice(), 0.1 ether);
+        assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
+        assertEq(orb.auctionMinimumDuration(), 1 days);
+        assertEq(orb.auctionBidExtension(), 5 minutes);
         vm.prank(owner);
         vm.expectEmit(false, false, false, true);
-        emit CooldownUpdate(7 days, 1 days);
-        orb.setCooldown(1 days);
-        assertEq(orb.cooldown(), 1 days);
+        emit AuctionParametersUpdate(0.1 ether, 0.2 ether, 0.1 ether, 0.2 ether, 1 days, 2 days, 5 minutes, 10 minutes);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        assertEq(orb.auctionStartingPrice(), 0.2 ether);
+        assertEq(orb.auctionMinimumBidStep(), 0.2 ether);
+        assertEq(orb.auctionMinimumDuration(), 2 days);
+        assertEq(orb.auctionBidExtension(), 10 minutes);
     }
 }
 
@@ -274,48 +295,27 @@ contract SettingFeesTest is OrbTestBase {
     }
 }
 
-contract SettingAuctionParametersTest is OrbTestBase {
-    event AuctionParametersUpdate(
-        uint256 previousStartingPrice,
-        uint256 newStartingPrice,
-        uint256 previousMinimumBidStep,
-        uint256 newMinimumBidStep,
-        uint256 previousMinimumDuration,
-        uint256 newMinimumDuration,
-        uint256 previousBidExtension,
-        uint256 newBidExtension
-    );
+contract SettingCooldownTest is OrbTestBase {
+    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
 
-    function test_setAuctionParametersOnlyOwnerControlled() public {
+    function test_setCooldownOnlyOwnerControlled() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        orb.setCooldown(1 days);
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
         vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        orb.setCooldown(1 days);
     }
 
-    function test_revertIfAuctionDurationZero() public {
-        vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidAuctionDuration.selector, 0));
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 10 minutes);
-    }
-
-    function test_setAuctionParametersSucceedsCorrectly() public {
-        assertEq(orb.auctionStartingPrice(), 0.1 ether);
-        assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
-        assertEq(orb.auctionMinimumDuration(), 1 days);
-        assertEq(orb.auctionBidExtension(), 5 minutes);
+    function test_setCooldownSucceedsCorrectly() public {
+        assertEq(orb.cooldown(), 7 days);
         vm.prank(owner);
         vm.expectEmit(false, false, false, true);
-        emit AuctionParametersUpdate(0.1 ether, 0.2 ether, 0.1 ether, 0.2 ether, 1 days, 2 days, 5 minutes, 10 minutes);
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
-        assertEq(orb.auctionStartingPrice(), 0.2 ether);
-        assertEq(orb.auctionMinimumBidStep(), 0.2 ether);
-        assertEq(orb.auctionMinimumDuration(), 2 days);
-        assertEq(orb.auctionBidExtension(), 10 minutes);
+        emit CooldownUpdate(7 days, 1 days);
+        orb.setCooldown(1 days);
+        assertEq(orb.cooldown(), 1 days);
     }
 }
 

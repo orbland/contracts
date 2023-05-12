@@ -85,13 +85,6 @@ contract Orb is ERC721, Ownable {
     // Orb Parameter Events
     event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
     event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
-    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
-    event FeesUpdate(
-        uint256 previousHolderTaxNumerator,
-        uint256 newHolderTaxNumerator,
-        uint256 previousRoyaltyNumerator,
-        uint256 newRoyaltyNumerator
-    );
     event AuctionParametersUpdate(
         uint256 previousStartingPrice,
         uint256 newStartingPrice,
@@ -102,6 +95,13 @@ contract Orb is ERC721, Ownable {
         uint256 previousBidExtension,
         uint256 newBidExtension
     );
+    event FeesUpdate(
+        uint256 previousHolderTaxNumerator,
+        uint256 newHolderTaxNumerator,
+        uint256 previousRoyaltyNumerator,
+        uint256 newRoyaltyNumerator
+    );
+    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -439,44 +439,14 @@ contract Orb is ERC721, Ownable {
     }
 
     /**
-     * @notice  Allows the Orb creator to set the new cooldown duration.
+     * @notice  Allows the Orb creator to set the auction parameters.
      *          This function can only be called by the Orb creator when the Orb is not held by anyone.
-     * @dev     Emits CooldownUpdate() event.
-     * @param   newCooldown  New cooldown in seconds.
+     * @dev     Emits {AuctionParametersUpdate} event.
+     * @param   newStartingPrice    New starting price for the auction. Can be 0.
+     * @param   newMinimumBidStep   New minimum bid step for the auction. Can be 0.
+     * @param   newMinimumDuration  New minimum duration for the auction. Must be > 0.
+     * @param   newBidExtension     New bid extension for the auction. Can be 0.
      */
-    function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled {
-        uint256 previousCooldown = cooldown;
-        cooldown = newCooldown;
-        emit CooldownUpdate(previousCooldown, newCooldown);
-    }
-
-    /**
-     * @notice  Allows the Orb creator to set the new holder tax and royalty.
-     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
-     * @dev     Emits FeesUpdate() event.
-     * @param   newHolderTaxNumerator  New holder tax numerator, in relation to FEE_DENOMINATOR.
-     * @param   newRoyaltyNumerator    New royalty numerator, in relation to FEE_DENOMINATOR.
-     */
-    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator)
-        external
-        onlyOwner
-        onlyCreatorControlled
-    {
-        if (newRoyaltyNumerator > FEE_DENOMINATOR) {
-            revert RoyaltyNumeratorExceedsDenominator(newRoyaltyNumerator, FEE_DENOMINATOR);
-        }
-
-        uint256 previousHolderTaxNumerator = holderTaxNumerator;
-        holderTaxNumerator = newHolderTaxNumerator;
-
-        uint256 previousRoyaltyNumerator = royaltyNumerator;
-        royaltyNumerator = newRoyaltyNumerator;
-
-        emit FeesUpdate(
-            previousHolderTaxNumerator, newHolderTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
-        );
-    }
-
     function setAuctionParameters(
         uint256 newStartingPrice,
         uint256 newMinimumBidStep,
@@ -509,6 +479,45 @@ contract Orb is ERC721, Ownable {
             previousBidExtension,
             newBidExtension
         );
+    }
+
+    /**
+     * @notice  Allows the Orb creator to set the new holder tax and royalty.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     * @dev     Emits FeesUpdate() event.
+     * @param   newHolderTaxNumerator  New holder tax numerator, in relation to FEE_DENOMINATOR.
+     * @param   newRoyaltyNumerator    New royalty numerator, in relation to FEE_DENOMINATOR.
+     */
+    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator)
+        external
+        onlyOwner
+        onlyCreatorControlled
+    {
+        if (newRoyaltyNumerator > FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(newRoyaltyNumerator, FEE_DENOMINATOR);
+        }
+
+        uint256 previousHolderTaxNumerator = holderTaxNumerator;
+        holderTaxNumerator = newHolderTaxNumerator;
+
+        uint256 previousRoyaltyNumerator = royaltyNumerator;
+        royaltyNumerator = newRoyaltyNumerator;
+
+        emit FeesUpdate(
+            previousHolderTaxNumerator, newHolderTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
+        );
+    }
+
+    /**
+     * @notice  Allows the Orb creator to set the new cooldown duration.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     * @dev     Emits CooldownUpdate() event.
+     * @param   newCooldown  New cooldown in seconds.
+     */
+    function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled {
+        uint256 previousCooldown = cooldown;
+        cooldown = newCooldown;
+        emit CooldownUpdate(previousCooldown, newCooldown);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
