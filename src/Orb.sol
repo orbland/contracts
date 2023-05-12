@@ -86,6 +86,12 @@ contract Orb is ERC721, Ownable {
     event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
     event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
     event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
+    event FeesUpdate(
+        uint256 previousHolderTaxNumerator,
+        uint256 newHolderTaxNumerator,
+        uint256 previousRoyaltyNumerator,
+        uint256 newRoyaltyNumerator
+    );
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -104,6 +110,7 @@ contract Orb is ERC721, Ownable {
 
     // Orb Parameter Errors
     error HonoredUntilNotDecreasable();
+    error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
 
     // Funds-Related Authorization Errors
     error HolderSolvent();
@@ -414,7 +421,7 @@ contract Orb is ERC721, Ownable {
      * @notice  Allows the Orb creator to replace the baseURI.
      *          This function can be called by the Orb creator anytime and is meant for
      *          when the current baseURI has to be updated.
-     * @param   newBaseURI  New baseURI to be set.
+     * @param   newBaseURI  New baseURI, will be concatenated with the token ID.
      */
     function setBaseURI(string memory newBaseURI) external onlyOwner {
         baseURI = newBaseURI;
@@ -424,12 +431,39 @@ contract Orb is ERC721, Ownable {
      * @notice  Allows the Orb creator to set the new cooldown duration.
      *          This function can only be called by the Orb creator when the Orb is not held by anyone.
      * @dev     Emits CooldownUpdate() event.
-     * @param   newCooldown  New cooldown to be set.
+     * @param   newCooldown  New cooldown in seconds.
      */
     function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled {
         uint256 previousCooldown = cooldown;
         cooldown = newCooldown;
         emit CooldownUpdate(previousCooldown, newCooldown);
+    }
+
+    /**
+     * @notice  Allows the Orb creator to set the new holder tax and royalty.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     * @dev     Emits FeesUpdate() event.
+     * @param   newHolderTaxNumerator  New holder tax numerator, in relation to FEE_DENOMINATOR.
+     * @param   newRoyaltyNumerator    New royalty numerator, in relation to FEE_DENOMINATOR.
+     */
+    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator)
+        external
+        onlyOwner
+        onlyCreatorControlled
+    {
+        if (newRoyaltyNumerator > FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(newRoyaltyNumerator, FEE_DENOMINATOR);
+        }
+
+        uint256 previousHolderTaxNumerator = holderTaxNumerator;
+        holderTaxNumerator = newHolderTaxNumerator;
+
+        uint256 previousRoyaltyNumerator = royaltyNumerator;
+        royaltyNumerator = newRoyaltyNumerator;
+
+        emit FeesUpdate(
+            previousHolderTaxNumerator, newHolderTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
+        );
     }
 
     ////////////////////////////////////////////////////////////////////////////////
