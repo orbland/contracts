@@ -484,6 +484,52 @@ contract FinalizeAuctionTest is OrbTestBase {
     }
 }
 
+contract ListingTest is OrbTestBase {
+    function test_revertsIfHeldByUser() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
+        orb.listWithPrice(1 ether);
+    }
+
+    function test_revertsIfAlreadyHeldByCreator() public {
+        makeHolderAndWarp(owner, 1 ether);
+        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
+        orb.listWithPrice(1 ether);
+    }
+
+    function test_revertsIfAuctionStarted() public {
+        orb.startAuction();
+        vm.expectRevert(Orb.AuctionRunning.selector);
+        orb.listWithPrice(1 ether);
+
+        vm.warp(orb.auctionEndTime() + 1);
+        assertFalse(orb.auctionRunning());
+        vm.expectRevert(Orb.AuctionRunning.selector);
+        orb.listWithPrice(1 ether);
+    }
+
+    function test_revertsIfCalledByUser() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user);
+        orb.listWithPrice(1 ether);
+    }
+
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    event PriceUpdate(uint256 previousPrice, uint256 newPrice);
+
+    function test_succeedsCorrectly() public {
+        uint256 listingPrice = 1 ether;
+        vm.expectEmit(true, true, true, false);
+        emit Transfer(address(orb), owner, orb.workaround_tokenId());
+        vm.expectEmit(false, false, false, true);
+        emit PriceUpdate(0, listingPrice);
+        orb.listWithPrice(listingPrice);
+        assertEq(orb.price(), listingPrice);
+        assertEq(orb.ownerOf(orb.workaround_tokenId()), owner);
+    }
+}
+
 contract EffectiveFundsOfTest is OrbTestBase {
     function test_effectiveFundsCorrectCalculation() public {
         uint256 amount1 = 1 ether;

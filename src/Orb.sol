@@ -678,7 +678,7 @@ contract Orb is ERC721, Ownable {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    //  FUNCTIONS: PURCHASING
+    //  FUNCTIONS: PURCHASING AND LISTING
     ////////////////////////////////////////////////////////////////////////////////
 
     /**
@@ -694,6 +694,29 @@ contract Orb is ERC721, Ownable {
     function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent {
         _settle();
         _setPrice(newPrice);
+    }
+
+    /**
+     * @notice  Lists the Orb for sale at the given price to buy directly from the Orb creator.
+     *          This is an alternative to the auction mechanism, and can be used to simply have the Orb for sale
+     *          at a fixed price, waiting for the buyer.
+     *          Listing is only allowed if the auction has not been started and is held by the contract.
+     *          When the Orb is purchased from the creator, all proceeds go to the beneficiary and the Orb comes
+     *          fully charged, with no cooldown.
+     * @dev     Emits Transfer() and PriceUpdate().
+     * @param   listingPrice  The price to buy the Orb from the creator.
+     */
+    function listWithPrice(uint256 listingPrice) external onlyOwner {
+        if (address(this) != ERC721.ownerOf(tokenId)) {
+            revert ContractDoesNotHoldOrb();
+        }
+
+        if (auctionEndTime > 0) {
+            revert AuctionRunning();
+        }
+
+        _transferOrb(address(this), msg.sender);
+        _setPrice(listingPrice);
     }
 
     /**
