@@ -960,8 +960,8 @@ contract Orb is ERC721, Ownable {
         if (length > cleartextMaximumLength) {
             revert CleartextTooLong(length, cleartextMaximumLength);
         }
-        emit CleartextRecording(invocationCount, cleartext);
         invokeWithHash(keccak256(abi.encodePacked(cleartext)));
+        emit CleartextRecording(invocationCount, cleartext);
     }
 
     /**
@@ -977,11 +977,11 @@ contract Orb is ERC721, Ownable {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
 
-        uint256 invocationId = invocationCount;
+        invocationCount += 1;
+        uint256 invocationId = invocationCount; // starts at 1
 
         invocations[invocationId] = HashTime(contentHash, block.timestamp);
         lastInvocationTime = block.timestamp;
-        invocationCount += 1;
 
         emit Invocation(msg.sender, invocationId, contentHash, block.timestamp);
     }
@@ -1034,7 +1034,7 @@ contract Orb is ERC721, Ownable {
      * @param   contentHash   keccak256 hash of the response text.
      */
     function respond(uint256 invocationId, bytes32 contentHash) external onlyOwner {
-        if (invocationId >= invocationCount) {
+        if (invocationId > invocationCount || invocationId == 0) {
             revert InvocationNotFound(invocationId);
         }
 
