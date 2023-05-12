@@ -85,6 +85,7 @@ contract Orb is ERC721, Ownable {
     // Orb Parameter Events
     event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
     event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
+    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -416,6 +417,18 @@ contract Orb is ERC721, Ownable {
      */
     function setBaseURI(string memory newBaseURI) external onlyOwner {
         baseURI = newBaseURI;
+    }
+
+    /**
+     * @notice  Allows the Orb creator to set the new cooldown duration.
+     *          This function can only be called by the Orb creator when the Orb is not held by anyone.
+     * @dev     Emits CooldownUpdate() event.
+     * @param   newCooldown  New cooldown to be set.
+     */
+    function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled {
+        uint256 previousCooldown = cooldown;
+        cooldown = newCooldown;
+        emit CooldownUpdate(previousCooldown, newCooldown);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
