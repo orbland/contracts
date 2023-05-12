@@ -92,6 +92,16 @@ contract Orb is ERC721, Ownable {
         uint256 previousRoyaltyNumerator,
         uint256 newRoyaltyNumerator
     );
+    event AuctionParametersUpdate(
+        uint256 previousStartingPrice,
+        uint256 newStartingPrice,
+        uint256 previousMinimumBidStep,
+        uint256 newMinimumBidStep,
+        uint256 previousMinimumDuration,
+        uint256 newMinimumDuration,
+        uint256 previousBidExtension,
+        uint256 newBidExtension
+    );
 
     ////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -111,6 +121,7 @@ contract Orb is ERC721, Ownable {
     // Orb Parameter Errors
     error HonoredUntilNotDecreasable();
     error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
+    error InvalidAuctionDuration(uint256 auctionDuration);
 
     // Funds-Related Authorization Errors
     error HolderSolvent();
@@ -193,9 +204,9 @@ contract Orb is ERC721, Ownable {
     // Auction State Variables
 
     // Auction starting price.
-    uint256 public auctionStartingPrice = 0.1 ether;
+    uint256 public auctionStartingPrice = 0;
     // Each bid has to increase over previous bid by at least this much.
-    uint256 public auctionMinimumBidStep = 0.1 ether;
+    uint256 public auctionMinimumBidStep = 0;
     // Auction will run for at least this long.
     uint256 public auctionMinimumDuration = 1 days;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
@@ -463,6 +474,40 @@ contract Orb is ERC721, Ownable {
 
         emit FeesUpdate(
             previousHolderTaxNumerator, newHolderTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
+        );
+    }
+
+    function setAuctionParameters(
+        uint256 newStartingPrice,
+        uint256 newMinimumBidStep,
+        uint256 newMinimumDuration,
+        uint256 newBidExtension
+    ) external onlyOwner onlyCreatorControlled {
+        if (newMinimumDuration == 0) {
+            revert InvalidAuctionDuration(newMinimumDuration);
+        }
+
+        uint256 previousStartingPrice = auctionStartingPrice;
+        auctionStartingPrice = newStartingPrice;
+
+        uint256 previousMinimumBidStep = auctionMinimumBidStep;
+        auctionMinimumBidStep = newMinimumBidStep;
+
+        uint256 previousMinimumDuration = auctionMinimumDuration;
+        auctionMinimumDuration = newMinimumDuration;
+
+        uint256 previousBidExtension = auctionBidExtension;
+        auctionBidExtension = newBidExtension;
+
+        emit AuctionParametersUpdate(
+            previousStartingPrice,
+            newStartingPrice,
+            previousMinimumBidStep,
+            newMinimumBidStep,
+            previousMinimumDuration,
+            newMinimumDuration,
+            previousBidExtension,
+            newBidExtension
         );
     }
 
