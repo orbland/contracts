@@ -201,6 +201,30 @@ contract SettingBaseURITest is OrbTestBase {
     }
 }
 
+contract SettingCooldownTest is OrbTestBase {
+    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
+
+    function test_setCooldownOnlyOwnerControlled() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.setCooldown(1 days);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        orb.setCooldown(1 days);
+    }
+
+    function test_setCooldownSucceedsCorrectly() public {
+        assertEq(orb.cooldown(), 7 days);
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit CooldownUpdate(7 days, 1 days);
+        orb.setCooldown(1 days);
+        assertEq(orb.cooldown(), 1 days);
+    }
+}
+
 contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
