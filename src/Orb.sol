@@ -118,6 +118,7 @@ contract Orb is ERC721, Ownable {
 
     // Purchasing Errors
     error CurrentPriceIncorrect(uint256 priceProvided, uint256 currentPrice);
+    error PurchasingNotPermitted();
     error InvalidNewPrice(uint256 priceProvided);
 
     // Invoking and Responding Errors
@@ -715,6 +716,10 @@ contract Orb is ERC721, Ownable {
     function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent {
         if (currentPrice != price) {
             revert CurrentPriceIncorrect(currentPrice, price);
+        }
+
+        if (lastSettlementTime == block.timestamp) {
+            revert PurchasingNotPermitted();
         }
 
         _settle();

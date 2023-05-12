@@ -1006,6 +1006,15 @@ contract PurchaseTest is OrbTestBase {
         orb.purchase{value: 1 ether - 1}(1 ether, 3 ether);
     }
 
+    function test_revertsIfPurchasingAfterSetPrice() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(user);
+        orb.setPrice(0);
+        vm.expectRevert(abi.encodeWithSelector(Orb.PurchasingNotPermitted.selector));
+        vm.prank(user2);
+        orb.purchase(0, 1 ether);
+    }
+
     event Purchase(address indexed seller, address indexed buyer, uint256 price);
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event PriceUpdate(uint256 previousPrice, uint256 newPrice);
@@ -1045,21 +1054,25 @@ contract PurchaseTest is OrbTestBase {
     function test_succeedsCorrectly() public {
         uint256 bidAmount = 1 ether;
         uint256 newPrice = 3 ether;
+        uint256 expectedSettlement = bidAmount / 10;
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
         // bidAmount will be the `_price` of the Orb
         makeHolderAndWarp(user, bidAmount);
         orb.settle();
+        vm.prank(user);
+        orb.deposit{value: expectedSettlement}();
         uint256 ownerBefore = orb.fundsOf(owner);
         uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);
         uint256 lastInvocationTimeBefore = orb.lastInvocationTime();
-        vm.startPrank(user2);
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(user2);
         orb.deposit{value: depositAmount}();
         assertEq(orb.fundsOf(user2), depositAmount);
         vm.expectEmit(true, true, false, true);
-        // we just settled above
-        emit Settlement(user, beneficiary, 0);
+        // 1 year has passed since the last settlement
+        emit Settlement(user, beneficiary, expectedSettlement);
         vm.expectEmit(false, false, false, true);
         emit PriceUpdate(bidAmount, newPrice);
         vm.expectEmit(true, true, false, true);
@@ -1069,10 +1082,11 @@ contract PurchaseTest is OrbTestBase {
         // The Orb is purchased with purchaseAmount
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
+        vm.prank(user2);
         orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
         uint256 beneficiaryRoyalty = ((bidAmount * 1000) / 10000);
-        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty);
-        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty));
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
+        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty - expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
         // The price of the Orb was 1 ether and user2 transfered 1 ether + 1 to buy it
         assertEq(orb.fundsOf(user2), 1);
@@ -1085,22 +1099,28 @@ contract PurchaseTest is OrbTestBase {
         newPrice = bound(newPrice, 1, orb.workaround_maxPrice());
         buyPrice = bound(buyPrice, bidAmount + 1, orb.workaround_maxPrice());
         diff = bound(diff, 1, buyPrice);
+        uint256 expectedSettlement = bidAmount / 10;
         vm.deal(user2, buyPrice);
         /// Break up the amount between depositing and purchasing to test more scenarios
         uint256 purchaseAmount = buyPrice - diff;
         uint256 depositAmount = diff;
         // bidAmount will be the `_price` of the Orb
         makeHolderAndWarp(user, bidAmount);
+        vm.deal(user, bidAmount + expectedSettlement);
         orb.settle();
+        vm.startPrank(user);
+        orb.deposit{value: expectedSettlement}();
         uint256 ownerBefore = orb.fundsOf(owner);
         uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);
-        vm.startPrank(user2);
+        vm.stopPrank();
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(user2);
         orb.deposit{value: depositAmount}();
         assertEq(orb.fundsOf(user2), depositAmount);
         vm.expectEmit(true, true, false, true);
-        // we just settled above
-        emit Settlement(user, beneficiary, 0);
+        // 1 year has passed since the last settlement
+        emit Settlement(user, beneficiary, expectedSettlement);
         vm.expectEmit(false, false, false, true);
         emit PriceUpdate(bidAmount, newPrice);
         vm.expectEmit(true, true, false, true);
@@ -1111,10 +1131,11 @@ contract PurchaseTest is OrbTestBase {
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
+        vm.prank(user2);
         orb.purchase{value: purchaseAmount}(bidAmount, newPrice);
         uint256 beneficiaryRoyalty = ((bidAmount * 1000) / 10000);
-        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty);
-        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty));
+        assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
+        assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty - expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
         // User2 transfered buyPrice to the contract
         // User2 paid bidAmount
