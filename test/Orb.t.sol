@@ -319,6 +319,36 @@ contract SettingCooldownTest is OrbTestBase {
     }
 }
 
+contract SettingCleartextMaximumLengthTest is OrbTestBase {
+    event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 newCleartextMaximumLength);
+
+    function test_setCleartextMaximumLengthOnlyOwnerControlled() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orb.setCleartextMaximumLength(1);
+
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        orb.setCleartextMaximumLength(1);
+    }
+
+    function test_revertIfCleartextMaximumLengthZero() public {
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidCleartextMaximumLength.selector, 0));
+        orb.setCleartextMaximumLength(0);
+    }
+
+    function test_setCleartextMaximumLengthSucceedsCorrectly() public {
+        assertEq(orb.cleartextMaximumLength(), 280);
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit CleartextMaximumLengthUpdate(280, 1);
+        orb.setCleartextMaximumLength(1);
+        assertEq(orb.cleartextMaximumLength(), 1);
+    }
+}
+
 contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
