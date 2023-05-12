@@ -1416,6 +1416,20 @@ contract RecordInvocationCleartext is OrbTestBase {
         orb.recordInvocationCleartext(0, cleartext);
     }
 
+    function test_revertWhen_recordingPreviousHolderCleartext() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        vm.prank(user);
+        orb.invokeWithHash(keccak256(bytes(cleartext)));
+        vm.warp(block.timestamp + 1 days);
+        vm.deal(user2, 1 ether);
+        vm.prank(user2);
+        orb.purchase{value: 1 ether}(1 ether, 1 ether);
+        vm.expectRevert(abi.encodeWithSelector(Orb.CleartextRecordingNotPermitted.selector, 0));
+        vm.prank(user2);
+        orb.recordInvocationCleartext(0, cleartext);
+    }
+
     function test_revertWhen_incorrectLength() public {
         makeHolderAndWarp(user, 1 ether);
         vm.startPrank(user);
@@ -1453,9 +1467,9 @@ contract RecordInvocationCleartext is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         vm.startPrank(user);
+        orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.expectEmit(true, false, false, true);
         emit CleartextRecording(0, cleartext);
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
         orb.recordInvocationCleartext(0, cleartext);
     }
 }
