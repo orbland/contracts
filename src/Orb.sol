@@ -158,7 +158,7 @@ contract Orb is ERC721, Ownable {
     uint256 public honoredUntil;
 
     // Base URL for tokenURL JSONs.
-    string internal baseURL = "https://static.orb.land/orb/";
+    string internal baseURI = "https://static.orb.land/orb/";
 
     // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
     // The value is without settlement. It means effective user funds (withdrawable) would be different
@@ -338,7 +338,7 @@ contract Orb is ERC721, Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     function _baseURI() internal view override returns (string memory) {
-        return baseURL;
+        return baseURI;
     }
 
     /**
@@ -403,6 +403,16 @@ contract Orb is ERC721, Ownable {
         uint256 previousHonoredUntil = honoredUntil;
         honoredUntil = newHonoredUntil;
         emit HonoredUntilUpdate(previousHonoredUntil, newHonoredUntil);
+    }
+
+    /**
+     * @notice  Allows the Orb creator to replace the baseURI.
+     *          This function can be called by the Orb creator anytime and is meant for
+     *          when the current baseURI has to be updated.
+     * @param   newBaseURI  New baseURI to be set.
+     */
+    function setBaseURI(string memory newBaseURI) external onlyOwner {
+        baseURI = newBaseURI;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
