@@ -15,14 +15,6 @@ contract OrbHarness is
         "https://static.orb.land/orb/" // baseURI
     )
 {
-    function workaround_tokenId() public view returns (uint256) {
-        return tokenId;
-    }
-
-    function workaround_infinity() public pure returns (uint256) {
-        return type(uint256).max;
-    }
-
     function workaround_maxPrice() public pure returns (uint256) {
         return MAX_PRICE;
     }
