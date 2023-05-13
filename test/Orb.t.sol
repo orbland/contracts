@@ -1657,6 +1657,10 @@ contract RespondTest is OrbTestBase {
 
         vm.prank(owner);
         orb.respond(1, response);
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvocationNotFound.selector, 0));
+        orb.respond(0, response);
     }
 
     function test_revertWhen_responseAlreadyExists() public {
