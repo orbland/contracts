@@ -75,7 +75,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     // Internal Immutables and Constants
 
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
-    uint256 internal immutable tokenId;
+    uint256 public immutable tokenId;
 
     // Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant MAX_PRICE = 2 ** 128;
