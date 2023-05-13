@@ -4,6 +4,10 @@ pragma solidity ^0.8.17;
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface IOrb is IERC165 {
+    ////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////
+
     event Creation(bytes32 oathHash, uint256 honoredUntil);
 
     // Auction Events
@@ -12,12 +16,16 @@ interface IOrb is IERC165 {
     event AuctionExtension(uint256 newAuctionEndTime);
     event AuctionFinalization(address indexed winner, uint256 winningBid);
 
-    // Fund Management, Holding and Purchasing Events
+    // Funding Events
     event Deposit(address indexed depositor, uint256 amount);
     event Withdrawal(address indexed recipient, uint256 amount);
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
+
+    // Purchasing Errors
     event PriceUpdate(uint256 previousPrice, uint256 newPrice);
     event Purchase(address indexed seller, address indexed buyer, uint256 price);
+
+    // Orb Ownership Functions
     event Foreclosure(address indexed formerHolder);
     event Relinquishment(address indexed formerHolder);
 
@@ -49,6 +57,10 @@ interface IOrb is IERC165 {
     event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
     event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 newCleartextMaximumLength);
 
+    ////////////////////////////////////////////////////////////////////////////////
+    //  ERRORS
+    ////////////////////////////////////////////////////////////////////////////////
+
     // ERC-721 Errors
     error TransferringNotSupported();
 
@@ -60,17 +72,17 @@ interface IOrb is IERC165 {
     error CreatorDoesNotControlOrb();
     error BeneficiaryDisallowed();
 
-    // Funds-Related Authorization Errors
-    error HolderSolvent();
-    error HolderInsolvent();
-    error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
-
     // Auction Errors
     error AuctionNotRunning();
     error AuctionRunning();
     error AuctionNotStarted();
     error NotPermittedForLeadingBidder();
     error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
+
+    // Funding Errors
+    error HolderSolvent();
+    error HolderInsolvent();
+    error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
 
     // Purchasing Errors
     error CurrentPriceIncorrect(uint256 priceProvided, uint256 currentPrice);
@@ -94,34 +106,73 @@ interface IOrb is IERC165 {
     error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
     error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
 
-    // Orb Parameter Functions
-    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external;
-    function extendHonoredUntil(uint256 newHonoredUntil) external;
-    function setBaseURI(string memory newBaseURI) external;
-    function setAuctionParameters(
-        uint256 newStartingPrice,
-        uint256 newMinimumBidStep,
-        uint256 newMinimumDuration,
-        uint256 newBidExtension
-    ) external;
-    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) external;
-    function setCooldown(uint256 newCooldown) external;
-    function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
+    ////////////////////////////////////////////////////////////////////////////////
+    //  VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////////////////////
+
+    // ERC-721 View Functions
+    function tokenId() external view returns (uint256);
+
+    // Auction View Functions
+    function auctionStartTime() external view returns (uint256);
+    function auctionEndTime() external view returns (uint256);
+    function auctionRunning() external view returns (bool);
+    function leadingBidder() external view returns (address);
+    function leadingBid() external view returns (uint256);
+    function minimumBid() external view returns (uint256);
+
+    function auctionStartingPrice() external view returns (uint256);
+    function auctionMinimumBidStep() external view returns (uint256);
+    function auctionMinimumDuration() external view returns (uint256);
+    function auctionBidExtension() external view returns (uint256);
+
+    // Funding View Functions
+    function fundsOf(address owner) external view returns (uint256);
+    function lastSettlementTime() external view returns (uint256);
+    function holderSolvent() external view returns (bool);
+
+    function holderTaxNumerator() external view returns (uint256);
+    function FEE_DENOMINATOR() external view returns (uint256);
+    function HOLDER_TAX_PERIOD() external view returns (uint256);
+
+    // Purchasing View Functions
+    function price() external view returns (uint256);
+    function holderReceiveTime() external view returns (uint256);
+
+    function royaltyNumerator() external view returns (uint256);
+
+    // Invoking and Responding View Functions
+    function invocations(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
+    function invocationCount() external view returns (uint256);
+
+    function responses(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
+    function responseFlagged(uint256 invocationId) external view returns (bool);
+    function flaggedResponsesCount() external view returns (uint256);
+
+    function cooldown() external view returns (uint256);
+    function lastInvocationTime() external view returns (uint256);
+
+    function cleartextMaximumLength() external view returns (uint256);
+
+    // Orb Parameter View Functions
+    function honoredUntil() external view returns (uint256);
+    function beneficiary() external view returns (address);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS
+    ////////////////////////////////////////////////////////////////////////////////
 
     // Auction Functions
     function startAuction() external;
     function bid(uint256 amount, uint256 priceIfWon) external payable;
     function finalizeAuction() external;
-    function auctionRunning() external view returns (bool);
-    function minimumBid() external view returns (uint256);
 
-    // Fund Management Functions
+    // Funding Functions
     function deposit() external payable;
     function withdraw(uint256 amount) external;
     function withdrawAll() external;
     function withdrawAllForBeneficiary() external;
     function settle() external;
-    function holderSolvent() external view returns (bool);
 
     // Purchasing Functions
     function listWithPrice(uint256 listingPrice) external;
@@ -138,4 +189,18 @@ interface IOrb is IERC165 {
     function recordInvocationCleartext(uint256 invocationId, string memory cleartext) external;
     function respond(uint256 invocationId, bytes32 contentHash) external;
     function flagResponse(uint256 invocationId) external;
+
+    // Orb Parameter Functions
+    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external;
+    function extendHonoredUntil(uint256 newHonoredUntil) external;
+    function setBaseURI(string memory newBaseURI) external;
+    function setAuctionParameters(
+        uint256 newStartingPrice,
+        uint256 newMinimumBidStep,
+        uint256 newMinimumDuration,
+        uint256 newBidExtension
+    ) external;
+    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) external;
+    function setCooldown(uint256 newCooldown) external;
+    function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 }

@@ -130,7 +130,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0x21aeca01)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0x82c71ae7)); // ERC165 Interface ID for Orb
     }
 }
 
