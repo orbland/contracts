@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+// import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 import {OrbHarness} from "./harness/OrbHarness.sol";
 import {Orb} from "src/Orb.sol";
+import {IOrb} from "src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract OrbTestBase is Test {
@@ -122,15 +124,26 @@ contract InitialStateTest is OrbTestBase {
     }
 }
 
+contract SupportsInterfaceTest is OrbTestBase {
+    // Test that the initial state is correct
+    function test_supportsInterface() public view {
+        // console.logBytes4(type(IOrb).interfaceId);
+        assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
+        assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
+        assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
+        assert(orb.supportsInterface(0x21aeca01)); // ERC165 Interface ID for Orb
+    }
+}
+
 contract TransfersRevertTest is OrbTestBase {
     function test_transfersRevert() public {
         address newOwner = address(0xBEEF);
         uint256 id = orb.workaround_tokenId();
-        vm.expectRevert(Orb.TransferringNotSupported.selector);
+        vm.expectRevert(IOrb.TransferringNotSupported.selector);
         orb.transferFrom(address(this), newOwner, id);
-        vm.expectRevert(Orb.TransferringNotSupported.selector);
+        vm.expectRevert(IOrb.TransferringNotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, id);
-        vm.expectRevert(Orb.TransferringNotSupported.selector);
+        vm.expectRevert(IOrb.TransferringNotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, id, bytes(""));
     }
 }
@@ -145,7 +158,7 @@ contract SwearOathTest is OrbTestBase {
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
     }
 
@@ -175,7 +188,7 @@ contract ExtendHonoredUntilTest is OrbTestBase {
     function test_extendHonoredUntilNotDecrease() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(Orb.HonoredUntilNotDecreasable.selector);
+        vm.expectRevert(IOrb.HonoredUntilNotDecreasable.selector);
         orb.extendHonoredUntil(99);
     }
 
@@ -221,13 +234,13 @@ contract SettingAuctionParametersTest is OrbTestBase {
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
     }
 
     function test_revertIfAuctionDurationZero() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidAuctionDuration.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidAuctionDuration.selector, 0));
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 10 minutes);
     }
 
@@ -262,7 +275,7 @@ contract SettingFeesTest is OrbTestBase {
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setFees(10_000, 10_000);
     }
 
@@ -270,7 +283,7 @@ contract SettingFeesTest is OrbTestBase {
         uint256 largeNumerator = orb.FEE_DENOMINATOR() + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                Orb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.FEE_DENOMINATOR()
+                IOrb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.FEE_DENOMINATOR()
             )
         );
         vm.prank(owner);
@@ -305,7 +318,7 @@ contract SettingCooldownTest is OrbTestBase {
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setCooldown(1 days);
     }
 
@@ -329,13 +342,13 @@ contract SettingCleartextMaximumLengthTest is OrbTestBase {
 
         makeHolderAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setCleartextMaximumLength(1);
     }
 
     function test_revertIfCleartextMaximumLengthZero() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidCleartextMaximumLength.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidCleartextMaximumLength.selector, 0));
         orb.setCleartextMaximumLength(0);
     }
 
@@ -383,7 +396,7 @@ contract StartAuctionTest is OrbTestBase {
 
     function test_startAuctionOnlyContractHeld() public {
         orb.workaround_setOrbHolder(address(0xBEEF));
-        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
+        vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
         orb.startAuction();
         orb.workaround_setOrbHolder(address(orb));
         vm.expectEmit(true, true, false, false);
@@ -395,7 +408,7 @@ contract StartAuctionTest is OrbTestBase {
         vm.expectEmit(true, true, false, false);
         emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
-        vm.expectRevert(Orb.AuctionRunning.selector);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
         orb.startAuction();
     }
 }
@@ -404,7 +417,7 @@ contract BidTest is OrbTestBase {
     function test_bidOnlyDuringAuction() public {
         uint256 bidAmount = 0.6 ether;
         vm.deal(user, bidAmount);
-        vm.expectRevert(Orb.AuctionNotRunning.selector);
+        vm.expectRevert(IOrb.AuctionNotRunning.selector);
         vm.prank(user);
         orb.bid{value: bidAmount}(bidAmount, bidAmount);
         orb.startAuction();
@@ -426,7 +439,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
         vm.deal(beneficiary, amount);
-        vm.expectRevert(abi.encodeWithSelector(Orb.BeneficiaryDisallowed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.BeneficiaryDisallowed.selector));
         vm.prank(beneficiary);
         orb.bid{value: amount}(amount, amount);
 
@@ -439,7 +452,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         // minimum bid will be the STARTING_PRICE
         uint256 amount = orb.minimumBid() - 1;
-        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientBid.selector, amount, orb.minimumBid()));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientBid.selector, amount, orb.minimumBid()));
         vm.prank(user);
         orb.bid{value: amount}(amount, amount);
 
@@ -452,7 +465,7 @@ contract BidTest is OrbTestBase {
 
         // minimum bid will be the leading bid + MINIMUM_BID_STEP
         amount = orb.minimumBid() - 1;
-        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientBid.selector, amount, orb.minimumBid()));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientBid.selector, amount, orb.minimumBid()));
         vm.prank(user);
         orb.bid{value: amount}(amount, amount);
     }
@@ -461,7 +474,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
         uint256 funds = amount - 1;
-        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, funds, funds + 1));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, funds, funds + 1));
         vm.prank(user);
         orb.bid{value: funds}(amount, amount);
 
@@ -476,7 +489,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
         uint256 price = orb.workaround_maxPrice() + 1;
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidNewPrice.selector, price));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidNewPrice.selector, price));
         vm.prank(user);
         orb.bid{value: amount}(amount, price);
 
@@ -571,7 +584,7 @@ contract FinalizeAuctionTest is OrbTestBase {
 
     function test_finalizeAuctionRevertsDuringAuction() public {
         orb.startAuction();
-        vm.expectRevert(Orb.AuctionRunning.selector);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
         orb.finalizeAuction();
 
         vm.warp(orb.auctionEndTime() + 1);
@@ -581,12 +594,12 @@ contract FinalizeAuctionTest is OrbTestBase {
     }
 
     function test_finalizeAuctionRevertsIfAuctionNotStarted() public {
-        vm.expectRevert(Orb.AuctionNotStarted.selector);
+        vm.expectRevert(IOrb.AuctionNotStarted.selector);
         orb.finalizeAuction();
         orb.startAuction();
         // auctionEndTime != 0
         assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
-        vm.expectRevert(Orb.AuctionRunning.selector);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
         orb.finalizeAuction();
     }
 
@@ -649,24 +662,24 @@ contract FinalizeAuctionTest is OrbTestBase {
 contract ListingTest is OrbTestBase {
     function test_revertsIfHeldByUser() public {
         makeHolderAndWarp(user, 1 ether);
-        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
+        vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
         orb.listWithPrice(1 ether);
     }
 
     function test_revertsIfAlreadyHeldByCreator() public {
         makeHolderAndWarp(owner, 1 ether);
-        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
+        vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
         orb.listWithPrice(1 ether);
     }
 
     function test_revertsIfAuctionStarted() public {
         orb.startAuction();
-        vm.expectRevert(Orb.AuctionRunning.selector);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
         orb.listWithPrice(1 ether);
 
         vm.warp(orb.auctionEndTime() + 1);
         assertFalse(orb.auctionRunning());
-        vm.expectRevert(Orb.AuctionRunning.selector);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
         orb.listWithPrice(1 ether);
     }
 
@@ -830,7 +843,7 @@ contract DepositTest is OrbTestBase {
         assertEq(orb.fundsOf(user2), 1 ether);
 
         // if the insolvent holder deposits, it should not work
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         vm.prank(user);
         orb.deposit{value: 1 ether}();
     }
@@ -843,11 +856,11 @@ contract WithdrawTest is OrbTestBase {
         uint256 bidAmount = 1 ether;
         orb.startAuction();
         prankAndBid(user, bidAmount);
-        vm.expectRevert(Orb.NotPermittedForLeadingBidder.selector);
+        vm.expectRevert(IOrb.NotPermittedForLeadingBidder.selector);
         vm.prank(user);
         orb.withdraw(1);
 
-        vm.expectRevert(Orb.NotPermittedForLeadingBidder.selector);
+        vm.expectRevert(IOrb.NotPermittedForLeadingBidder.selector);
         vm.prank(user);
         orb.withdrawAll();
 
@@ -993,7 +1006,7 @@ contract WithdrawTest is OrbTestBase {
         vm.startPrank(user);
         orb.deposit{value: 1 ether}();
         assertEq(orb.fundsOf(user), 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, 1 ether, 1 ether + 1));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, 1 ether, 1 ether + 1));
         orb.withdraw(1 ether + 1);
         assertEq(orb.fundsOf(user), 1 ether);
         vm.expectEmit(true, false, false, true);
@@ -1007,7 +1020,7 @@ contract SettleTest is OrbTestBase {
     event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
 
     function test_settleOnlyIfHolderHeld() public {
-        vm.expectRevert(Orb.ContractHoldsOrb.selector);
+        vm.expectRevert(IOrb.ContractHoldsOrb.selector);
         orb.settle();
         assertEq(orb.lastSettlementTime(), 0);
         makeHolderAndWarp(user, 1 ether);
@@ -1105,7 +1118,7 @@ contract SetPriceTest is OrbTestBase {
     function test_setPriceRevertsIfNotHolder() public {
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
-        vm.expectRevert(Orb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotHolder.selector);
         vm.prank(user2);
         orb.setPrice(1 ether);
         assertEq(orb.price(), 10 ether);
@@ -1120,7 +1133,7 @@ contract SetPriceTest is OrbTestBase {
         makeHolderAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 600 days);
         vm.startPrank(user);
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         orb.setPrice(1 ether);
 
         // As the user can't deposit funds to become solvent again
@@ -1146,7 +1159,7 @@ contract SetPriceTest is OrbTestBase {
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidNewPrice.selector, maxPrice + 1));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidNewPrice.selector, maxPrice + 1));
         orb.setPrice(maxPrice + 1);
 
         vm.expectEmit(false, false, false, true);
@@ -1158,7 +1171,7 @@ contract SetPriceTest is OrbTestBase {
 contract PurchaseTest is OrbTestBase {
     function test_revertsIfHeldByContract() public {
         vm.prank(user);
-        vm.expectRevert(Orb.ContractHoldsOrb.selector);
+        vm.expectRevert(IOrb.ContractHoldsOrb.selector);
         orb.purchase(0, 100);
     }
 
@@ -1166,7 +1179,7 @@ contract PurchaseTest is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user2);
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         orb.purchase(0, 100);
     }
 
@@ -1183,7 +1196,7 @@ contract PurchaseTest is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         vm.deal(beneficiary, 1.1 ether);
         vm.prank(beneficiary);
-        vm.expectRevert(abi.encodeWithSelector(Orb.BeneficiaryDisallowed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.BeneficiaryDisallowed.selector));
         orb.purchase{value: 1.1 ether}(1 ether, 3 ether);
 
         // does not revert
@@ -1196,20 +1209,20 @@ contract PurchaseTest is OrbTestBase {
     function test_revertsIfWrongCurrentPrice() public {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentPriceIncorrect.selector, 2 ether, 1 ether));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentPriceIncorrect.selector, 2 ether, 1 ether));
         orb.purchase{value: 1.1 ether}(2 ether, 3 ether);
     }
 
     function test_revertsIfIfAlreadyHolder() public {
         makeHolderAndWarp(user, 1 ether);
-        vm.expectRevert(Orb.AlreadyHolder.selector);
+        vm.expectRevert(IOrb.AlreadyHolder.selector);
         vm.prank(user);
         orb.purchase{value: 1.1 ether}(1 ether, 3 ether);
     }
 
     function test_revertsIfInsufficientFunds() public {
         makeHolderAndWarp(user, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
         vm.prank(user2);
         orb.purchase{value: 1 ether - 1}(1 ether, 3 ether);
     }
@@ -1218,7 +1231,7 @@ contract PurchaseTest is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         vm.prank(user);
         orb.setPrice(0);
-        vm.expectRevert(abi.encodeWithSelector(Orb.PurchasingNotPermitted.selector));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.PurchasingNotPermitted.selector));
         vm.prank(user2);
         orb.purchase(0, 1 ether);
     }
@@ -1356,7 +1369,7 @@ contract RelinquishmentTest is OrbTestBase {
     function test_revertsIfNotHolder() public {
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
-        vm.expectRevert(Orb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotHolder.selector);
         vm.prank(user2);
         orb.relinquish();
 
@@ -1369,7 +1382,7 @@ contract RelinquishmentTest is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         orb.relinquish();
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
@@ -1407,7 +1420,7 @@ contract RelinquishmentTest is OrbTestBase {
 
 contract ForecloseTest is OrbTestBase {
     function test_revertsIfNotHolderHeld() public {
-        vm.expectRevert(Orb.ContractHoldsOrb.selector);
+        vm.expectRevert(IOrb.ContractHoldsOrb.selector);
         vm.prank(user2);
         orb.foreclose();
 
@@ -1424,7 +1437,7 @@ contract ForecloseTest is OrbTestBase {
     function test_revertsifHolderSolvent() public {
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
-        vm.expectRevert(Orb.HolderSolvent.selector);
+        vm.expectRevert(IOrb.HolderSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, false, false, false);
@@ -1454,7 +1467,7 @@ contract InvokeWithCleartextTest is OrbTestBase {
         string memory text =
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         uint256 length = bytes(text).length;
-        vm.expectRevert(abi.encodeWithSelector(Orb.CleartextTooLong.selector, length, max));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.CleartextTooLong.selector, length, max));
         orb.invokeWithCleartext(text);
     }
 
@@ -1477,7 +1490,7 @@ contract InvokeWthHashTest is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         bytes32 hash = "asdfsaf";
         vm.prank(user2);
-        vm.expectRevert(Orb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotHolder.selector);
         orb.invokeWithHash(hash);
 
         vm.expectEmit(true, false, false, true);
@@ -1491,7 +1504,7 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         orb.invokeWithHash(hash);
     }
 
@@ -1506,7 +1519,7 @@ contract InvokeWthHashTest is OrbTestBase {
         vm.warp(block.timestamp + 1 days);
         vm.expectRevert(
             abi.encodeWithSelector(
-                Orb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.cooldown() - block.timestamp
+                IOrb.CooldownIncomplete.selector, block.timestamp - 1 days + orb.cooldown() - block.timestamp
             )
         );
         orb.invokeWithHash(hash);
@@ -1542,7 +1555,7 @@ contract RecordInvocationCleartext is OrbTestBase {
         makeHolderAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         vm.prank(user2);
-        vm.expectRevert(Orb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotHolder.selector);
         orb.recordInvocationCleartext(1, cleartext);
 
         vm.startPrank(user);
@@ -1555,7 +1568,7 @@ contract RecordInvocationCleartext is OrbTestBase {
         string memory cleartext = "this is a cleartext";
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         orb.recordInvocationCleartext(1, cleartext);
 
         vm.warp(block.timestamp - 13130000 days);
@@ -1573,7 +1586,7 @@ contract RecordInvocationCleartext is OrbTestBase {
         vm.deal(user2, 1 ether);
         vm.prank(user2);
         orb.purchase{value: 1 ether}(1 ether, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(Orb.CleartextRecordingNotPermitted.selector, 1));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.CleartextRecordingNotPermitted.selector, 1));
         vm.prank(user2);
         orb.recordInvocationCleartext(1, cleartext);
     }
@@ -1586,7 +1599,7 @@ contract RecordInvocationCleartext is OrbTestBase {
             "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         uint256 length = bytes(cleartext).length;
-        vm.expectRevert(abi.encodeWithSelector(Orb.CleartextTooLong.selector, length, max));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.CleartextTooLong.selector, length, max));
         orb.recordInvocationCleartext(1, cleartext);
 
         vm.warp(block.timestamp + orb.cooldown() + 1);
@@ -1603,7 +1616,7 @@ contract RecordInvocationCleartext is OrbTestBase {
         orb.invokeWithHash(keccak256(bytes(cleartext)));
         vm.expectRevert(
             abi.encodeWithSelector(
-                Orb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
+                IOrb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
             )
         );
         orb.recordInvocationCleartext(1, cleartext2);
@@ -1652,14 +1665,14 @@ contract RespondTest is OrbTestBase {
         vm.stopPrank();
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvocationNotFound.selector, 2));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvocationNotFound.selector, 2));
         orb.respond(2, response);
 
         vm.prank(owner);
         orb.respond(1, response);
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Orb.InvocationNotFound.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvocationNotFound.selector, 0));
         orb.respond(0, response);
     }
 
@@ -1674,7 +1687,7 @@ contract RespondTest is OrbTestBase {
 
         vm.startPrank(owner);
         orb.respond(1, response);
-        vm.expectRevert(abi.encodeWithSelector(Orb.ResponseExists.selector, 1));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.ResponseExists.selector, 1));
         orb.respond(1, response);
     }
 
@@ -1709,7 +1722,7 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(owner);
         orb.respond(1, response);
         vm.prank(user2);
-        vm.expectRevert(Orb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotHolder.selector);
         orb.flagResponse(1);
 
         vm.prank(user);
@@ -1726,7 +1739,7 @@ contract FlagResponseTest is OrbTestBase {
         orb.respond(1, response);
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(Orb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.HolderInsolvent.selector);
         orb.flagResponse(1);
 
         vm.warp(block.timestamp - 13130000 days);
@@ -1744,7 +1757,7 @@ contract FlagResponseTest is OrbTestBase {
         orb.respond(1, response);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Orb.ResponseNotFound.selector, 188));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.ResponseNotFound.selector, 188));
         orb.flagResponse(188);
 
         orb.flagResponse(1);
@@ -1761,7 +1774,7 @@ contract FlagResponseTest is OrbTestBase {
 
         vm.warp(block.timestamp + 100 days);
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 1, 100 days, orb.cooldown()));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.FlaggingPeriodExpired.selector, 1, 100 days, orb.cooldown()));
         orb.flagResponse(1);
 
         vm.warp(block.timestamp - (100 days - orb.cooldown()));
@@ -1780,7 +1793,7 @@ contract FlagResponseTest is OrbTestBase {
         vm.startPrank(user2);
         orb.purchase{value: 3 ether}(1 ether, 2 ether);
         vm.expectRevert(
-            abi.encodeWithSelector(Orb.FlaggingPeriodExpired.selector, 1, orb.holderReceiveTime(), block.timestamp)
+            abi.encodeWithSelector(IOrb.FlaggingPeriodExpired.selector, 1, orb.holderReceiveTime(), block.timestamp)
         );
         orb.flagResponse(1);
 
