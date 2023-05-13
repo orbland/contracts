@@ -51,7 +51,7 @@ contract OrbTestBase is Test {
     }
 
     function fundsRequiredToBidOneYear(uint256 amount) public view returns (uint256) {
-        return amount + (amount * orb.holderTaxNumerator()) / orb.FEE_DENOMINATOR();
+        return amount + (amount * orb.holderTaxNumerator()) / orb.feeDenominator();
     }
 
     function effectiveFundsOf(address user_) public view returns (uint256) {
@@ -115,8 +115,8 @@ contract InitialStateTest is OrbTestBase {
     }
 
     function test_constants() public {
-        assertEq(orb.FEE_DENOMINATOR(), 10000);
-        assertEq(orb.HOLDER_TAX_PERIOD(), 365 days);
+        assertEq(orb.feeDenominator(), 10000);
+        assertEq(orb.holderTaxPeriod(), 365 days);
 
         assertEq(orb.tokenId(), 69);
         assertEq(orb.workaround_maxPrice(), 2 ** 128);
@@ -130,7 +130,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0x82c71ae7)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0x713cdfad)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -279,20 +279,20 @@ contract SettingFeesTest is OrbTestBase {
     }
 
     function test_revertIfRoyaltyNumeratorExceedsDenominator() public {
-        uint256 largeNumerator = orb.FEE_DENOMINATOR() + 1;
+        uint256 largeNumerator = orb.feeDenominator() + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                IOrb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.FEE_DENOMINATOR()
+                IOrb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.feeDenominator()
             )
         );
         vm.prank(owner);
         orb.setFees(largeNumerator, largeNumerator);
 
         vm.prank(owner);
-        orb.setFees(largeNumerator, orb.FEE_DENOMINATOR());
+        orb.setFees(largeNumerator, orb.feeDenominator());
 
         assertEq(orb.holderTaxNumerator(), largeNumerator);
-        assertEq(orb.royaltyNumerator(), orb.FEE_DENOMINATOR());
+        assertEq(orb.royaltyNumerator(), orb.feeDenominator());
     }
 
     function test_setFeesSucceedsCorrectly() public {
@@ -1098,10 +1098,10 @@ contract OwedSinceLastSettlementTest is OrbTestBase {
         // _lastSettlementTime = 0
         // secondsSinceLastSettlement = block.timestamp - _lastSettlementTime
         // HOLDER_TAX_NUMERATOR = 1_000
-        // FEE_DENOMINATOR = 10_000
-        // HOLDER_TAX_PERIOD  = 365 days = 31_536_000 seconds
+        // feeDenominator = 10_000
+        // holderTaxPeriod  = 365 days = 31_536_000 seconds
         // owed = _price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement)
-        // / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
+        // / (holderTaxPeriod * feeDenominator);
         // Scenario:
         // _price = 17 ether = 17_000_000_000_000_000_000 wei
         // block.timestamp = 167710711

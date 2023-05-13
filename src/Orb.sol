@@ -68,9 +68,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     address public immutable beneficiary;
 
     // Fee Nominator: basis points. Other fees are in relation to this.
-    uint256 public constant FEE_DENOMINATOR = 10_000;
+    uint256 internal constant FEE_DENOMINATOR = 10_000;
     // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
-    uint256 public constant HOLDER_TAX_PERIOD = 365 days;
+    uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
 
     // Internal Immutables and Constants
 
@@ -654,6 +654,22 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             return true;
         }
         return fundsOf[holder] >= _owedSinceLastSettlement();
+    }
+
+    /**
+     * @dev     Returns the accounting base for Orb fees (Harberger tax rate and royalty).
+     * @return  uint256  The accounting base for Orb fees.
+     */
+    function feeDenominator() external pure returns (uint256) {
+        return FEE_DENOMINATOR;
+    }
+
+    /**
+     * @dev     Returns the Harberger tax period base. Holder tax is for each of this period.
+     * @return  uint256  How long is the Harberger tax period, in seconds.
+     */
+    function holderTaxPeriod() external pure returns (uint256) {
+        return HOLDER_TAX_PERIOD;
     }
 
     /**

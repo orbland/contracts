@@ -132,8 +132,8 @@ interface IOrb is IERC165 {
     function holderSolvent() external view returns (bool);
 
     function holderTaxNumerator() external view returns (uint256);
-    function FEE_DENOMINATOR() external view returns (uint256);
-    function HOLDER_TAX_PERIOD() external view returns (uint256);
+    function feeDenominator() external view returns (uint256);
+    function holderTaxPeriod() external view returns (uint256);
 
     // Purchasing View Functions
     function price() external view returns (uint256);
