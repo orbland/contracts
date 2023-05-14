@@ -105,7 +105,6 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.auctionMinimumDuration(), 1 days);
         assertEq(orb.auctionBidExtension(), 5 minutes);
 
-        assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.leadingBid(), 0);
@@ -131,7 +130,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0x713cdfad)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0x9a682641)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -242,6 +241,20 @@ contract SettingAuctionParametersTest is OrbTestBase {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidAuctionDuration.selector, 0));
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 10 minutes);
+    }
+
+    function test_boundMinBidStepToAbove0() public {
+        assertEq(orb.auctionStartingPrice(), 0.1 ether);
+        assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
+        vm.prank(owner);
+        orb.setAuctionParameters(0, 0, 1 days, 10 minutes);
+        assertEq(orb.auctionStartingPrice(), 0);
+        assertEq(orb.auctionMinimumBidStep(), 1);
+
+        vm.prank(owner);
+        orb.setAuctionParameters(0, 2, 1 days, 10 minutes);
+        assertEq(orb.auctionStartingPrice(), 0);
+        assertEq(orb.auctionMinimumBidStep(), 2);
     }
 
     function test_setAuctionParametersSucceedsCorrectly() public {
@@ -384,17 +397,14 @@ contract StartAuctionTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.startAuction();
         orb.startAuction();
-        assertEq(orb.auctionStartTime(), block.timestamp);
     }
 
     event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
 
     function test_startAuctionCorrectly() public {
-        assertEq(orb.auctionStartTime(), 0);
         vm.expectEmit(true, true, false, false);
         emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
-        assertEq(orb.auctionStartTime(), block.timestamp);
         assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
         assertEq(orb.leadingBid(), 0);
         assertEq(orb.leadingBidder(), address(0));
@@ -616,7 +626,6 @@ contract FinalizeAuctionTest is OrbTestBase {
         emit AuctionFinalization(address(0), 0);
         orb.finalizeAuction();
         assertEq(orb.auctionEndTime(), 0);
-        assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.leadingBid(), 0);
         assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.price(), 0);
@@ -649,7 +658,6 @@ contract FinalizeAuctionTest is OrbTestBase {
         // Assert storage after
         // storage that is reset
         assertEq(orb.auctionEndTime(), 0);
-        assertEq(orb.auctionStartTime(), 0);
         assertEq(orb.leadingBid(), 0);
         assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.price(), amount);

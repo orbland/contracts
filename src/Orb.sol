@@ -129,8 +129,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
     /// long. Initial value is 5 minutes.
     uint256 public auctionBidExtension = 5 minutes;
-    /// Auction start time: when the auction was started. Stays fixed during the auction, otherwise 0.
-    uint256 public auctionStartTime;
     /// Auction end time: timestamp when the auction ends, can be extended by late bids. 0 not during the auction.
     uint256 public auctionEndTime;
     /// Leading bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
@@ -368,7 +366,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
      *          This function can only be called by the Orb creator when the Orb is not held by anyone.
      * @dev     Emits {AuctionParametersUpdate} event.
      * @param   newStartingPrice    New starting price for the auction. Can be 0.
-     * @param   newMinimumBidStep   New minimum bid step for the auction. Can be 0.
+     * @param   newMinimumBidStep   New minimum bid step for the auction. Will always be set to at least 1.
      * @param   newMinimumDuration  New minimum duration for the auction. Must be > 0.
      * @param   newBidExtension     New bid extension for the auction. Can be 0.
      */
@@ -386,7 +384,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         auctionStartingPrice = newStartingPrice;
 
         uint256 previousMinimumBidStep = auctionMinimumBidStep;
-        auctionMinimumBidStep = newMinimumBidStep;
+        uint256 boundedMinimumBidStep = newMinimumBidStep > 0 ? newMinimumBidStep : 1;
+        auctionMinimumBidStep = boundedMinimumBidStep;
 
         uint256 previousMinimumDuration = auctionMinimumDuration;
         auctionMinimumDuration = newMinimumDuration;
@@ -398,7 +397,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             previousStartingPrice,
             newStartingPrice,
             previousMinimumBidStep,
-            newMinimumBidStep,
+            boundedMinimumBidStep,
             previousMinimumDuration,
             newMinimumDuration,
             previousBidExtension,
@@ -511,10 +510,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert AuctionRunning();
         }
 
-        auctionStartTime = block.timestamp;
         auctionEndTime = block.timestamp + auctionMinimumDuration;
 
-        emit AuctionStart(auctionStartTime, auctionEndTime);
+        emit AuctionStart(block.timestamp, auctionEndTime);
     }
 
     /**
@@ -594,7 +592,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             emit AuctionFinalization(leadingBidder, leadingBid);
         }
 
-        auctionStartTime = 0;
         auctionEndTime = 0;
     }
 
