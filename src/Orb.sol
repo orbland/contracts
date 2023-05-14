@@ -84,7 +84,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
     uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
     /// Maximum Orb price, limited to prevent potential overflows.
-    uint256 internal constant MAX_PRICE = 2 ** 128;
+    uint256 internal constant MAXIMUM_PRICE = 2 ** 128;
 
     // STATE
 
@@ -484,7 +484,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          able to withdraw any funds until someone outbids them or the auction is finalized.
     /// @dev     Emits `AuctionBid`.
     /// @param   amount      The value to bid.
-    /// @param   priceIfWon  Price if the bid wins. Must be less than `MAX_PRICE`.
+    /// @param   priceIfWon  Price if the bid wins. Must be less than `MAXIMUM_PRICE`.
     function bid(uint256 amount, uint256 priceIfWon) external payable {
         if (!auctionRunning()) {
             revert AuctionNotRunning();
@@ -504,7 +504,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert InsufficientFunds(totalFunds, amount);
         }
 
-        if (priceIfWon > MAX_PRICE) {
+        if (priceIfWon > MAXIMUM_PRICE) {
             revert InvalidNewPrice(priceIfWon);
         }
 
@@ -779,10 +779,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
-    ///         MAX_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
+    ///         MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
     /// @param  newPrice_  New price for the Orb.
     function _setPrice(uint256 newPrice_) internal {
-        if (newPrice_ > MAX_PRICE) {
+        if (newPrice_ > MAXIMUM_PRICE) {
             revert InvalidNewPrice(newPrice_);
         }
 
