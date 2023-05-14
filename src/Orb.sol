@@ -42,21 +42,20 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
-/**
- * @title   Orb - Harberger Tax NFT with auction and on-chain invocations and responses
- * @author  Jonas Lekevicius, Eric Wall
- * @dev     Supports ERC-721 interface, does not support token transfers.
- *          Uses {Ownable}'s {owner()} to identify the creator of the Orb.
- * @notice  This is a basic Q&A-type Orb. The holder has the right to submit a text-based question to the
- *          creator and the right to receive a text-based response. The question is limited in length but
- *          responses may come in any length. Questions and answers are hash-committed to the Ethereum blockchain
- *          so that the track record cannot be changed. The Orb has a cooldown.
- *
- *          The Orb uses Harberger Tax and is always on sale. This means that when you purchase the Orb, you must
- *          also set a price which you’re willing to sell the Orb at. However, you must pay an amount base on tax rate
- *          to the Orb smart contract per year in order to maintain the Orb ownership. This amount is accounted for
- *          per second, and user funds need to be topped up before the foreclosure time to maintain ownership.
- */
+/// @title   Orb - Harberger-taxed NFT with auction and on-chain invocations and responses
+/// @author  Jonas Lekevicius
+/// @author  Eric Wall
+/// @dev     Supports ERC-721 interface but reverts on all transfers.
+///          Uses `Ownable`'s `owner()` to identify the creator of the Orb.
+///          Uses `ERC721`'s `ownerOf(tokenId)` to identify the current holder of the Orb.
+/// @notice  This is a basic Q&A-type Orb. The holder has the right to submit a text-based question to the
+///          creator and the right to receive a text-based response. The question is limited in length but
+///          responses may come in any length. Questions and answers are hash-committed to the Ethereum blockchain
+///          so that the track record cannot be changed. The Orb has a cooldown.
+///          The Orb uses Harberger Tax and is always on sale. This means that when you purchase the Orb, you must
+///          also set a price which you’re willing to sell the Orb at. However, you must pay an amount base on tax rate
+///          to the Orb smart contract per year in order to maintain the Orb ownership. This amount is accounted for
+///          per second, and user funds need to be topped up before the foreclosure time to maintain ownership.
 contract Orb is Ownable, ERC165, ERC721, IOrb {
     ////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -64,7 +63,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // CONSTANTS AND IMMUTABLES
 
-    // Beneficiary receives all Orb proceeds.
+    /// Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
+    /// value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
+    /// beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
+    /// - The auction winning bid amount
+    /// - Royalties from Orb purchase when not purchased from the Orb creator
+    /// - Full purchase price when purchased from the Orb creator
+    /// - Harberger tax revenue
     address public immutable beneficiary;
 
     // Fee Nominator: basis points. Other fees are in relation to this.
