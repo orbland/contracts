@@ -801,7 +801,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert CurrentPriceIncorrect(currentPrice, price);
         }
 
-        if (lastSettlementTime == block.timestamp) {
+        if (lastSettlementTime >= block.timestamp) {
             revert PurchasingNotPermitted();
         }
 
