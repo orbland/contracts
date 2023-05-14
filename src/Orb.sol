@@ -798,7 +798,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          owed to the beneficiary since last settlement, and foreclosing yourself after. Most useful if the
     ///          creator themselves hold the Orb and want to re-auction it. For any other holder, setting the price to
     ///          zero would be more practical.
-    /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Foreclosure` and
+    /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment` and
     ///          `Withdrawal`.
     function relinquish() external onlyHolder onlyHolderSolvent {
         _settle();
