@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/30160e6ff657045bbcb72ae4e8ff2292a72e5b2e/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/8e9e989c62dcd4db1142145bf20da0884542d4e7/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -722,6 +722,12 @@ error InvalidAuctionDuration(uint256 auctionDuration);
 
 ```solidity
 error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
+```
+
+### CooldownExceedsMaximumDuration
+
+```solidity
+error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDuration);
 ```
 
 ### InvalidCleartextMaximumLength

@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/30160e6ff657045bbcb72ae4e8ff2292a72e5b2e/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/8e9e989c62dcd4db1142145bf20da0884542d4e7/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -10,8 +10,8 @@ Jonas Lekevicius, Eric Wall
 This is a basic Q&A-type Orb. The holder has the right to submit a text-based question to the
 creator and the right to receive a text-based response. The question is limited in length but
 responses may come in any length. Questions and answers are hash-committed to the Ethereum blockchain
-so that the track record cannot be changed. The Orb has a cooldown.<br/>
-The Orb uses Harberger Tax and is always on sale. This means that when you purchase the Orb, you must
+so that the track record cannot be changed. The Orb has a cooldown.
+The Orb uses Harberger tax and is always on sale. This means that when you purchase the Orb, you must
 also set a price which you’re willing to sell the Orb at. However, you must pay an amount base on tax rate
 to the Orb smart contract per year in order to maintain the Orb ownership. This amount is accounted for
 per second, and user funds need to be topped up before the foreclosure time to maintain ownership.
@@ -26,10 +26,10 @@ Uses `ERC721`'s `ownerOf(tokenId)` to identify the current holder of the Orb.*
 Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
 value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
 beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
-- The auction winning bid amount
-- Royalties from Orb purchase when not purchased from the Orb creator
-- Full purchase price when purchased from the Orb creator
-- Harberger tax revenue
+- The auction winning bid amount;
+- Royalties from Orb purchase when not purchased from the Orb creator;
+- Full purchase price when purchased from the Orb creator;
+- Harberger tax revenue.
 
 
 ```solidity
@@ -37,7 +37,19 @@ address public immutable beneficiary;
 ```
 
 
+### tokenId
+Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
+allow easier lookups of Orb holder.
+
+
+```solidity
+uint256 public immutable tokenId;
+```
+
+
 ### FEE_DENOMINATOR
+Fee Nominator: basis points. Other fees are in relation to this.
+
 
 ```solidity
 uint256 internal constant FEE_DENOMINATOR = 10_000;
@@ -45,20 +57,26 @@ uint256 internal constant FEE_DENOMINATOR = 10_000;
 
 
 ### HOLDER_TAX_PERIOD
+Harberger tax period: for how long the tax rate applies. Value: 1 year.
+
 
 ```solidity
 uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
 ```
 
 
-### tokenId
+### COOLDOWN_MAXIMUM_DURATION
+Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
+
 
 ```solidity
-uint256 public immutable tokenId;
+uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
 ```
 
 
 ### MAX_PRICE
+Maximum Orb price, limited to prevent potential overflows.
+
 
 ```solidity
 uint256 internal constant MAX_PRICE = 2 ** 128;
@@ -66,6 +84,8 @@ uint256 internal constant MAX_PRICE = 2 ** 128;
 
 
 ### honoredUntil
+Honored Until: timestamp until which the Orb Oath is honored for the holder.
+
 
 ```solidity
 uint256 public honoredUntil;
@@ -73,6 +93,8 @@ uint256 public honoredUntil;
 
 
 ### baseURI
+Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
+
 
 ```solidity
 string internal baseURI;
@@ -80,6 +102,11 @@ string internal baseURI;
 
 
 ### fundsOf
+Funds tracker, per address. Modified by deposits, withdrawals and settlements. The value is without settlement.
+It means effective user funds (withdrawable) would be different for holder (subtracting
+`_owedSinceLastSettlement()`) and beneficiary (adding `_owedSinceLastSettlement()`). If Orb is held by the
+creator, funds are not subtracted, as Harberger tax does not apply to the creator.
+
 
 ```solidity
 mapping(address => uint256) public fundsOf;
@@ -87,6 +114,8 @@ mapping(address => uint256) public fundsOf;
 
 
 ### holderTaxNumerator
+Harberger tax for holding. Initial value is 10%.
+
 
 ```solidity
 uint256 public holderTaxNumerator = 1_000;
@@ -94,6 +123,8 @@ uint256 public holderTaxNumerator = 1_000;
 
 
 ### royaltyNumerator
+Secondary sale royalty paid to beneficiary, based on sale price.
+
 
 ```solidity
 uint256 public royaltyNumerator = 1_000;
@@ -101,6 +132,9 @@ uint256 public royaltyNumerator = 1_000;
 
 
 ### price
+Price of the Orb. No need for mapping, as only one token is ever minted. Also used during auction to store
+future purchase price. Has no meaning if the Orb is held by the contract and the auction is not running.
+
 
 ```solidity
 uint256 public price;
@@ -108,6 +142,9 @@ uint256 public price;
 
 
 ### lastSettlementTime
+Last time Orb holder's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
+if the Orb is held by the contract.
+
 
 ```solidity
 uint256 public lastSettlementTime;
@@ -115,6 +152,8 @@ uint256 public lastSettlementTime;
 
 
 ### auctionStartingPrice
+Auction starting price. Initial value is 0 - allows any bid.
+
 
 ```solidity
 uint256 public auctionStartingPrice = 0;
@@ -122,13 +161,20 @@ uint256 public auctionStartingPrice = 0;
 
 
 ### auctionMinimumBidStep
+Auction minimum bid step: required increase between bids. Each bid has to increase over previous bid by at
+least this much. If trying to set as zero, will be set to 1 (wei). Initial value is also 1 wei, to disallow
+equal value bids.
+
 
 ```solidity
-uint256 public auctionMinimumBidStep = 0;
+uint256 public auctionMinimumBidStep = 1;
 ```
 
 
 ### auctionMinimumDuration
+Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
+cannot be set to zero.
+
 
 ```solidity
 uint256 public auctionMinimumDuration = 1 days;
@@ -136,6 +182,10 @@ uint256 public auctionMinimumDuration = 1 days;
 
 
 ### auctionBidExtension
+Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
+for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
+long. Initial value is 5 minutes.
+
 
 ```solidity
 uint256 public auctionBidExtension = 5 minutes;
@@ -143,6 +193,8 @@ uint256 public auctionBidExtension = 5 minutes;
 
 
 ### auctionStartTime
+Auction start time: when the auction was started. Stays fixed during the auction, otherwise 0.
+
 
 ```solidity
 uint256 public auctionStartTime;
@@ -150,6 +202,8 @@ uint256 public auctionStartTime;
 
 
 ### auctionEndTime
+Auction end time: timestamp when the auction ends, can be extended by late bids. 0 not during the auction.
+
 
 ```solidity
 uint256 public auctionEndTime;
@@ -157,6 +211,8 @@ uint256 public auctionEndTime;
 
 
 ### leadingBidder
+Leading bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
+
 
 ```solidity
 address public leadingBidder;
@@ -164,6 +220,8 @@ address public leadingBidder;
 
 
 ### leadingBid
+Leading bid: highest current bid. 0 not during the auction and before first bid.
+
 
 ```solidity
 uint256 public leadingBid;
@@ -171,6 +229,8 @@ uint256 public leadingBid;
 
 
 ### cooldown
+Cooldown: how often the Orb can be invoked.
+
 
 ```solidity
 uint256 public cooldown = 7 days;
@@ -178,6 +238,8 @@ uint256 public cooldown = 7 days;
 
 
 ### cleartextMaximumLength
+Maximum length for invocation cleartext content.
+
 
 ```solidity
 uint256 public cleartextMaximumLength = 280;
@@ -185,6 +247,8 @@ uint256 public cleartextMaximumLength = 280;
 
 
 ### holderReceiveTime
+Holder receive time: when the Orb was last transferred, except to this contract.
+
 
 ```solidity
 uint256 public holderReceiveTime;
@@ -192,6 +256,8 @@ uint256 public holderReceiveTime;
 
 
 ### lastInvocationTime
+Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
+
 
 ```solidity
 uint256 public lastInvocationTime;
@@ -199,6 +265,8 @@ uint256 public lastInvocationTime;
 
 
 ### invocations
+Mapping for invocations: invocationId to HashTime struct.
+
 
 ```solidity
 mapping(uint256 => HashTime) public invocations;
@@ -206,6 +274,8 @@ mapping(uint256 => HashTime) public invocations;
 
 
 ### invocationCount
+Count of invocations made: used to calculate invocationId of the next invocation.
+
 
 ```solidity
 uint256 public invocationCount = 0;
@@ -213,6 +283,8 @@ uint256 public invocationCount = 0;
 
 
 ### responses
+Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
+
 
 ```solidity
 mapping(uint256 => HashTime) public responses;
@@ -220,6 +292,8 @@ mapping(uint256 => HashTime) public responses;
 
 
 ### responseFlagged
+Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
+
 
 ```solidity
 mapping(uint256 => bool) public responseFlagged;
@@ -227,6 +301,8 @@ mapping(uint256 => bool) public responseFlagged;
 
 
 ### flaggedResponsesCount
+Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
+
 
 ```solidity
 uint256 public flaggedResponsesCount = 0;
@@ -980,6 +1056,10 @@ function _responseExists(uint256 invocationId_) internal view returns (bool);
 
 ## Structs
 ### HashTime
+Struct used to track invocation and response information: keccak256 content hash and block timestamp.
+When used for responses, timestamp is used to determine if the response can be flagged by the holder.
+Invocation timestamp is tracked for the benefit of other contracts.
+
 
 ```solidity
 struct HashTime {
