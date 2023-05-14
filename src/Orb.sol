@@ -52,7 +52,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 ///          creator and the right to receive a text-based response. The question is limited in length but
 ///          responses may come in any length. Questions and answers are hash-committed to the Ethereum blockchain
 ///          so that the track record cannot be changed. The Orb has a cooldown.
-///          The Orb uses Harberger Tax and is always on sale. This means that when you purchase the Orb, you must
+///          The Orb uses Harberger tax and is always on sale. This means that when you purchase the Orb, you must
 ///          also set a price which you’re willing to sell the Orb at. However, you must pay an amount base on tax rate
 ///          to the Orb smart contract per year in order to maintain the Orb ownership. This amount is accounted for
 ///          per second, and user funds need to be topped up before the foreclosure time to maintain ownership.
@@ -66,102 +66,107 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
     /// value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
     /// beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
-    /// - The auction winning bid amount
-    /// - Royalties from Orb purchase when not purchased from the Orb creator
-    /// - Full purchase price when purchased from the Orb creator
-    /// - Harberger tax revenue
+    /// - The auction winning bid amount;
+    /// - Royalties from Orb purchase when not purchased from the Orb creator;
+    /// - Full purchase price when purchased from the Orb creator;
+    /// - Harberger tax revenue.
     address public immutable beneficiary;
 
     // Internal Immutables and Constants
 
-    // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
+    /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
+    /// allow easier lookups of Orb holder.
     uint256 public immutable tokenId;
 
-    // Fee Nominator: basis points. Other fees are in relation to this.
+    /// Fee Nominator: basis points. Other fees are in relation to this.
     uint256 internal constant FEE_DENOMINATOR = 10_000;
-    // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
+    /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
     uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
-    // Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
+    /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
     uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
-    // Maximum Orb price, limited to prevent potential overflows.
+    /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
     // STATE
 
-    // Honored Until: timestamp until which the Orb Oath is honored for the holder.
+    /// Honored Until: timestamp until which the Orb Oath is honored for the holder.
     uint256 public honoredUntil;
 
-    // Base URL for tokenURL JSONs.
+    /// Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
     string internal baseURI;
 
-    // Funds tracker, per address. Modified by deposits, withdrawals and settlements.
-    // The value is without settlement. It means effective user funds (withdrawable) would be different
-    // for holder (subtracting owedSinceLastSettlement) and beneficiary (adding owedSinceLastSettlement).
-    // If Orb is held by the creator, funds are not subtracted, as Harberger Tax does not apply to the creator.
+    /// Funds tracker, per address. Modified by deposits, withdrawals and settlements. The value is without settlement.
+    /// It means effective user funds (withdrawable) would be different for holder (subtracting
+    /// `_owedSinceLastSettlement()`) and beneficiary (adding `_owedSinceLastSettlement()`). If Orb is held by the
+    /// creator, funds are not subtracted, as Harberger tax does not apply to the creator.
     mapping(address => uint256) public fundsOf;
 
-    // Taxes State Variables
+    // Fees State Variables
 
-    // Harberger Tax for holding. Initial value is 10%.
+    /// Harberger tax for holding. Initial value is 10%.
     uint256 public holderTaxNumerator = 1_000;
-    // Secondary sale royalty paid to beneficiary, based on sale price.
+    /// Secondary sale royalty paid to beneficiary, based on sale price.
     uint256 public royaltyNumerator = 1_000;
-    // Price of the Orb. No need for mapping, as only one token is ever minted.
-    // Also used during auction to store future purchase price.
-    // Shouldn't be useful if the Orb is held by the contract.
+    /// Price of the Orb. No need for mapping, as only one token is ever minted. Also used during auction to store
+    /// future purchase price. Has no meaning if the Orb is held by the contract and the auction is not running.
     uint256 public price;
-    // Last time Orb holder's funds were settled.
-    // Shouldn't be useful if the Orb is held by the contract.
+    /// Last time Orb holder's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
+    /// if the Orb is held by the contract.
     uint256 public lastSettlementTime;
 
     // Auction State Variables
 
-    // Auction starting price.
+    /// Auction starting price. Initial value is 0 - allows any bid.
     uint256 public auctionStartingPrice = 0;
-    // Each bid has to increase over previous bid by at least this much.
-    uint256 public auctionMinimumBidStep = 0;
-    // Auction will run for at least this long.
+    /// Auction minimum bid step: required increase between bids. Each bid has to increase over previous bid by at
+    /// least this much. If trying to set as zero, will be set to 1 (wei). Initial value is also 1 wei, to disallow
+    /// equal value bids.
+    uint256 public auctionMinimumBidStep = 1;
+    /// Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
+    /// cannot be set to zero.
     uint256 public auctionMinimumDuration = 1 days;
-    // If remaining time is less than this after a bid is made, auction will continue for at least this long.
+    /// Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
+    /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
+    /// long. Initial value is 5 minutes.
     uint256 public auctionBidExtension = 5 minutes;
-    // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
+    /// Auction start time: when the auction was started. Stays fixed during the auction, otherwise 0.
     uint256 public auctionStartTime;
-    // End Time: when the auction ends, can be extended by late bids. 0 not during the auction.
+    /// Auction end time: timestamp when the auction ends, can be extended by late bids. 0 not during the auction.
     uint256 public auctionEndTime;
-    // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
+    /// Leading bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
     address public leadingBidder;
-    // Winning Bid: highest current bid. 0 not during the auction and before first bid.
+    /// Leading bid: highest current bid. 0 not during the auction and before first bid.
     uint256 public leadingBid;
 
     // Invocation and Response State Variables
 
-    // Struct used to track response information: content hash and timestamp.
-    // Timestamp is used to determine if the response can be flagged by the holder.
-    // Invocation timestamp doesn't need to be tracked, as nothing is done with it.
+    /// Struct used to track invocation and response information: keccak256 content hash and block timestamp.
+    /// When used for responses, timestamp is used to determine if the response can be flagged by the holder.
+    /// Invocation timestamp is tracked for the benefit of other contracts.
     struct HashTime {
         // keccak256 hash of the cleartext
         bytes32 contentHash;
         uint256 timestamp;
     }
 
-    // Cooldown: how often Orb can be invoked.
+    /// Cooldown: how often the Orb can be invoked.
     uint256 public cooldown = 7 days;
-    // Maximum length for invocation cleartext content.
+    /// Maximum length for invocation cleartext content.
     uint256 public cleartextMaximumLength = 280;
-    // Holder Receive Time: When the Orb was last transferred, except to this contract.
+    /// Holder receive time: when the Orb was last transferred, except to this contract.
     uint256 public holderReceiveTime;
-    // Last Invocation Time: when the Orb was last invoked. Used together with Cooldown constant.
+    /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
     uint256 public lastInvocationTime;
 
-    // Mapping for Invocation: invocationId to HashTime.
+    /// Mapping for invocations: invocationId to HashTime struct.
     mapping(uint256 => HashTime) public invocations;
-    // Count of invocations made. Used to calculate invocationId of the next invocation.
+    /// Count of invocations made: used to calculate invocationId of the next invocation.
     uint256 public invocationCount = 0;
-    // Mapping for Responses (Answers to Invocations): matching invocationId to HashTime struct.
+    /// Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
     mapping(uint256 => HashTime) public responses;
-    // Additional mapping for flagged (reported) Responses. Used by the holder not satisfied with a response.
+    /// Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
     mapping(uint256 => bool) public responseFlagged;
-    // A convencience count of total responses made. Not used by the contract itself.
+    /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
     uint256 public flaggedResponsesCount = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
