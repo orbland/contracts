@@ -72,16 +72,17 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// - Harberger tax revenue
     address public immutable beneficiary;
 
-    // Fee Nominator: basis points. Other fees are in relation to this.
-    uint256 internal constant FEE_DENOMINATOR = 10_000;
-    // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
-    uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
-
     // Internal Immutables and Constants
 
     // Orb tokenId. Can be whatever arbitrary number, only one token will ever exist.
     uint256 public immutable tokenId;
 
+    // Fee Nominator: basis points. Other fees are in relation to this.
+    uint256 internal constant FEE_DENOMINATOR = 10_000;
+    // Harberger Tax period: for how long the Tax Rate applies. Value: 1 year.
+    uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
+    // Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
+    uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
     // Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant MAX_PRICE = 2 ** 128;
 
@@ -434,6 +435,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
      * @param   newCooldown  New cooldown in seconds.
      */
     function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled {
+        if (newCooldown > COOLDOWN_MAXIMUM_DURATION) {
+            revert CooldownExceedsMaximumDuration(newCooldown, COOLDOWN_MAXIMUM_DURATION);
+        }
+
         uint256 previousCooldown = cooldown;
         cooldown = newCooldown;
         emit CooldownUpdate(previousCooldown, newCooldown);
@@ -806,7 +811,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert CurrentPriceIncorrect(currentPrice, price);
         }
 
-        if (lastSettlementTime == block.timestamp) {
+        if (lastSettlementTime >= block.timestamp) {
             revert PurchasingNotPermitted();
         }
 
