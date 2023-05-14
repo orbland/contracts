@@ -244,6 +244,20 @@ contract SettingAuctionParametersTest is OrbTestBase {
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 10 minutes);
     }
 
+    function test_boundMinBidStepToAbove0() public {
+        assertEq(orb.auctionStartingPrice(), 0.1 ether);
+        assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
+        vm.prank(owner);
+        orb.setAuctionParameters(0, 0, 1 days, 10 minutes);
+        assertEq(orb.auctionStartingPrice(), 0);
+        assertEq(orb.auctionMinimumBidStep(), 1);
+
+        vm.prank(owner);
+        orb.setAuctionParameters(0, 2, 1 days, 10 minutes);
+        assertEq(orb.auctionStartingPrice(), 0);
+        assertEq(orb.auctionMinimumBidStep(), 2);
+    }
+
     function test_setAuctionParametersSucceedsCorrectly() public {
         assertEq(orb.auctionStartingPrice(), 0.1 ether);
         assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
