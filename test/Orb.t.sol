@@ -118,7 +118,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.holderTaxPeriod(), 365 days);
 
         assertEq(orb.tokenId(), 69);
-        assertEq(orb.workaround_maxPrice(), 2 ** 128);
+        assertEq(orb.workaround_maximumPrice(), 2 ** 128);
         assertEq(orb.workaround_cooldownMaximumDuration(), 3650 days);
     }
 }
@@ -504,7 +504,7 @@ contract BidTest is OrbTestBase {
     function test_bidRevertsIfPriceTooHigh() public {
         orb.startAuction();
         uint256 amount = orb.minimumBid();
-        uint256 price = orb.workaround_maxPrice() + 1;
+        uint256 price = orb.workaround_maximumPrice() + 1;
         vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidNewPrice.selector, price));
         vm.prank(user);
         orb.bid{value: amount}(amount, price);
@@ -515,7 +515,7 @@ contract BidTest is OrbTestBase {
         vm.prank(user);
         orb.bid{value: amount}(amount, price);
         assertEq(orb.leadingBid(), amount);
-        assertEq(orb.price(), orb.workaround_maxPrice());
+        assertEq(orb.price(), orb.workaround_maximumPrice());
     }
 
     event AuctionBid(address indexed bidder, uint256 bid);
@@ -751,7 +751,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
     }
 
     function testFuzz_effectiveFundsCorrectCalculation(uint256 amount1, uint256 amount2) public {
-        amount1 = bound(amount1, 1 ether, orb.workaround_maxPrice());
+        amount1 = bound(amount1, 1 ether, orb.workaround_maximumPrice());
         amount2 = bound(amount2, orb.auctionStartingPrice(), amount1 - orb.auctionMinimumBidStep());
         uint256 funds1 = fundsRequiredToBidOneYear(amount1);
         uint256 funds2 = fundsRequiredToBidOneYear(amount2);
@@ -824,8 +824,8 @@ contract DepositTest is OrbTestBase {
     function testFuzz_depositHolderSolvent(uint256 bidAmount, uint256 depositAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
-        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maxPrice());
-        depositAmount = bound(depositAmount, 0.1 ether, orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maximumPrice());
+        depositAmount = bound(depositAmount, 0.1 ether, orb.workaround_maximumPrice());
         makeHolderAndWarp(user, bidAmount);
         // User bids 1 ether, but deposit enough funds
         // to cover the tax for a year, according to
@@ -986,7 +986,7 @@ contract WithdrawTest is OrbTestBase {
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
-        bidAmount = bound(bidAmount, orb.auctionStartingPrice(), orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, orb.auctionStartingPrice(), orb.workaround_maximumPrice());
         makeHolderAndWarp(user, bidAmount);
 
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
@@ -1043,7 +1043,7 @@ contract SettleTest is OrbTestBase {
     }
 
     function testFuzz_settleCorrect(uint96 bid, uint96 time) public {
-        uint256 amount = bound(bid, orb.auctionStartingPrice(), orb.workaround_maxPrice());
+        uint256 amount = bound(bid, orb.auctionStartingPrice(), orb.workaround_maximumPrice());
         // warp ahead a random amount of time
         // remain under 1 year in total, so solvent
         uint256 timeOffset = bound(time, 0, 300 days);
@@ -1169,7 +1169,7 @@ contract SetPriceTest is OrbTestBase {
     event PriceUpdate(uint256 previousPrice, uint256 newPrice);
 
     function test_setPriceRevertsIfMaxPrice() public {
-        uint256 maxPrice = orb.workaround_maxPrice();
+        uint256 maxPrice = orb.workaround_maximumPrice();
         uint256 leadingBid = 10 ether;
         makeHolderAndWarp(user, leadingBid);
         vm.startPrank(user);
@@ -1330,9 +1330,9 @@ contract PurchaseTest is OrbTestBase {
     }
 
     function testFuzz_succeedsCorrectly(uint256 bidAmount, uint256 newPrice, uint256 buyPrice, uint256 diff) public {
-        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maxPrice() - 1);
-        newPrice = bound(newPrice, 1, orb.workaround_maxPrice());
-        buyPrice = bound(buyPrice, bidAmount + 1, orb.workaround_maxPrice());
+        bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maximumPrice() - 1);
+        newPrice = bound(newPrice, 1, orb.workaround_maximumPrice());
+        buyPrice = bound(buyPrice, bidAmount + 1, orb.workaround_maximumPrice());
         diff = bound(diff, 1, buyPrice);
         uint256 expectedSettlement = bidAmount / 10;
         vm.deal(user2, buyPrice);

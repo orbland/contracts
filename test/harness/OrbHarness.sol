@@ -19,8 +19,8 @@ contract OrbHarness is
         return COOLDOWN_MAXIMUM_DURATION;
     }
 
-    function workaround_maxPrice() public pure returns (uint256) {
-        return MAX_PRICE;
+    function workaround_maximumPrice() public pure returns (uint256) {
+        return MAXIMUM_PRICE;
     }
 
     function workaround_baseURI() public view returns (string memory) {
