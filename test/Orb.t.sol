@@ -421,9 +421,13 @@ contract StartAuctionTest is OrbTestBase {
     }
 
     function test_startAuctionNotDuringAuction() public {
+        assertEq(orb.auctionEndTime(), 0);
         vm.expectEmit(true, true, false, false);
         emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
+        assertGt(orb.auctionEndTime(), 0);
+        vm.warp(orb.auctionEndTime());
+
         vm.expectRevert(IOrb.AuctionRunning.selector);
         orb.startAuction();
     }
@@ -1289,7 +1293,7 @@ contract PurchaseTest is OrbTestBase {
     function test_succeedsCorrectly() public {
         uint256 bidAmount = 1 ether;
         uint256 newPrice = 3 ether;
-        uint256 expectedSettlement = bidAmount / 10;
+        uint256 expectedSettlement = bidAmount * orb.royaltyNumerator() / orb.feeDenominator();
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
         // bidAmount will be the `_price` of the Orb
@@ -1319,7 +1323,7 @@ contract PurchaseTest is OrbTestBase {
         // that the user transfers when calling `purchase()`
         vm.prank(user2);
         orb.purchase{value: purchaseAmount + 1}(bidAmount, newPrice);
-        uint256 beneficiaryRoyalty = ((bidAmount * 1000) / 10000);
+        uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty - expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
@@ -1334,7 +1338,7 @@ contract PurchaseTest is OrbTestBase {
         newPrice = bound(newPrice, 1, orb.workaround_maximumPrice());
         buyPrice = bound(buyPrice, bidAmount + 1, orb.workaround_maximumPrice());
         diff = bound(diff, 1, buyPrice);
-        uint256 expectedSettlement = bidAmount / 10;
+        uint256 expectedSettlement = bidAmount * orb.royaltyNumerator() / orb.feeDenominator();
         vm.deal(user2, buyPrice);
         /// Break up the amount between depositing and purchasing to test more scenarios
         uint256 purchaseAmount = buyPrice - diff;
@@ -1368,7 +1372,7 @@ contract PurchaseTest is OrbTestBase {
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         vm.prank(user2);
         orb.purchase{value: purchaseAmount}(bidAmount, newPrice);
-        uint256 beneficiaryRoyalty = ((bidAmount * 1000) / 10000);
+        uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty - expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
@@ -1792,6 +1796,22 @@ contract FlagResponseTest is OrbTestBase {
         orb.flagResponse(1);
 
         vm.warp(block.timestamp - (100 days - orb.cooldown()));
+        orb.flagResponse(1);
+    }
+
+    function test_revertWhen_flaggingTwice() public {
+        makeHolderAndWarp(user, 1 ether);
+        string memory cleartext = "this is a cleartext";
+        bytes32 response = "response hash";
+        vm.prank(user);
+        orb.invokeWithHash(keccak256(bytes(cleartext)));
+        vm.prank(owner);
+        orb.respond(1, response);
+
+        vm.startPrank(user);
+        orb.flagResponse(1);
+
+        vm.expectRevert(abi.encodeWithSelector(IOrb.ResponseAlreadyFlagged.selector, 1));
         orb.flagResponse(1);
     }
 

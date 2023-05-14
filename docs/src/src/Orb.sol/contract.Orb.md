@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/3264b85b146676bb1c9662ffacb45ab7176ac922/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/dd7709a7be503ccd89e1d08e10717b0a20568c93/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -73,12 +73,12 @@ uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
 ```
 
 
-### MAX_PRICE
+### MAXIMUM_PRICE
 Maximum Orb price, limited to prevent potential overflows.
 
 
 ```solidity
-uint256 internal constant MAX_PRICE = 2 ** 128;
+uint256 internal constant MAXIMUM_PRICE = 2 ** 128;
 ```
 
 
@@ -665,7 +665,7 @@ function bid(uint256 amount, uint256 priceIfWon) external payable;
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|     The value to bid.|
-|`priceIfWon`|`uint256`| Price if the bid wins. Must be less than `MAX_PRICE`.|
+|`priceIfWon`|`uint256`| Price if the bid wins. Must be less than `MAXIMUM_PRICE`.|
 
 
 ### finalizeAuction
@@ -912,7 +912,7 @@ function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyH
 ### _setPrice
 
 *Does not check if the new price differs from the previous price: no risk. Limits the price to
-MAX_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
+MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
 
 
 ```solidity

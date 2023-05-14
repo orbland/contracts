@@ -24,7 +24,7 @@ contract OrbHarness is
     }
 
     function workaround_baseURI() public view returns (string memory) {
-        return baseURI;
+        return _baseURI();
     }
 
     function workaround_setPrice(uint256 _price) public {
