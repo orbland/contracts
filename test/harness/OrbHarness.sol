@@ -15,6 +15,10 @@ contract OrbHarness is
         "https://static.orb.land/orb/" // baseURI
     )
 {
+    function workaround_cooldownMaximumDuration() public pure returns (uint256) {
+        return COOLDOWN_MAXIMUM_DURATION;
+    }
+
     function workaround_maxPrice() public pure returns (uint256) {
         return MAX_PRICE;
     }

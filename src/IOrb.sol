@@ -104,6 +104,7 @@ interface IOrb is IERC165 {
     error HonoredUntilNotDecreasable();
     error InvalidAuctionDuration(uint256 auctionDuration);
     error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
+    error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDuration);
     error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
 
     ////////////////////////////////////////////////////////////////////////////////

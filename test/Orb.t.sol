@@ -120,6 +120,7 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.tokenId(), 69);
         assertEq(orb.workaround_maxPrice(), 2 ** 128);
+        assertEq(orb.workaround_cooldownMaximumDuration(), 3650 days);
     }
 }
 
@@ -319,6 +320,12 @@ contract SettingCooldownTest is OrbTestBase {
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setCooldown(1 days);
+    }
+
+    function test_revertsWhenCooldownTooLong() public {
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(IOrb.CooldownExceedsMaximumDuration.selector, 3651 days, 3650 days));
+        orb.setCooldown(3651 days);
     }
 
     function test_setCooldownSucceedsCorrectly() public {
