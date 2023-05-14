@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/8e9e989c62dcd4db1142145bf20da0884542d4e7/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/474858018ae4a16a0aa89c91f60b60ffe9270469/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -11,13 +11,6 @@ IERC165
 
 ```solidity
 function tokenId() external view returns (uint256);
-```
-
-### auctionStartTime
-
-
-```solidity
-function auctionStartTime() external view returns (uint256);
 ```
 
 ### auctionEndTime
