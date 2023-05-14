@@ -119,8 +119,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     uint256 public auctionMinimumDuration = 1 days;
     // If remaining time is less than this after a bid is made, auction will continue for at least this long.
     uint256 public auctionBidExtension = 5 minutes;
-    // Start Time: when the auction was started. Stays fixed during the auction, otherwise 0.
-    uint256 public auctionStartTime;
     // End Time: when the auction ends, can be extended by late bids. 0 not during the auction.
     uint256 public auctionEndTime;
     // Winning Bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
@@ -502,10 +500,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert AuctionRunning();
         }
 
-        auctionStartTime = block.timestamp;
         auctionEndTime = block.timestamp + auctionMinimumDuration;
 
-        emit AuctionStart(auctionStartTime, auctionEndTime);
+        emit AuctionStart(block.timestamp, auctionEndTime);
     }
 
     /**
@@ -585,7 +582,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             emit AuctionFinalization(leadingBidder, leadingBid);
         }
 
-        auctionStartTime = 0;
         auctionEndTime = 0;
     }
 
