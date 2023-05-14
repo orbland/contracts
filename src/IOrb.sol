@@ -115,7 +115,6 @@ interface IOrb is IERC165 {
     function tokenId() external view returns (uint256);
 
     // Auction View Functions
-    function auctionStartTime() external view returns (uint256);
     function auctionEndTime() external view returns (uint256);
     function auctionRunning() external view returns (bool);
     function leadingBidder() external view returns (address);
