@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/474858018ae4a16a0aa89c91f60b60ffe9270469/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/3264b85b146676bb1c9662ffacb45ab7176ac922/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -122,7 +122,7 @@ uint256 public holderTaxNumerator = 1_000;
 
 
 ### royaltyNumerator
-Secondary sale royalty paid to beneficiary, based on sale price.
+Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10%.
 
 
 ```solidity
@@ -131,8 +131,8 @@ uint256 public royaltyNumerator = 1_000;
 
 
 ### price
-Price of the Orb. No need for mapping, as only one token is ever minted. Also used during auction to store
-future purchase price. Has no meaning if the Orb is held by the contract and the auction is not running.
+Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
+the contract and the auction is not running.
 
 
 ```solidity
@@ -172,7 +172,7 @@ uint256 public auctionMinimumBidStep = 1;
 
 ### auctionMinimumDuration
 Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
-cannot be set to zero.
+cannot be set to zero, as it would prevent any bids from being made.
 
 
 ```solidity
@@ -255,7 +255,7 @@ uint256 public lastInvocationTime;
 
 
 ### invocations
-Mapping for invocations: invocationId to HashTime struct.
+Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
 
 
 ```solidity
@@ -324,8 +324,8 @@ constructor(
 |----|----|-----------|
 |`name_`|`string`|         Orb name, used in ERC-721 metadata.|
 |`symbol_`|`string`|       Orb symbol or ticker, used in ERC-721 metadata.|
-|`tokenId_`|`uint256`|      ERC-721 token ID of the Orb.|
-|`beneficiary_`|`address`|  Beneficiary receives all Orb proceeds.|
+|`tokenId_`|`uint256`|      ERC-721 token id of the Orb.|
+|`beneficiary_`|`address`|  Address to receive all Orb proceeds.|
 |`oathHash_`|`bytes32`|     Hash of the Oath taken to create the Orb.|
 |`honoredUntil_`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb holder.|
 |`baseURI_`|`string`|      Initial baseURI value for tokenURI JSONs.|
@@ -347,13 +347,13 @@ function supportsInterface(bytes4 interfaceId)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`interfaceId`|`bytes4`|          Interface ID to check for support.|
+|`interfaceId`|`bytes4`|          Interface id to check for support.|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`isInterfaceSupported`|`bool`| If interface with given 4 bytes ID is supported.|
+|`isInterfaceSupported`|`bool`| If interface with given 4 bytes id is supported.|
 
 
 ### onlyHolder
@@ -408,7 +408,7 @@ modifier onlyHolderSolvent();
 
 ### _baseURI
 
-*Override to provide ERC721 contract's `tokenURI()` with the baseURI.*
+*Override to provide ERC-721 contract's `tokenURI()` with the baseURI.*
 
 
 ```solidity
@@ -471,7 +471,7 @@ function _transferOrb(address from_, address to_) internal;
 ### swearOath
 
 Allows re-swearing of the Orb Oath and set a new `honoredUntil` date. This function can only be called
-by the Orb creator when the Orb is not held by anyone. With `swearOath()`, `honoredUntil` date can be
+by the Orb creator when the Orb is in their control. With `swearOath()`, `honoredUntil` date can be
 decreased, unlike with the `extendHonoredUntil()` function.
 
 *Emits `OathSwearing`.*
@@ -519,13 +519,13 @@ function setBaseURI(string memory newBaseURI) external onlyOwner;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newBaseURI`|`string`| New `baseURI`, will be concatenated with the token ID in `tokenURI()`.|
+|`newBaseURI`|`string`| New `baseURI`, will be concatenated with the token id in `tokenURI()`.|
 
 
 ### setAuctionParameters
 
 Allows the Orb creator to set the auction parameters. This function can only be called by the Orb
-creator when the Orb is not held by anyone.
+creator when the Orb is in their control.
 
 *Emits `AuctionParametersUpdate`.*
 
@@ -551,7 +551,7 @@ function setAuctionParameters(
 ### setFees
 
 Allows the Orb creator to set the new holder tax and royalty. This function can only be called by the
-Orb creator when the Orb is not held by anyone.
+Orb creator when the Orb is in their control.
 
 *Emits `FeesUpdate`.*
 
@@ -564,13 +564,13 @@ function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) ext
 |Name|Type|Description|
 |----|----|-----------|
 |`newHolderTaxNumerator`|`uint256`| New holder tax numerator, in relation to `FEE_DENOMINATOR`.|
-|`newRoyaltyNumerator`|`uint256`|   New royalty numerator, in relation to `FEE_DENOMINATOR`.|
+|`newRoyaltyNumerator`|`uint256`|   New royalty numerator, in relation to `FEE_DENOMINATOR`. Cannot be larger than `FEE_DENOMINATOR`.|
 
 
 ### setCooldown
 
 Allows the Orb creator to set the new cooldown duration. This function can only be called by the Orb
-creator when the Orb is not held by anyone.
+creator when the Orb is in their control.
 
 *Emits `CooldownUpdate`.*
 
@@ -582,13 +582,13 @@ function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControll
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newCooldown`|`uint256`| New cooldown in seconds.|
+|`newCooldown`|`uint256`| New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.|
 
 
 ### setCleartextMaximumLength
 
 Allows the Orb creator to set the new cleartext maximum length. This function can only be called by
-the Orb creator when the Orb is not held by anyone.
+the Orb creator when the Orb is in their control.
 
 *Emits `CleartextMaximumLengthUpdate`.*
 
@@ -600,7 +600,7 @@ function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external o
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newCleartextMaximumLength`|`uint256`| New cleartext maximum length.|
+|`newCleartextMaximumLength`|`uint256`| New cleartext maximum length. Cannot be 0.|
 
 
 ### auctionRunning
@@ -652,7 +652,7 @@ function startAuction() external onlyOwner notDuringAuction;
 
 Bids the provided amount, if there's enough funds across funds on contract and transaction value.
 Might extend the auction if bidding close to auction end. Important: the leading bidder will not be
-able to withdraw funds until someone outbids them.
+able to withdraw any funds until someone outbids them or the auction is finalized.
 
 *Emits `AuctionBid`.*
 
@@ -698,8 +698,8 @@ function deposit() external payable;
 
 ### withdrawAll
 
-Function to withdraw all funds on the contract. Not recommended for current Orb holders, they should
-call `relinquish()` to take out their funds.
+Function to withdraw all funds on the contract. Not recommended for current Orb holders if the price
+is not zero, as they will become immediately foreclosable. To give up the Orb, call `relinquish()`.
 
 *Not allowed for the leading auction bidder.*
 
@@ -800,7 +800,7 @@ function holderTaxPeriod() external pure returns (uint256 holderTaxPeriodSeconds
 ### _owedSinceLastSettlement
 
 *Calculates how much money Orb holder owes Orb beneficiary. This amount would be transferred between
-accounts during settlement. **Owed amount can be higher than hodler's funds!** It's important to check
+accounts during settlement. **Owed amount can be higher than holder's funds!** It's important to check
 if holder has enough funds before transferring.*
 
 
@@ -845,10 +845,11 @@ function _settle() internal;
 
 ### setPrice
 
-Sets the new purchase price for the Orb. Harberger tax means the asset is always for sale.
-The price can be set to zero, making foreclosure time to be never.
+Sets the new purchase price for the Orb. Harberger tax means the asset is always for sale. The price
+can be set to zero, making foreclosure time to be never. Can only be called by a solvent holder.
+Settles before adjusting the price, as the new price will change foreclosure time.
 
-*See also `_setPrice()`.*
+*Emits `Settlement` and `PriceUpdate`. See also `_setPrice()`.*
 
 
 ```solidity
@@ -886,14 +887,15 @@ function listWithPrice(uint256 listingPrice) external onlyOwner;
 
 Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
 from its holder. Purchasing is only allowed while the holder is solvent. If not, the Orb has to be
-foreclosed and re-auctioned. Purchaser is required to have more funds than the price itself, but the
-exact amount is left for the user interface implementation to calculate and send along. Purchasing
-sends royalty part to the beneficiary.
+foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
+required, but purchasing without any reserve would leave the new owner immediately foreclosable.
+Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
 
 *Requires to provide the current price as the first parameter to prevent front-running: without current
 price requirement someone could purchase the Orb ahead of someone else, set the price higher, and
 profit from the purchase. Does not modify `lastInvocationTime` unless buying from the creator.
-Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.*
+Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
+royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.*
 
 
 ```solidity
@@ -909,9 +911,8 @@ function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyH
 
 ### _setPrice
 
-*Can only be called by a solvent holder. Settles before adjusting the price, as the new price will
-change foreclosure time. Does not check if the new price differs from the previous price: no risk.
-Limits the price to MAX_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
+*Does not check if the new price differs from the previous price: no risk. Limits the price to
+MAX_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
 
 
 ```solidity
@@ -931,7 +932,7 @@ owed to the beneficiary since last settlement, and foreclosing yourself after. M
 creator themselves hold the Orb and want to re-auction it. For any other holder, setting the price to
 zero would be more practical.
 
-*Calls `_withdraw()`, which does value transfer from the contract. Emits `Foreclosure` and
+*Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment` and
 `Withdrawal`.*
 
 
@@ -996,8 +997,7 @@ or just for posterity. Only invocations from current holder can have their clear
 cleartext from the content hash via brute force, but publishing this on-chain is only allowed by the
 holder themselves, introducing a reasonable privacy protection. If the content hash is of a cleartext
 that is longer than maximum cleartext length, the contract will never record this cleartext, as it is
-invalid. Allows overwriting. Assuming no hash collisions, this poses no risk, just wastes holder gas.
-Emits `CleartextRecording`.*
+invalid. Allows overwriting, as this poses no risk. Emits `CleartextRecording`.*
 
 
 ```solidity
@@ -1054,7 +1054,7 @@ function flagResponse(uint256 invocationId) external onlyHolder onlyHolderSolven
 
 |Name|Type|Description|
 |----|----|-----------|
-|`invocationId`|`uint256`| ID of an invocation to which the response is being flagged.|
+|`invocationId`|`uint256`| Id of an invocation to which the response is being flagged.|
 
 
 ### _responseExists
@@ -1069,7 +1069,7 @@ function _responseExists(uint256 invocationId_) internal view returns (bool isRe
 
 |Name|Type|Description|
 |----|----|-----------|
-|`invocationId_`|`uint256`| ID of an invocation to which to check the existance of a response of.|
+|`invocationId_`|`uint256`| Id of an invocation to which to check the existance of a response of.|
 
 **Returns**
 

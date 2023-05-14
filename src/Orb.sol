@@ -104,10 +104,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// Harberger tax for holding. Initial value is 10%.
     uint256 public holderTaxNumerator = 1_000;
-    /// Secondary sale royalty paid to beneficiary, based on sale price.
+    /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10%.
     uint256 public royaltyNumerator = 1_000;
-    /// Price of the Orb. No need for mapping, as only one token is ever minted. Also used during auction to store
-    /// future purchase price. Has no meaning if the Orb is held by the contract and the auction is not running.
+    /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
+    /// the contract and the auction is not running.
     uint256 public price;
     /// Last time Orb holder's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
     /// if the Orb is held by the contract.
@@ -122,7 +122,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// equal value bids.
     uint256 public auctionMinimumBidStep = 1;
     /// Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
-    /// cannot be set to zero.
+    /// cannot be set to zero, as it would prevent any bids from being made.
     uint256 public auctionMinimumDuration = 1 days;
     /// Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
@@ -155,7 +155,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
     uint256 public lastInvocationTime;
 
-    /// Mapping for invocations: invocationId to HashTime struct.
+    /// Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
     mapping(uint256 => HashTime) public invocations;
     /// Count of invocations made: used to calculate invocationId of the next invocation.
     uint256 public invocationCount = 0;
@@ -175,8 +175,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///         `Ownable` sets the deployer to be the `owner()`, and also the creator in the Orb context.
     /// @param  name_          Orb name, used in ERC-721 metadata.
     /// @param  symbol_        Orb symbol or ticker, used in ERC-721 metadata.
-    /// @param  tokenId_       ERC-721 token ID of the Orb.
-    /// @param  beneficiary_   Beneficiary receives all Orb proceeds.
+    /// @param  tokenId_       ERC-721 token id of the Orb.
+    /// @param  beneficiary_   Address to receive all Orb proceeds.
     /// @param  oathHash_      Hash of the Oath taken to create the Orb.
     /// @param  honoredUntil_  Date until which the Orb creator will honor the Oath for the Orb holder.
     /// @param  baseURI_       Initial baseURI value for tokenURI JSONs.
@@ -200,8 +200,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and IOrb interfaces.
-    /// @param   interfaceId           Interface ID to check for support.
-    /// @return  isInterfaceSupported  If interface with given 4 bytes ID is supported.
+    /// @param   interfaceId           Interface id to check for support.
+    /// @return  isInterfaceSupported  If interface with given 4 bytes id is supported.
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -272,7 +272,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     //  FUNCTIONS: ERC-721 OVERRIDES
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @dev     Override to provide ERC721 contract's `tokenURI()` with the baseURI.
+    /// @dev     Override to provide ERC-721 contract's `tokenURI()` with the baseURI.
     /// @return  baseURIValue  Current baseURI value.
     function _baseURI() internal view override returns (string memory baseURIValue) {
         return baseURI;
@@ -311,7 +311,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  Allows re-swearing of the Orb Oath and set a new `honoredUntil` date. This function can only be called
-    ///          by the Orb creator when the Orb is not held by anyone. With `swearOath()`, `honoredUntil` date can be
+    ///          by the Orb creator when the Orb is in their control. With `swearOath()`, `honoredUntil` date can be
     ///          decreased, unlike with the `extendHonoredUntil()` function.
     /// @dev     Emits `OathSwearing`.
     /// @param   oathHash         Hash of the Oath taken to create the Orb.
@@ -337,13 +337,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @notice  Allows the Orb creator to replace the `baseURI`. This function can be called by the Orb creator
     ///          anytime and is meant for when the current `baseURI` has to be updated.
-    /// @param   newBaseURI  New `baseURI`, will be concatenated with the token ID in `tokenURI()`.
+    /// @param   newBaseURI  New `baseURI`, will be concatenated with the token id in `tokenURI()`.
     function setBaseURI(string memory newBaseURI) external onlyOwner {
         baseURI = newBaseURI;
     }
 
     /// @notice  Allows the Orb creator to set the auction parameters. This function can only be called by the Orb
-    ///          creator when the Orb is not held by anyone.
+    ///          creator when the Orb is in their control.
     /// @dev     Emits `AuctionParametersUpdate`.
     /// @param   newStartingPrice    New starting price for the auction. Can be 0.
     /// @param   newMinimumBidStep   New minimum bid step for the auction. Will always be set to at least 1.
@@ -385,10 +385,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @notice  Allows the Orb creator to set the new holder tax and royalty. This function can only be called by the
-    ///          Orb creator when the Orb is not held by anyone.
+    ///          Orb creator when the Orb is in their control.
     /// @dev     Emits `FeesUpdate`.
     /// @param   newHolderTaxNumerator  New holder tax numerator, in relation to `FEE_DENOMINATOR`.
-    /// @param   newRoyaltyNumerator    New royalty numerator, in relation to `FEE_DENOMINATOR`.
+    /// @param   newRoyaltyNumerator    New royalty numerator, in relation to `FEE_DENOMINATOR`. Cannot be larger than
+    ///                                 `FEE_DENOMINATOR`.
     function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator)
         external
         onlyOwner
@@ -410,9 +411,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @notice  Allows the Orb creator to set the new cooldown duration. This function can only be called by the Orb
-    ///          creator when the Orb is not held by anyone.
+    ///          creator when the Orb is in their control.
     /// @dev     Emits `CooldownUpdate`.
-    /// @param   newCooldown  New cooldown in seconds.
+    /// @param   newCooldown  New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
     function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled {
         if (newCooldown > COOLDOWN_MAXIMUM_DURATION) {
             revert CooldownExceedsMaximumDuration(newCooldown, COOLDOWN_MAXIMUM_DURATION);
@@ -424,9 +425,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @notice  Allows the Orb creator to set the new cleartext maximum length. This function can only be called by
-    ///          the Orb creator when the Orb is not held by anyone.
+    ///          the Orb creator when the Orb is in their control.
     /// @dev     Emits `CleartextMaximumLengthUpdate`.
-    /// @param   newCleartextMaximumLength  New cleartext maximum length.
+    /// @param   newCleartextMaximumLength  New cleartext maximum length. Cannot be 0.
     function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external onlyOwner onlyCreatorControlled {
         if (newCleartextMaximumLength == 0) {
             revert InvalidCleartextMaximumLength(newCleartextMaximumLength);
@@ -480,7 +481,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @notice  Bids the provided amount, if there's enough funds across funds on contract and transaction value.
     ///          Might extend the auction if bidding close to auction end. Important: the leading bidder will not be
-    ///          able to withdraw funds until someone outbids them.
+    ///          able to withdraw any funds until someone outbids them or the auction is finalized.
     /// @dev     Emits `AuctionBid`.
     /// @param   amount      The value to bid.
     /// @param   priceIfWon  Price if the bid wins. Must be less than `MAX_PRICE`.
@@ -570,8 +571,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         emit Deposit(msg.sender, msg.value);
     }
 
-    /// @notice  Function to withdraw all funds on the contract. Not recommended for current Orb holders, they should
-    ///          call `relinquish()` to take out their funds.
+    /// @notice  Function to withdraw all funds on the contract. Not recommended for current Orb holders if the price
+    ///          is not zero, as they will become immediately foreclosable. To give up the Orb, call `relinquish()`.
     /// @dev     Not allowed for the leading auction bidder.
     function withdrawAll() external {
         _withdraw(msg.sender, fundsOf[msg.sender]);
@@ -624,7 +625,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev     Calculates how much money Orb holder owes Orb beneficiary. This amount would be transferred between
-    ///          accounts during settlement. **Owed amount can be higher than hodler's funds!** It's important to check
+    ///          accounts during settlement. **Owed amount can be higher than holder's funds!** It's important to check
     ///          if holder has enough funds before transferring.
     /// @return  owedValue  Wei Orb holder owes Orb beneficiary since the last settlement time.
     function _owedSinceLastSettlement() internal view returns (uint256 owedValue) {
@@ -686,9 +687,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     //  FUNCTIONS: PURCHASING AND LISTING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Sets the new purchase price for the Orb. Harberger tax means the asset is always for sale.
-    ///          The price can be set to zero, making foreclosure time to be never.
-    /// @dev     See also `_setPrice()`.
+    /// @notice  Sets the new purchase price for the Orb. Harberger tax means the asset is always for sale. The price
+    ///          can be set to zero, making foreclosure time to be never. Can only be called by a solvent holder.
+    ///          Settles before adjusting the price, as the new price will change foreclosure time.
+    /// @dev     Emits `Settlement` and `PriceUpdate`. See also `_setPrice()`.
     /// @param   newPrice  New price for the Orb.
     function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent {
         _settle();
@@ -717,13 +719,14 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @notice  Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
     ///          from its holder. Purchasing is only allowed while the holder is solvent. If not, the Orb has to be
-    ///          foreclosed and re-auctioned. Purchaser is required to have more funds than the price itself, but the
-    ///          exact amount is left for the user interface implementation to calculate and send along. Purchasing
-    ///          sends royalty part to the beneficiary.
+    ///          foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
+    ///          required, but purchasing without any reserve would leave the new owner immediately foreclosable.
+    ///          Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
     /// @dev     Requires to provide the current price as the first parameter to prevent front-running: without current
     ///          price requirement someone could purchase the Orb ahead of someone else, set the price higher, and
     ///          profit from the purchase. Does not modify `lastInvocationTime` unless buying from the creator.
-    ///          Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
+    ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
+    ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
     /// @param   currentPrice  Current price, to prevent front-running.
     /// @param   newPrice      New price to use after the purchase.
     function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent {
@@ -775,9 +778,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         _transferOrb(holder, msg.sender);
     }
 
-    /// @dev    Can only be called by a solvent holder. Settles before adjusting the price, as the new price will
-    ///         change foreclosure time. Does not check if the new price differs from the previous price: no risk.
-    ///         Limits the price to MAX_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
+    /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
+    ///         MAX_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
     /// @param  newPrice_  New price for the Orb.
     function _setPrice(uint256 newPrice_) internal {
         if (newPrice_ > MAX_PRICE) {
@@ -870,8 +872,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          cleartext from the content hash via brute force, but publishing this on-chain is only allowed by the
     ///          holder themselves, introducing a reasonable privacy protection. If the content hash is of a cleartext
     ///          that is longer than maximum cleartext length, the contract will never record this cleartext, as it is
-    ///          invalid. Allows overwriting. Assuming no hash collisions, this poses no risk, just wastes holder gas.
-    ///          Emits `CleartextRecording`.
+    ///          invalid. Allows overwriting, as this poses no risk. Emits `CleartextRecording`.
     /// @param   invocationId  Invocation id, matching the one that was emitted when calling `invokeWithCleartext()` or
     ///                        `invokeWithHash()`.
     /// @param   cleartext     Cleartext, limited in length. Must match the content hash.
@@ -929,7 +930,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          solvent holders to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
     ///          holder must have received the Orb after the response was made; this is to prevent holders from
     ///          flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.
-    /// @param   invocationId  ID of an invocation to which the response is being flagged.
+    /// @param   invocationId  Id of an invocation to which the response is being flagged.
     function flagResponse(uint256 invocationId) external onlyHolder onlyHolderSolvent {
         if (!_responseExists(invocationId)) {
             revert ResponseNotFound(invocationId);
@@ -955,7 +956,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
-    /// @param   invocationId_  ID of an invocation to which to check the existance of a response of.
+    /// @param   invocationId_  Id of an invocation to which to check the existance of a response of.
     /// @return  isResponseFound  If a response to an invocation exists or not.
     function _responseExists(uint256 invocationId_) internal view returns (bool isResponseFound) {
         if (responses[invocationId_].timestamp != 0) {
