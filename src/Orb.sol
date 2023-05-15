@@ -660,16 +660,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @dev  Holder might owe more than they have funds available: it means that the holder is foreclosable.
     ///       Settlement would transfer all holder funds to the beneficiary, but not more. Does nothing if the
-    ///       creator holds the Orb. Reverts if contract holds the Orb. Emits `Settlement`.
+    ///       creator holds the Orb. Emits `Settlement`.
     function _settle() internal {
         address holder = ERC721.ownerOf(tokenId);
 
         if (owner() == holder) {
             return;
         }
-
-        // Should never be reached if this contract holds the Orb.
-        assert(address(this) != holder);
 
         uint256 availableFunds = fundsOf[holder];
         uint256 owedFunds = _owedSinceLastSettlement();
