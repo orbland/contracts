@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/e8f67a3361e64699fde7587ee6ffbab0554d5b3c/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/0e6bc3bea7443713c7f3542823b1b6bdeb3f7621/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -563,8 +563,8 @@ function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) ext
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newHolderTaxNumerator`|`uint256`| New holder tax numerator, in relation to `FEE_DENOMINATOR`.|
-|`newRoyaltyNumerator`|`uint256`|   New royalty numerator, in relation to `FEE_DENOMINATOR`. Cannot be larger than `FEE_DENOMINATOR`.|
+|`newHolderTaxNumerator`|`uint256`| New holder tax numerator, in relation to `feeDenominator()`.|
+|`newRoyaltyNumerator`|`uint256`|   New royalty numerator, in relation to `feeDenominator()`. Cannot be larger than `feeDenominator()`.|
 
 
 ### setCooldown

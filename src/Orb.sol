@@ -387,9 +387,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @notice  Allows the Orb creator to set the new holder tax and royalty. This function can only be called by the
     ///          Orb creator when the Orb is in their control.
     /// @dev     Emits `FeesUpdate`.
-    /// @param   newHolderTaxNumerator  New holder tax numerator, in relation to `FEE_DENOMINATOR`.
-    /// @param   newRoyaltyNumerator    New royalty numerator, in relation to `FEE_DENOMINATOR`. Cannot be larger than
-    ///                                 `FEE_DENOMINATOR`.
+    /// @param   newHolderTaxNumerator  New holder tax numerator, in relation to `feeDenominator()`.
+    /// @param   newRoyaltyNumerator    New royalty numerator, in relation to `feeDenominator()`. Cannot be larger than
+    ///                                 `feeDenominator()`.
     function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator)
         external
         onlyOwner
