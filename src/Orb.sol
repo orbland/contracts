@@ -639,11 +639,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @param  recipient_  The address to send the value to.
     /// @param  amount_     The value in wei to withdraw from the contract.
     function _withdraw(address recipient_, uint256 amount_) internal {
-        if (msg.sender == leadingBidder) {
+        if (recipient_ == leadingBidder) {
             revert NotPermittedForLeadingBidder();
         }
 
-        if (msg.sender == ERC721.ownerOf(tokenId)) {
+        if (recipient_ == ERC721.ownerOf(tokenId)) {
             _settle();
         }
 
