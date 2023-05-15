@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/dd7709a7be503ccd89e1d08e10717b0a20568c93/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/e8f67a3361e64699fde7587ee6ffbab0554d5b3c/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -836,7 +836,7 @@ function _withdraw(address recipient_, uint256 amount_) internal;
 
 *Holder might owe more than they have funds available: it means that the holder is foreclosable.
 Settlement would transfer all holder funds to the beneficiary, but not more. Does nothing if the
-creator holds the Orb. Reverts if contract holds the Orb. Emits `Settlement`.*
+creator holds the Orb. Emits `Settlement`.*
 
 
 ```solidity
