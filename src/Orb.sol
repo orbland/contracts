@@ -71,11 +71,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// - Harberger tax revenue.
     address public immutable beneficiary;
 
-    // Internal Immutables and Constants
-
     /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
     /// allow easier lookups of Orb holder.
     uint256 public immutable tokenId;
+
+    // Internal Constants
 
     /// Fee Nominator: basis points. Other fees are in relation to this.
     uint256 internal constant FEE_DENOMINATOR = 10_000;
