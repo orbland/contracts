@@ -295,8 +295,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev    Transfers the ERC-721 token to the new address. If the new owner is not this contract (an actual user),
-    ///         updates `holderReceiveTime`. `holderReceiveTime` is used to limit response flagging and cleartext
-    ///         recording durations.
+    ///         updates `holderReceiveTime`. `holderReceiveTime` is used to limit response flagging duration.
     /// @param  from_  Address to transfer the Orb from.
     /// @param  to_    Address to transfer the Orb to.
     function _transferOrb(address from_, address to_) internal {
@@ -861,42 +860,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         lastInvocationTime = block.timestamp;
 
         emit Invocation(msg.sender, invocationId, contentHash, block.timestamp);
-    }
-
-    /// @notice  Function allows the holder to reveal cleartext later, either because it was challenged by the creator,
-    ///          or just for posterity. Only invocations from current holder can have their cleartext recorded.
-    /// @dev     Only holders can reveal cleartext on-chain. Anyone could potentially figure out the invocation
-    ///          cleartext from the content hash via brute force, but publishing this on-chain is only allowed by the
-    ///          holder themselves, introducing a reasonable privacy protection. If the content hash is of a cleartext
-    ///          that is longer than maximum cleartext length, the contract will never record this cleartext, as it is
-    ///          invalid. Allows overwriting, as this poses no risk. Emits `CleartextRecording`.
-    /// @param   invocationId  Invocation id, matching the one that was emitted when calling `invokeWithCleartext()` or
-    ///                        `invokeWithHash()`.
-    /// @param   cleartext     Cleartext, limited in length. Must match the content hash.
-    function recordInvocationCleartext(uint256 invocationId, string memory cleartext)
-        external
-        onlyHolder
-        onlyHolderSolvent
-    {
-        uint256 cleartextLength = bytes(cleartext).length;
-
-        if (cleartextLength > cleartextMaximumLength) {
-            revert CleartextTooLong(cleartextLength, cleartextMaximumLength);
-        }
-
-        bytes32 recordedContentHash = invocations[invocationId].contentHash;
-        bytes32 cleartextHash = keccak256(abi.encodePacked(cleartext));
-
-        if (recordedContentHash != cleartextHash) {
-            revert CleartextHashMismatch(cleartextHash, recordedContentHash);
-        }
-
-        uint256 invocationTime = invocations[invocationId].timestamp;
-        if (holderReceiveTime >= invocationTime) {
-            revert CleartextRecordingNotPermitted(invocationId);
-        }
-
-        emit CleartextRecording(invocationId, cleartext);
     }
 
     /// @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
