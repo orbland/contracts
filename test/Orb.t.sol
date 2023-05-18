@@ -130,7 +130,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0x9a682641)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0x841be724)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -1566,93 +1566,6 @@ contract InvokeWthHashTest is OrbTestBase {
     }
 }
 
-contract RecordInvocationCleartext is OrbTestBase {
-    event CleartextRecording(uint256 indexed invocationId, string cleartext);
-
-    function test_revertWhen_NotHolder() public {
-        makeHolderAndWarp(user, 1 ether);
-        string memory cleartext = "this is a cleartext";
-        vm.prank(user2);
-        vm.expectRevert(IOrb.NotHolder.selector);
-        orb.recordInvocationCleartext(1, cleartext);
-
-        vm.startPrank(user);
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
-    }
-
-    function test_revertWhen_HolderInsolvent() public {
-        makeHolderAndWarp(user, 1 ether);
-        string memory cleartext = "this is a cleartext";
-        vm.warp(block.timestamp + 13130000 days);
-        vm.prank(user);
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
-        orb.recordInvocationCleartext(1, cleartext);
-
-        vm.warp(block.timestamp - 13130000 days);
-        vm.startPrank(user);
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
-    }
-
-    function test_revertWhen_recordingPreviousHolderCleartext() public {
-        makeHolderAndWarp(user, 1 ether);
-        string memory cleartext = "this is a cleartext";
-        vm.prank(user);
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        vm.warp(block.timestamp + 1 days);
-        vm.deal(user2, 1 ether);
-        vm.prank(user2);
-        orb.purchase{value: 1 ether}(1 ether, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CleartextRecordingNotPermitted.selector, 1));
-        vm.prank(user2);
-        orb.recordInvocationCleartext(1, cleartext);
-    }
-
-    function test_revertWhen_incorrectLength() public {
-        makeHolderAndWarp(user, 1 ether);
-        vm.startPrank(user);
-        uint256 max = orb.cleartextMaximumLength();
-        string memory cleartext =
-            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        uint256 length = bytes(cleartext).length;
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CleartextTooLong.selector, length, max));
-        orb.recordInvocationCleartext(1, cleartext);
-
-        vm.warp(block.timestamp + orb.cooldown() + 1);
-        cleartext = "this is a cleartext";
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(2, cleartext);
-    }
-
-    function test_revertWhen_cleartextMismatch() public {
-        makeHolderAndWarp(user, 1 ether);
-        vm.startPrank(user);
-        string memory cleartext = "this is a cleartext";
-        string memory cleartext2 = "this is not the same cleartext";
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IOrb.CleartextHashMismatch.selector, keccak256(bytes(cleartext2)), keccak256(bytes(cleartext))
-            )
-        );
-        orb.recordInvocationCleartext(1, cleartext2);
-
-        orb.recordInvocationCleartext(1, cleartext);
-    }
-
-    function test_success() public {
-        makeHolderAndWarp(user, 1 ether);
-        string memory cleartext = "this is a cleartext";
-        vm.startPrank(user);
-        orb.invokeWithHash(keccak256(bytes(cleartext)));
-        vm.expectEmit(true, false, false, true);
-        emit CleartextRecording(1, cleartext);
-        orb.recordInvocationCleartext(1, cleartext);
-    }
-}
-
 contract RespondTest is OrbTestBase {
     event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
 
@@ -1662,7 +1575,7 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
+
         vm.expectRevert("Ownable: caller is not the owner");
         orb.respond(1, response);
         vm.stopPrank();
@@ -1679,7 +1592,6 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
         vm.stopPrank();
 
         vm.prank(owner);
@@ -1700,7 +1612,6 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
         vm.stopPrank();
 
         vm.startPrank(owner);
@@ -1715,7 +1626,6 @@ contract RespondTest is OrbTestBase {
         bytes32 response = "response hash";
         vm.startPrank(user);
         orb.invokeWithHash(keccak256(bytes(cleartext)));
-        orb.recordInvocationCleartext(1, cleartext);
         vm.stopPrank();
 
         vm.prank(owner);

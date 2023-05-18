@@ -92,8 +92,6 @@ interface IOrb is IERC165 {
     // Invoking and Responding Errors
     error CooldownIncomplete(uint256 timeRemaining);
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-    error CleartextHashMismatch(bytes32 cleartextHash, bytes32 recordedContentHash);
-    error CleartextRecordingNotPermitted(uint256 invocationId);
     error InvocationNotFound(uint256 invocationId);
     error ResponseNotFound(uint256 invocationId);
     error ResponseExists(uint256 invocationId);
@@ -186,7 +184,6 @@ interface IOrb is IERC165 {
     // Invoking and Responding Functions
     function invokeWithCleartext(string memory cleartext) external;
     function invokeWithHash(bytes32 contentHash) external;
-    function recordInvocationCleartext(uint256 invocationId, string memory cleartext) external;
     function respond(uint256 invocationId, bytes32 contentHash) external;
     function flagResponse(uint256 invocationId) external;
 
