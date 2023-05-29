@@ -12,7 +12,25 @@ abstract contract DeployBase is Script {
     uint256[] private beneficiaryShares;
 
     address private immutable creatorAddress;
+
+    string private orbName;
+    string private orbSymbol;
     uint256 private immutable tokenId;
+
+    string private oath;
+    uint256 private immutable honoredUntil;
+
+    uint256 private immutable auctionStartingPrice;
+    uint256 private immutable auctionMinimumBidStep;
+    uint256 private immutable auctionMinimumDuration;
+    uint256 private immutable auctionBidExtension;
+
+    uint256 private immutable holderTaxNumerator;
+    uint256 private immutable royaltyNumerator;
+
+    uint256 private immutable cooldown;
+
+    uint256 private immutable cleartextMaximumLength;
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
@@ -22,12 +40,42 @@ abstract contract DeployBase is Script {
         address[] memory _beneficiaryAddresses,
         uint256[] memory _beneficiaryShares,
         address _creatorAddress,
-        uint256 _tokenId
+        string memory _orbName,
+        string memory _orbSymbol,
+        uint256 _tokenId,
+        string memory _oath,
+        uint256 _honoredUntil,
+        uint256 _auctionStartingPrice,
+        uint256 _auctionMinimumBidStep,
+        uint256 _auctionMinimumDuration,
+        uint256 _auctionBidExtension,
+        uint256 _holderTaxNumerator,
+        uint256 _royaltyNumerator,
+        uint256 _cooldown,
+        uint256 _cleartextMaximumLength
     ) {
         beneficiaryAddresses = _beneficiaryAddresses;
         beneficiaryShares = _beneficiaryShares;
         creatorAddress = _creatorAddress;
+
+        orbName = _orbName;
+        orbSymbol = _orbSymbol;
         tokenId = _tokenId;
+
+        oath = _oath;
+        honoredUntil = _honoredUntil;
+
+        auctionStartingPrice = _auctionStartingPrice;
+        auctionMinimumBidStep = _auctionMinimumBidStep;
+        auctionMinimumDuration = _auctionMinimumDuration;
+        auctionBidExtension = _auctionBidExtension;
+
+        holderTaxNumerator = _holderTaxNumerator;
+        royaltyNumerator = _royaltyNumerator;
+
+        cooldown = _cooldown;
+
+        cleartextMaximumLength = _cleartextMaximumLength;
     }
 
     function run() external {
@@ -39,14 +87,22 @@ abstract contract DeployBase is Script {
         address splitterAddress = address(orbBeneficiary);
 
         orb = new Orb(
-            "Orb", // name
-            "ORB", // symbol
+            orbName,
+            orbSymbol,
             tokenId, // tokenId
             splitterAddress, // beneficiary
-            keccak256(abi.encodePacked("test oath")), // oathHash
-            1_700_000_000, // honoredUntil
+            keccak256(abi.encodePacked(oath)), // oathHash
+            honoredUntil,
             "https://static.orb.land/orb/" // baseURI
         );
+
+        orb.setAuctionParameters(
+            auctionStartingPrice, auctionMinimumBidStep, auctionMinimumDuration, auctionBidExtension
+        );
+        orb.setFees(holderTaxNumerator, royaltyNumerator);
+        orb.setCooldown(cooldown);
+        orb.setCleartextMaximumLength(cleartextMaximumLength);
+
         orb.transferOwnership(creatorAddress);
 
         vm.stopBroadcast();
