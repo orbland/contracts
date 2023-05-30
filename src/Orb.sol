@@ -728,9 +728,28 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
     /// @param   currentPrice  Current price, to prevent front-running.
     /// @param   newPrice      New price to use after the purchase.
-    function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent {
+    function purchase(
+        uint256 newPrice,
+        uint256 currentPrice,
+        uint256 currentHolderTaxNumerator,
+        uint256 currentRoyaltyNumerator,
+        uint256 currentCooldown,
+        uint256 currentCleartextMaximumLength
+    ) external payable onlyHolderHeld onlyHolderSolvent {
         if (currentPrice != price) {
-            revert CurrentPriceIncorrect(currentPrice, price);
+            revert CurrentValueIncorrect(currentPrice, price);
+        }
+        if (currentHolderTaxNumerator != holderTaxNumerator) {
+            revert CurrentValueIncorrect(currentHolderTaxNumerator, holderTaxNumerator);
+        }
+        if (currentRoyaltyNumerator != royaltyNumerator) {
+            revert CurrentValueIncorrect(currentRoyaltyNumerator, royaltyNumerator);
+        }
+        if (currentCooldown != cooldown) {
+            revert CurrentValueIncorrect(currentCooldown, cooldown);
+        }
+        if (currentCleartextMaximumLength != cleartextMaximumLength) {
+            revert CurrentValueIncorrect(currentCleartextMaximumLength, cleartextMaximumLength);
         }
 
         if (lastSettlementTime >= block.timestamp) {
