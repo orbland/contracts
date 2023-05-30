@@ -7,7 +7,7 @@ import {OrbHarness} from "./harness/OrbHarness.sol";
 import {Orb} from "src/Orb.sol";
 import {IOrb} from "src/IOrb.sol";
 
-/* solhint-disable func-name-mixedcase */
+/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbTestBase is Test {
     OrbHarness internal orb;
 
@@ -155,7 +155,18 @@ contract SwearOathTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
 
-        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.startAuction();
+
+        vm.prank(owner);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+
+        prankAndBid(user, 1 ether);
+        vm.warp(orb.auctionEndTime() + 1);
+        orb.finalizeAuction();
+        vm.warp(block.timestamp + 30 days);
+
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
@@ -231,7 +242,18 @@ contract SettingAuctionParametersTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
 
-        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.startAuction();
+
+        vm.prank(owner);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+
+        prankAndBid(user, 1 ether);
+        vm.warp(orb.auctionEndTime() + 1);
+        orb.finalizeAuction();
+        vm.warp(block.timestamp + 30 days);
+
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
@@ -286,7 +308,18 @@ contract SettingFeesTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.setFees(10_000, 10_000);
 
-        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.startAuction();
+
+        vm.prank(owner);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
+        orb.setFees(10_000, 10_000);
+
+        prankAndBid(user, 1 ether);
+        vm.warp(orb.auctionEndTime() + 1);
+        orb.finalizeAuction();
+        vm.warp(block.timestamp + 30 days);
+
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setFees(10_000, 10_000);
@@ -329,7 +362,18 @@ contract SettingCooldownTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.setCooldown(1 days);
 
-        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.startAuction();
+
+        vm.prank(owner);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
+        orb.setCooldown(1 days);
+
+        prankAndBid(user, 1 ether);
+        vm.warp(orb.auctionEndTime() + 1);
+        orb.finalizeAuction();
+        vm.warp(block.timestamp + 30 days);
+
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setCooldown(1 days);
@@ -359,7 +403,18 @@ contract SettingCleartextMaximumLengthTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.setCleartextMaximumLength(1);
 
-        makeHolderAndWarp(user, 1 ether);
+        vm.prank(owner);
+        orb.startAuction();
+
+        vm.prank(owner);
+        vm.expectRevert(IOrb.AuctionRunning.selector);
+        orb.setCleartextMaximumLength(1);
+
+        prankAndBid(user, 1 ether);
+        vm.warp(orb.auctionEndTime() + 1);
+        orb.finalizeAuction();
+        vm.warp(block.timestamp + 30 days);
+
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
         orb.setCleartextMaximumLength(1);

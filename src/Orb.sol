@@ -244,6 +244,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         if (address(this) != ERC721.ownerOf(tokenId) && owner() != ERC721.ownerOf(tokenId)) {
             revert CreatorDoesNotControlOrb();
         }
+        if (auctionEndTime > 0) {
+            revert AuctionRunning();
+        }
         _;
     }
 
