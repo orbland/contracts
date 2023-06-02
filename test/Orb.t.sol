@@ -1288,6 +1288,7 @@ contract PurchaseTest is OrbTestBase {
         assertEq(orb.fundsOf(user), 1);
         assertEq(orb.price(), newPrice);
         assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
+        assertEq(orb.holderSolvent(), true);
     }
 
     function test_succeedsCorrectly() public {
