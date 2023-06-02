@@ -591,6 +591,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @notice  Function to withdraw all beneficiary funds on the contract.
     /// @dev     Allowed for anyone at any time, does not use `msg.sender` in its execution.
     function withdrawAllForBeneficiary() external {
+        if (ERC721.ownerOf(tokenId) != address(this)) {
+            _settle();
+        }
         _withdraw(beneficiary, fundsOf[beneficiary]);
     }
 

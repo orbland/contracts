@@ -1028,9 +1028,6 @@ contract WithdrawTest is OrbTestBase {
         vm.prank(user);
         vm.expectEmit(true, true, false, true);
         emit Settlement(user, beneficiary, transferableToBeneficiary);
-        orb.settle();
-
-        assertEq(orb.fundsOf(beneficiary), beneficiaryFunds + transferableToBeneficiary);
 
         vm.expectEmit(true, false, false, true);
         emit Withdrawal(beneficiary, beneficiaryFunds + transferableToBeneficiary);
@@ -1040,6 +1037,50 @@ contract WithdrawTest is OrbTestBase {
         assertEq(orb.fundsOf(beneficiary), 0);
         assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(beneficiary.balance, initialBalance + beneficiaryEffective);
+    }
+
+    function test_withdrawAllForBeneficiaryWhenContractOwned() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(user);
+        orb.relinquish();
+
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
+        uint256 initialBalance = beneficiary.balance;
+        uint256 settlementTime = block.timestamp;
+
+        vm.warp(block.timestamp + 30 days);
+
+        // expectNotEmit Settlement
+        vm.expectEmit(true, false, false, true);
+        emit Withdrawal(beneficiary, beneficiaryFunds);
+        orb.withdrawAllForBeneficiary();
+
+        assertEq(orb.fundsOf(beneficiary), 0);
+        assertEq(orb.lastSettlementTime(), settlementTime);
+        assertEq(beneficiary.balance, initialBalance + beneficiaryFunds);
+    }
+
+    function test_withdrawAllForBeneficiaryWhenCreatorOwned() public {
+        makeHolderAndWarp(user, 1 ether);
+        vm.prank(user);
+        orb.relinquish();
+        vm.prank(owner);
+        orb.listWithPrice(1 ether);
+
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
+        uint256 initialBalance = beneficiary.balance;
+        uint256 settlementTime = block.timestamp;
+
+        vm.warp(block.timestamp + 30 days);
+
+        // expectNotEmit Settlement
+        vm.expectEmit(true, false, false, true);
+        emit Withdrawal(beneficiary, beneficiaryFunds);
+        orb.withdrawAllForBeneficiary();
+
+        assertEq(orb.fundsOf(beneficiary), 0);
+        assertEq(orb.lastSettlementTime(), settlementTime);
+        assertEq(beneficiary.balance, initialBalance + beneficiaryFunds);
     }
 
     function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
