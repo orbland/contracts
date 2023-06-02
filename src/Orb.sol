@@ -889,7 +889,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         invocations[invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
         lastInvocationTime = block.timestamp;
 
-        emit Invocation(msg.sender, invocationId, contentHash, block.timestamp);
+        emit Invocation(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
@@ -909,7 +909,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         responses[invocationId] = ResponseData(contentHash, block.timestamp);
 
-        emit Response(msg.sender, invocationId, contentHash, block.timestamp);
+        emit Response(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  Orb holder can flag a response during Response Flagging Period, counting from when the response is
@@ -942,7 +942,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         responseFlagged[invocationId] = true;
         flaggedResponsesCount += 1;
 
-        emit ResponseFlagging(msg.sender, invocationId);
+        emit ResponseFlagging(invocationId, msg.sender);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.

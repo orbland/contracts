@@ -63,7 +63,7 @@ contract DeployTest is OrbPondTestBase {
         );
     }
 
-    event Creation(bytes32 oathHash, uint256 honoredUntil);
+    event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
     event OrbCreation(
         uint256 indexed orbId, address indexed orbAddress, bytes32 indexed oathHash, uint256 honoredUntil
     );
@@ -112,22 +112,24 @@ contract ConfigureTest is OrbPondTestBase {
 
     event AuctionParametersUpdate(
         uint256 previousStartingPrice,
-        uint256 newStartingPrice,
+        uint256 indexed newStartingPrice,
         uint256 previousMinimumBidStep,
-        uint256 newMinimumBidStep,
+        uint256 indexed newMinimumBidStep,
         uint256 previousMinimumDuration,
-        uint256 newMinimumDuration,
+        uint256 indexed newMinimumDuration,
         uint256 previousBidExtension,
         uint256 newBidExtension
     );
     event FeesUpdate(
         uint256 previousHolderTaxNumerator,
-        uint256 newHolderTaxNumerator,
+        uint256 indexed newHolderTaxNumerator,
         uint256 previousRoyaltyNumerator,
-        uint256 newRoyaltyNumerator
+        uint256 indexed newRoyaltyNumerator
     );
-    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
-    event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 newCleartextMaximumLength);
+    event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
+    event CleartextMaximumLengthUpdate(
+        uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength
+    );
 
     function test_success() public {
         Orb orb = deployDefaults();
