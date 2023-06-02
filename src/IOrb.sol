@@ -85,7 +85,7 @@ interface IOrb is IERC165 {
     error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
 
     // Purchasing Errors
-    error CurrentPriceIncorrect(uint256 priceProvided, uint256 currentPrice);
+    error CurrentValueIncorrect(uint256 valueProvided, uint256 currentValue);
     error PurchasingNotPermitted();
     error InvalidNewPrice(uint256 priceProvided);
 
@@ -175,7 +175,14 @@ interface IOrb is IERC165 {
     // Purchasing Functions
     function listWithPrice(uint256 listingPrice) external;
     function setPrice(uint256 newPrice) external;
-    function purchase(uint256 currentPrice, uint256 newPrice) external payable;
+    function purchase(
+        uint256 newPrice,
+        uint256 currentPrice,
+        uint256 currentHolderTaxNumerator,
+        uint256 currentRoyaltyNumerator,
+        uint256 currentCooldown,
+        uint256 currentCleartextMaximumLength
+    ) external payable;
 
     // Orb Ownership Functions
     function relinquish() external;
