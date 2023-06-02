@@ -116,7 +116,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     // Auction State Variables
 
     /// Auction starting price. Initial value is 0 - allows any bid.
-    uint256 public auctionStartingPrice = 0;
+    uint256 public auctionStartingPrice;
     /// Auction minimum bid step: required increase between bids. Each bid has to increase over previous bid by at
     /// least this much. If trying to set as zero, will be set to 1 (wei). Initial value is also 1 wei, to disallow
     /// equal value bids.
@@ -158,13 +158,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
     mapping(uint256 => HashTime) public invocations;
     /// Count of invocations made: used to calculate invocationId of the next invocation.
-    uint256 public invocationCount = 0;
+    uint256 public invocationCount;
     /// Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
     mapping(uint256 => HashTime) public responses;
     /// Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
     mapping(uint256 => bool) public responseFlagged;
     /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
-    uint256 public flaggedResponsesCount = 0;
+    uint256 public flaggedResponsesCount;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  CONSTRUCTOR AND INTERFACE SUPPORT
