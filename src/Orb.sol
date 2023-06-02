@@ -547,7 +547,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             leadingBidder = address(0);
             leadingBid = 0;
         } else {
-            price = 0;
             emit AuctionFinalization(leadingBidder, leadingBid);
         }
 
@@ -764,8 +763,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             fundsOf[beneficiary] += beneficiaryRoyalty;
             fundsOf[holder] += currentOwnerShare;
         }
-
-        lastSettlementTime = block.timestamp;
 
         _setPrice(newPrice);
 
