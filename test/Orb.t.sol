@@ -1650,7 +1650,8 @@ contract InvokeWthHashTest is OrbTestBase {
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash1, uint256 invocationTimestamp1) = orb.invocations(1);
+        (address invocationUser1, bytes32 invocationHash1, uint256 invocationTimestamp1) = orb.invocations(1);
+        assertEq(invocationUser1, user);
         assertEq(invocationHash1, hash);
         assertEq(invocationTimestamp1, block.timestamp);
         vm.warp(block.timestamp + 1 days);
@@ -1660,12 +1661,14 @@ contract InvokeWthHashTest is OrbTestBase {
             )
         );
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash2, uint256 invocationTimestamp2) = orb.invocations(2);
+        (address invocationUser2, bytes32 invocationHash2, uint256 invocationTimestamp2) = orb.invocations(2);
+        assertEq(invocationUser2, address(0));
         assertEq(invocationHash2, bytes32(0));
         assertEq(invocationTimestamp2, 0);
         vm.warp(block.timestamp + orb.cooldown() - 1 days + 1);
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash3, uint256 invocationTimestamp3) = orb.invocations(2);
+        (address invocationUser3, bytes32 invocationHash3, uint256 invocationTimestamp3) = orb.invocations(2);
+        assertEq(invocationUser3, user);
         assertEq(invocationHash3, hash);
         assertEq(invocationTimestamp3, block.timestamp);
     }
@@ -1677,7 +1680,8 @@ contract InvokeWthHashTest is OrbTestBase {
         vm.expectEmit(true, true, false, true);
         emit Invocation(user, 1, hash, block.timestamp);
         orb.invokeWithHash(hash);
-        (bytes32 invocationHash, uint256 invocationTimestamp) = orb.invocations(1);
+        (address invocactionUser, bytes32 invocationHash, uint256 invocationTimestamp) = orb.invocations(1);
+        assertEq(invocactionUser, user);
         assertEq(invocationHash, hash);
         assertEq(invocationTimestamp, block.timestamp);
         assertEq(orb.lastInvocationTime(), block.timestamp);
