@@ -1084,9 +1084,12 @@ contract SettleTest is OrbTestBase {
     }
 
     function test_settleReturnsIfOwner() public {
-        orb.workaround_setOrbHolder(owner);
+        orb.listWithPrice(1 ether);
+        vm.warp(30 days);
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
         orb.workaround_settle();
-        assertEq(orb.lastSettlementTime(), 0);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryFunds);
     }
 }
 
@@ -1267,6 +1270,7 @@ contract PurchaseTest is OrbTestBase {
         // bidAmount will be the `_price` of the Orb
         makeHolderAndWarp(owner, bidAmount);
         orb.settle();
+        vm.warp(block.timestamp + 1 days);
         uint256 ownerBefore = orb.fundsOf(owner);
         uint256 beneficiaryBefore = orb.fundsOf(beneficiary);
         uint256 userBefore = orb.fundsOf(user);

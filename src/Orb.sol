@@ -663,6 +663,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         address holder = ERC721.ownerOf(tokenId);
 
         if (owner() == holder) {
+            lastSettlementTime = block.timestamp;
             return;
         }
 
@@ -763,8 +764,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             fundsOf[beneficiary] += beneficiaryRoyalty;
             fundsOf[holder] += currentOwnerShare;
         }
-
-        lastSettlementTime = block.timestamp;
 
         _setPrice(newPrice);
 
