@@ -1069,17 +1069,15 @@ contract WithdrawTest is OrbTestBase {
 
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
         uint256 initialBalance = beneficiary.balance;
-        uint256 settlementTime = block.timestamp;
 
         vm.warp(block.timestamp + 30 days);
 
-        // expectNotEmit Settlement
         vm.expectEmit(true, false, false, true);
         emit Withdrawal(beneficiary, beneficiaryFunds);
         orb.withdrawAllForBeneficiary();
 
         assertEq(orb.fundsOf(beneficiary), 0);
-        assertEq(orb.lastSettlementTime(), settlementTime);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(beneficiary.balance, initialBalance + beneficiaryFunds);
     }
 
