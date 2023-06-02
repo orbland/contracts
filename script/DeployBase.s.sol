@@ -4,8 +4,10 @@ pragma solidity ^0.8.17;
 import {Script} from "forge-std/Script.sol";
 
 import {Orb} from "src/Orb.sol";
+import {OrbPond} from "src/OrbPond.sol";
 import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
+/* solhint-disable private-vars-leading-underscore */
 abstract contract DeployBase is Script {
     // Environment specific variables.
     address[] private beneficiaryAddresses;
@@ -35,6 +37,7 @@ abstract contract DeployBase is Script {
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
     Orb public orb;
+    OrbPond public orbPond;
 
     constructor(
         address[] memory _beneficiaryAddresses,
@@ -83,10 +86,12 @@ abstract contract DeployBase is Script {
 
         vm.startBroadcast(deployerKey);
 
+        orbPond = new OrbPond();
+
         orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
         address splitterAddress = address(orbBeneficiary);
 
-        orb = new Orb(
+        orbPond.createOrb(
             orbName,
             orbSymbol,
             tokenId, // tokenId
@@ -95,15 +100,21 @@ abstract contract DeployBase is Script {
             honoredUntil,
             "https://static.orb.land/orb/" // baseURI
         );
+        orb = Orb(orbPond.orbs(0));
 
-        orb.setAuctionParameters(
-            auctionStartingPrice, auctionMinimumBidStep, auctionMinimumDuration, auctionBidExtension
+        orbPond.configureOrb(
+            0,
+            auctionStartingPrice,
+            auctionMinimumBidStep,
+            auctionMinimumDuration,
+            auctionBidExtension,
+            holderTaxNumerator,
+            royaltyNumerator,
+            cooldown,
+            cleartextMaximumLength
         );
-        orb.setFees(holderTaxNumerator, royaltyNumerator);
-        orb.setCooldown(cooldown);
-        orb.setCleartextMaximumLength(cleartextMaximumLength);
 
-        orb.transferOwnership(creatorAddress);
+        orbPond.transferOrbOwnership(0, creatorAddress);
 
         vm.stopBroadcast();
     }
