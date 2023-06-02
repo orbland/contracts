@@ -764,6 +764,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             fundsOf[holder] += currentOwnerShare;
         }
 
+        lastSettlementTime = block.timestamp;
+
         _setPrice(newPrice);
 
         emit Purchase(holder, msg.sender, currentPrice);
