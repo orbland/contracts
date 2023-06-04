@@ -7,7 +7,6 @@ import {Orb} from "src/Orb.sol";
 import {OrbPond} from "src/OrbPond.sol";
 import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
-/* solhint-disable private-vars-leading-underscore */
 abstract contract DeployBase is Script {
     // Environment specific variables.
     address[] private beneficiaryAddresses;
