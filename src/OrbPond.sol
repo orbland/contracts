@@ -6,16 +6,28 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title   Orb Pond - the Orb Factory
 /// @author  Jonas Lekevicius
-/// @notice  Orbs come from a pond.
-/// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the owner.
+/// @notice  Orbs come from a Pond. The Pond is used to efficiently create new Orbs, and track "official" Orbs, honered
+///          by the Orb Land system. The Pond is also used to configure the Orbs and transfer ownership to the Orb
+///          creator.
+/// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator.
 contract OrbPond is Ownable {
     event OrbCreation(
         uint256 indexed orbId, address indexed orbAddress, bytes32 indexed oathHash, uint256 honoredUntil
     );
 
+    /// The mapping of Orb ids to Orbs. Increases monotonically.
     mapping(uint256 => Orb) public orbs;
+    /// The number of Orbs created so far, used to find the next Orb id.
     uint256 public orbCount;
 
+    /// @notice  Creates a new Orb, and emits an event with the Orb's address.
+    /// @param   name          Name of the Orb, used for display purposes. Suggestion: "NameOrb".
+    /// @param   symbol        Symbol of the Orb, used for display purposes. Suggestion: "ORB".
+    /// @param   tokenId       TokenId of the Orb. Only one ERC-721 token will be minted, with this id.
+    /// @param   beneficiary   Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.
+    /// @param   oathHash      Keccak-256 hash of the Orb's Oath.
+    /// @param   honoredUntil  Timestamp until which the Orb will be honored by its creator.
+    /// @param   baseURI       Initial baseURI of the Orb, used as part of ERC-721 tokenURI.
     function createOrb(
         string memory name,
         string memory symbol,
@@ -40,6 +52,16 @@ contract OrbPond is Ownable {
         orbCount++;
     }
 
+    /// @notice  Configures most Orb's parameters in one transaction. Used to initially set up the Orb.
+    /// @param   orbId                   Id of the Orb to configure.
+    /// @param   auctionStartingPrice    Starting price of the Orb's auction.
+    /// @param   auctionMinimumBidStep   Minimum difference between bids in the Orb's auction.
+    /// @param   auctionMinimumDuration  Minimum duration of the Orb's auction.
+    /// @param   auctionBidExtension     Auction duration extension for late bids during the Orb auction.
+    /// @param   holderTaxNumerator      Harberger tax numerator of the Orb, in basis points.
+    /// @param   royaltyNumerator        Royalty numerator of the Orb, in basis points.
+    /// @param   cooldown                Cooldown of the Orb in seconds.
+    /// @param   cleartextMaximumLength  Invocation cleartext maximum length for the Orb.
     function configureOrb(
         uint256 orbId,
         uint256 auctionStartingPrice,
@@ -59,6 +81,10 @@ contract OrbPond is Ownable {
         orbs[orbId].setCleartextMaximumLength(cleartextMaximumLength);
     }
 
+    /// @notice  Transfers the ownership of an Orb to its creator. This contract will no longer be able to configure
+    ///          the Orb afterwards.
+    /// @param   orbId           Id of the Orb to transfer.
+    /// @param   creatorAddress  Address of the Orb's creator, they will have full control over the Orb.
     function transferOrbOwnership(uint256 orbId, address creatorAddress) external onlyOwner {
         orbs[orbId].transferOwnership(creatorAddress);
     }
