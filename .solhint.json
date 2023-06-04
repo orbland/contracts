@@ -23,6 +23,7 @@
                 "ignoreConstructors": true
             }
         ],
+        "private-vars-leading-underscore": "off",
         "not-rely-on-time": "off"
     }
 }

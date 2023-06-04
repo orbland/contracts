@@ -8,7 +8,7 @@ import {OrbHarness} from "./harness/OrbHarness.sol";
 import {Orb} from "src/Orb.sol";
 import {IOrb} from "src/IOrb.sol";
 
-/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
+/* solhint-disable func-name-mixedcase */
 contract OrbPondTestBase is Test {
     OrbPond internal orbPond;
 
