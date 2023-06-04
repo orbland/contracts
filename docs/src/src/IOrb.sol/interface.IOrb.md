@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/0e6bc3bea7443713c7f3542823b1b6bdeb3f7621/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/2cf884ba476943d997804fd910eda2019e794a40/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -283,7 +283,14 @@ function setPrice(uint256 newPrice) external;
 
 
 ```solidity
-function purchase(uint256 currentPrice, uint256 newPrice) external payable;
+function purchase(
+    uint256 newPrice,
+    uint256 currentPrice,
+    uint256 currentHolderTaxNumerator,
+    uint256 currentRoyaltyNumerator,
+    uint256 currentCooldown,
+    uint256 currentCleartextMaximumLength
+) external payable;
 ```
 
 ### relinquish
@@ -312,13 +319,6 @@ function invokeWithCleartext(string memory cleartext) external;
 
 ```solidity
 function invokeWithHash(bytes32 contentHash) external;
-```
-
-### recordInvocationCleartext
-
-
-```solidity
-function recordInvocationCleartext(uint256 invocationId, string memory cleartext) external;
 ```
 
 ### respond
@@ -627,10 +627,10 @@ error HolderInsolvent();
 error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
 ```
 
-### CurrentPriceIncorrect
+### CurrentValueIncorrect
 
 ```solidity
-error CurrentPriceIncorrect(uint256 priceProvided, uint256 currentPrice);
+error CurrentValueIncorrect(uint256 valueProvided, uint256 currentValue);
 ```
 
 ### PurchasingNotPermitted
@@ -655,18 +655,6 @@ error CooldownIncomplete(uint256 timeRemaining);
 
 ```solidity
 error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-```
-
-### CleartextHashMismatch
-
-```solidity
-error CleartextHashMismatch(bytes32 cleartextHash, bytes32 recordedContentHash);
-```
-
-### CleartextRecordingNotPermitted
-
-```solidity
-error CleartextRecordingNotPermitted(uint256 invocationId);
 ```
 
 ### InvocationNotFound
