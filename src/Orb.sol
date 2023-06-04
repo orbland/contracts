@@ -77,8 +77,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // Internal Constants
 
-    /// Fee Nominator: basis points. Other fees are in relation to this.
-    uint256 internal constant FEE_DENOMINATOR = 10_000;
+    /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
+    uint256 internal constant FEE_DENOMINATOR = 100_00;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
     uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
     /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
@@ -102,10 +102,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // Fees State Variables
 
-    /// Harberger tax for holding. Initial value is 10%.
-    uint256 public holderTaxNumerator = 1_000;
-    /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10%.
-    uint256 public royaltyNumerator = 1_000;
+    /// Harberger tax for holding. Initial value is 10.00%.
+    uint256 public holderTaxNumerator = 10_00;
+    /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
+    uint256 public royaltyNumerator = 10_00;
     /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
     /// the contract and the auction is not running.
     uint256 public price;
