@@ -244,9 +244,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         _;
     }
 
-    /// @dev  Ensures that the Orb belongs to the contract itself or the creator. Most setting-adjusting functions
-    ///       should use this modifier. It means that the Orb properties cannot be modified while it is held by the
-    ///       holder.
+    /// @dev  Ensures that the Orb belongs to the contract itself or the creator, and the auction hasn't been started.
+    ///       Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
+    ///       modified while it is held by the holder or users can bid on the Orb.
     modifier onlyCreatorControlled() {
         if (address(this) != ERC721.ownerOf(tokenId) && owner() != ERC721.ownerOf(tokenId)) {
             revert CreatorDoesNotControlOrb();
@@ -594,7 +594,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         _withdraw(msg.sender, amount);
     }
 
-    /// @notice  Function to withdraw all beneficiary funds on the contract.
+    /// @notice  Function to withdraw all beneficiary funds on the contract. Settles if possible.
     /// @dev     Allowed for anyone at any time, does not use `msg.sender` in its execution.
     function withdrawAllForBeneficiary() external {
         if (ERC721.ownerOf(tokenId) != address(this)) {
@@ -670,8 +670,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev  Holder might owe more than they have funds available: it means that the holder is foreclosable.
-    ///       Settlement would transfer all holder funds to the beneficiary, but not more. Does nothing if the
-    ///       creator holds the Orb. Emits `Settlement`.
+    ///       Settlement would transfer all holder funds to the beneficiary, but not more. Does not transfer funds if
+    ///       the creator holds the Orb, but always updates `lastSettlementTime`. Should never be called if Orb is
+    ///       owned by the contract. Emits `Settlement`.
     function _settle() internal {
         address holder = ERC721.ownerOf(tokenId);
 
@@ -731,13 +732,19 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
     ///          required, but purchasing without any reserve would leave the new owner immediately foreclosable.
     ///          Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
-    /// @dev     Requires to provide the current price as the first parameter to prevent front-running: without current
-    ///          price requirement someone could purchase the Orb ahead of someone else, set the price higher, and
-    ///          profit from the purchase. Does not modify `lastInvocationTime` unless buying from the creator.
+    /// @dev     Requires to provide key Orb parameters (current price, Harberger tax rate, royalty, cooldown and
+    ///          cleartext maximum length) to prevent front-running: without these parameters Orb creator could
+    ///          front-run purcaser and change Orb parameters before the purchase; and without current price anyone
+    ///          could purchase the Orb ahead of the purchaser, set the price higher, and profit from the purchase.
+    ///          Does not modify `lastInvocationTime` unless buying from the creator.
     ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
     ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
-    /// @param   currentPrice  Current price, to prevent front-running.
-    /// @param   newPrice      New price to use after the purchase.
+    /// @param   newPrice                       New price to use after the purchase.
+    /// @param   currentPrice                   Current price, to prevent front-running.
+    /// @param   currentHolderTaxNumerator      Current holder tax numerator, to prevent front-running.
+    /// @param   currentRoyaltyNumerator        Current royalty numerator, to prevent front-running.
+    /// @param   currentCooldown                Current cooldown, to prevent front-running.
+    /// @param   currentCleartextMaximumLength  Current cleartext maximum length, to prevent front-running.
     function purchase(
         uint256 newPrice,
         uint256 currentPrice,

@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/0e6bc3bea7443713c7f3542823b1b6bdeb3f7621/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/f37a4815190396d804787713635fa8c023271236/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -47,11 +47,11 @@ uint256 public immutable tokenId;
 
 
 ### FEE_DENOMINATOR
-Fee Nominator: basis points. Other fees are in relation to this.
+Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
 
 
 ```solidity
-uint256 internal constant FEE_DENOMINATOR = 10_000;
+uint256 internal constant FEE_DENOMINATOR = 100_00;
 ```
 
 
@@ -113,20 +113,20 @@ mapping(address => uint256) public fundsOf;
 
 
 ### holderTaxNumerator
-Harberger tax for holding. Initial value is 10%.
+Harberger tax for holding. Initial value is 10.00%.
 
 
 ```solidity
-uint256 public holderTaxNumerator = 1_000;
+uint256 public holderTaxNumerator = 10_00;
 ```
 
 
 ### royaltyNumerator
-Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10%.
+Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
 
 
 ```solidity
-uint256 public royaltyNumerator = 1_000;
+uint256 public royaltyNumerator = 10_00;
 ```
 
 
@@ -155,7 +155,7 @@ Auction starting price. Initial value is 0 - allows any bid.
 
 
 ```solidity
-uint256 public auctionStartingPrice = 0;
+uint256 public auctionStartingPrice;
 ```
 
 
@@ -255,11 +255,11 @@ uint256 public lastInvocationTime;
 
 
 ### invocations
-Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
+Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
 
 
 ```solidity
-mapping(uint256 => HashTime) public invocations;
+mapping(uint256 => InvocationData) public invocations;
 ```
 
 
@@ -268,16 +268,16 @@ Count of invocations made: used to calculate invocationId of the next invocation
 
 
 ```solidity
-uint256 public invocationCount = 0;
+uint256 public invocationCount;
 ```
 
 
 ### responses
-Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
+Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
 
 
 ```solidity
-mapping(uint256 => HashTime) public responses;
+mapping(uint256 => ResponseData) public responses;
 ```
 
 
@@ -295,7 +295,7 @@ Flagged responses count is a convencience count of total flagged responses. Not 
 
 
 ```solidity
-uint256 public flaggedResponsesCount = 0;
+uint256 public flaggedResponsesCount;
 ```
 
 
@@ -378,9 +378,9 @@ modifier onlyHolderHeld();
 
 ### onlyCreatorControlled
 
-*Ensures that the Orb belongs to the contract itself or the creator. Most setting-adjusting functions
-should use this modifier. It means that the Orb properties cannot be modified while it is held by the
-holder.*
+*Ensures that the Orb belongs to the contract itself or the creator, and the auction hasn't been started.
+Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
+modified while it is held by the holder or users can bid on the Orb.*
 
 
 ```solidity
@@ -453,8 +453,7 @@ function safeTransferFrom(address, address, uint256, bytes memory) public pure o
 ### _transferOrb
 
 *Transfers the ERC-721 token to the new address. If the new owner is not this contract (an actual user),
-updates `holderReceiveTime`. `holderReceiveTime` is used to limit response flagging and cleartext
-recording durations.*
+updates `holderReceiveTime`. `holderReceiveTime` is used to limit response flagging duration.*
 
 
 ```solidity
@@ -728,7 +727,7 @@ function withdraw(uint256 amount) external;
 
 ### withdrawAllForBeneficiary
 
-Function to withdraw all beneficiary funds on the contract.
+Function to withdraw all beneficiary funds on the contract. Settles if possible.
 
 *Allowed for anyone at any time, does not use `msg.sender` in its execution.*
 
@@ -835,8 +834,9 @@ function _withdraw(address recipient_, uint256 amount_) internal;
 ### _settle
 
 *Holder might owe more than they have funds available: it means that the holder is foreclosable.
-Settlement would transfer all holder funds to the beneficiary, but not more. Does nothing if the
-creator holds the Orb. Emits `Settlement`.*
+Settlement would transfer all holder funds to the beneficiary, but not more. Does not transfer funds if
+the creator holds the Orb, but always updates `lastSettlementTime`. Should never be called if Orb is
+owned by the contract. Emits `Settlement`.*
 
 
 ```solidity
@@ -891,22 +891,35 @@ foreclosed and re-auctioned. This function does not require the purchaser to hav
 required, but purchasing without any reserve would leave the new owner immediately foreclosable.
 Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
 
-*Requires to provide the current price as the first parameter to prevent front-running: without current
-price requirement someone could purchase the Orb ahead of someone else, set the price higher, and
-profit from the purchase. Does not modify `lastInvocationTime` unless buying from the creator.
+*Requires to provide key Orb parameters (current price, Harberger tax rate, royalty, cooldown and
+cleartext maximum length) to prevent front-running: without these parameters Orb creator could
+front-run purcaser and change Orb parameters before the purchase; and without current price anyone
+could purchase the Orb ahead of the purchaser, set the price higher, and profit from the purchase.
+Does not modify `lastInvocationTime` unless buying from the creator.
 Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
 royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.*
 
 
 ```solidity
-function purchase(uint256 currentPrice, uint256 newPrice) external payable onlyHolderHeld onlyHolderSolvent;
+function purchase(
+    uint256 newPrice,
+    uint256 currentPrice,
+    uint256 currentHolderTaxNumerator,
+    uint256 currentRoyaltyNumerator,
+    uint256 currentCooldown,
+    uint256 currentCleartextMaximumLength
+) external payable onlyHolderHeld onlyHolderSolvent;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`currentPrice`|`uint256`| Current price, to prevent front-running.|
-|`newPrice`|`uint256`|     New price to use after the purchase.|
+|`newPrice`|`uint256`|                      New price to use after the purchase.|
+|`currentPrice`|`uint256`|                  Current price, to prevent front-running.|
+|`currentHolderTaxNumerator`|`uint256`|     Current holder tax numerator, to prevent front-running.|
+|`currentRoyaltyNumerator`|`uint256`|       Current royalty numerator, to prevent front-running.|
+|`currentCooldown`|`uint256`|               Current cooldown, to prevent front-running.|
+|`currentCleartextMaximumLength`|`uint256`| Current cleartext maximum length, to prevent front-running.|
 
 
 ### _setPrice
@@ -988,32 +1001,6 @@ function invokeWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld on
 |`contentHash`|`bytes32`| Required keccak256 hash of the cleartext.|
 
 
-### recordInvocationCleartext
-
-Function allows the holder to reveal cleartext later, either because it was challenged by the creator,
-or just for posterity. Only invocations from current holder can have their cleartext recorded.
-
-*Only holders can reveal cleartext on-chain. Anyone could potentially figure out the invocation
-cleartext from the content hash via brute force, but publishing this on-chain is only allowed by the
-holder themselves, introducing a reasonable privacy protection. If the content hash is of a cleartext
-that is longer than maximum cleartext length, the contract will never record this cleartext, as it is
-invalid. Allows overwriting, as this poses no risk. Emits `CleartextRecording`.*
-
-
-```solidity
-function recordInvocationCleartext(uint256 invocationId, string memory cleartext)
-    external
-    onlyHolder
-    onlyHolderSolvent;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`invocationId`|`uint256`| Invocation id, matching the one that was emitted when calling `invokeWithCleartext()` or `invokeWithHash()`.|
-|`cleartext`|`string`|    Cleartext, limited in length. Must match the content hash.|
-
-
 ### respond
 
 The Orb creator can use this function to respond to any existing invocation, no matter how long ago
@@ -1079,14 +1066,24 @@ function _responseExists(uint256 invocationId_) internal view returns (bool isRe
 
 
 ## Structs
-### HashTime
-Struct used to track invocation and response information: keccak256 content hash and block timestamp.
-When used for responses, timestamp is used to determine if the response can be flagged by the holder.
+### InvocationData
+Structs used to track invocation and response information: keccak256 content hash and block timestamp.
+InvocationData is used to determine if the response can be flagged by the holder.
 Invocation timestamp is tracked for the benefit of other contracts.
 
 
 ```solidity
-struct HashTime {
+struct InvocationData {
+    address invoker;
+    bytes32 contentHash;
+    uint256 timestamp;
+}
+```
+
+### ResponseData
+
+```solidity
+struct ResponseData {
     bytes32 contentHash;
     uint256 timestamp;
 }
