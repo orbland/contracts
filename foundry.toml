@@ -5,10 +5,10 @@ remappings = [ # Libraries that we use from node_modules and are used by the sma
   "forge-std/=lib/forge-std/src/",
 ]
 optimizer = true # Enable or disable the solc optimizer
-optimizer_runs = 999999 # The number of optimizer runs
+optimizer_runs = 20_000 # The number of optimizer runs
 verbosity = 3 # The verbosity of tests
 bytecode_hash = "none" # For deterministic code
-block_timestamp = 1622400000 # Timestamp for tests (non-zero)
+block_timestamp = 1_622_400_000 # Timestamp for tests (non-zero)
 
 # silence warnings
 # 2462 - ignored constructor visibility in OZ dependency
@@ -18,5 +18,4 @@ libs = ["node_modules", "lib"]
 ffi = false
 
 [fuzz]
-
-runs = 10000
+runs = 10_000
