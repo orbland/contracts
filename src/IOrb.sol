@@ -8,54 +8,60 @@ interface IOrb is IERC165 {
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    event Creation(bytes32 oathHash, uint256 honoredUntil);
+    event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
 
     // Auction Events
-    event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
-    event AuctionBid(address indexed bidder, uint256 bid);
-    event AuctionExtension(uint256 newAuctionEndTime);
-    event AuctionFinalization(address indexed winner, uint256 winningBid);
+    event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
+    event AuctionBid(address indexed bidder, uint256 indexed bid);
+    event AuctionExtension(uint256 indexed newAuctionEndTime);
+    event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
 
     // Funding Events
-    event Deposit(address indexed depositor, uint256 amount);
-    event Withdrawal(address indexed recipient, uint256 amount);
-    event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
+    event Deposit(address indexed depositor, uint256 indexed amount);
+    event Withdrawal(address indexed recipient, uint256 indexed amount);
+    event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
 
     // Purchasing Errors
-    event PriceUpdate(uint256 previousPrice, uint256 newPrice);
-    event Purchase(address indexed seller, address indexed buyer, uint256 price);
+    event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
+    event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
 
     // Orb Ownership Functions
     event Foreclosure(address indexed formerHolder);
     event Relinquishment(address indexed formerHolder);
 
     // Invoking and Responding Events
-    event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
-    event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
+    event Invocation(
+        uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash
+    );
+    event Response(
+        uint256 indexed invocationId, address indexed responder, uint256 indexed timestamp, bytes32 contentHash
+    );
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
-    event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
+    event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
 
     // Orb Parameter Events
-    event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
-    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
+    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 indexed newHonoredUntil);
     event AuctionParametersUpdate(
         uint256 previousStartingPrice,
-        uint256 newStartingPrice,
+        uint256 indexed newStartingPrice,
         uint256 previousMinimumBidStep,
-        uint256 newMinimumBidStep,
+        uint256 indexed newMinimumBidStep,
         uint256 previousMinimumDuration,
-        uint256 newMinimumDuration,
+        uint256 indexed newMinimumDuration,
         uint256 previousBidExtension,
         uint256 newBidExtension
     );
     event FeesUpdate(
         uint256 previousHolderTaxNumerator,
-        uint256 newHolderTaxNumerator,
+        uint256 indexed newHolderTaxNumerator,
         uint256 previousRoyaltyNumerator,
-        uint256 newRoyaltyNumerator
+        uint256 indexed newRoyaltyNumerator
     );
-    event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
-    event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 newCleartextMaximumLength);
+    event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
+    event CleartextMaximumLengthUpdate(
+        uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength
+    );
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -140,7 +146,10 @@ interface IOrb is IERC165 {
     function royaltyNumerator() external view returns (uint256);
 
     // Invoking and Responding View Functions
-    function invocations(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
+    function invocations(uint256 invocationId)
+        external
+        view
+        returns (address invoker, bytes32 contentHash, uint256 timestamp);
     function invocationCount() external view returns (uint256);
 
     function responses(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);

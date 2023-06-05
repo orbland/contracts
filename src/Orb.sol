@@ -137,10 +137,17 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // Invocation and Response State Variables
 
-    /// Struct used to track invocation and response information: keccak256 content hash and block timestamp.
-    /// When used for responses, timestamp is used to determine if the response can be flagged by the holder.
+    /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
+    /// InvocationData is used to determine if the response can be flagged by the holder.
     /// Invocation timestamp is tracked for the benefit of other contracts.
-    struct HashTime {
+    struct InvocationData {
+        address invoker;
+        // keccak256 hash of the cleartext
+        bytes32 contentHash;
+        uint256 timestamp;
+    }
+
+    struct ResponseData {
         // keccak256 hash of the cleartext
         bytes32 contentHash;
         uint256 timestamp;
@@ -155,12 +162,12 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
     uint256 public lastInvocationTime;
 
-    /// Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
-    mapping(uint256 => HashTime) public invocations;
+    /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
+    mapping(uint256 => InvocationData) public invocations;
     /// Count of invocations made: used to calculate invocationId of the next invocation.
     uint256 public invocationCount;
-    /// Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
-    mapping(uint256 => HashTime) public responses;
+    /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
+    mapping(uint256 => ResponseData) public responses;
     /// Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
     mapping(uint256 => bool) public responseFlagged;
     /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
@@ -879,10 +886,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         invocationCount += 1;
         uint256 invocationId = invocationCount; // starts at 1
 
-        invocations[invocationId] = HashTime(contentHash, block.timestamp);
+        invocations[invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
         lastInvocationTime = block.timestamp;
 
-        emit Invocation(msg.sender, invocationId, contentHash, block.timestamp);
+        emit Invocation(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
@@ -900,9 +907,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert ResponseExists(invocationId);
         }
 
-        responses[invocationId] = HashTime(contentHash, block.timestamp);
+        responses[invocationId] = ResponseData(contentHash, block.timestamp);
 
-        emit Response(msg.sender, invocationId, contentHash, block.timestamp);
+        emit Response(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  Orb holder can flag a response during Response Flagging Period, counting from when the response is
@@ -935,7 +942,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         responseFlagged[invocationId] = true;
         flaggedResponsesCount += 1;
 
-        emit ResponseFlagging(msg.sender, invocationId);
+        emit ResponseFlagging(invocationId, msg.sender);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
