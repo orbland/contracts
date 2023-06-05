@@ -29,7 +29,7 @@ contract OrbTestBase is Test {
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
         beneficiary = address(0xC0FFEE);
-        startingBalance = 10000 ether;
+        startingBalance = 10_000 ether;
         vm.deal(user, startingBalance);
         vm.deal(user2, startingBalance);
         owner = orb.owner();
@@ -93,8 +93,8 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.cleartextMaximumLength(), 280);
 
         assertEq(orb.price(), 0);
-        assertEq(orb.holderTaxNumerator(), 1_000);
-        assertEq(orb.royaltyNumerator(), 1_000);
+        assertEq(orb.holderTaxNumerator(), 10_00);
+        assertEq(orb.royaltyNumerator(), 10_00);
         assertEq(orb.lastInvocationTime(), 0);
         assertEq(orb.invocationCount(), 0);
 
@@ -114,7 +114,7 @@ contract InitialStateTest is OrbTestBase {
     }
 
     function test_constants() public {
-        assertEq(orb.feeDenominator(), 10000);
+        assertEq(orb.feeDenominator(), 100_00);
         assertEq(orb.holderTaxPeriod(), 365 days);
 
         assertEq(orb.tokenId(), 69);
@@ -306,14 +306,14 @@ contract SettingFeesTest is OrbTestBase {
     function test_setFeesOnlyOwnerControlled() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.setFees(10_000, 10_000);
+        orb.setFees(100_00, 100_00);
 
         vm.prank(owner);
         orb.startAuction();
 
         vm.prank(owner);
         vm.expectRevert(IOrb.AuctionRunning.selector);
-        orb.setFees(10_000, 10_000);
+        orb.setFees(100_00, 100_00);
 
         prankAndBid(user, 1 ether);
         vm.warp(orb.auctionEndTime() + 1);
@@ -322,7 +322,7 @@ contract SettingFeesTest is OrbTestBase {
 
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
-        orb.setFees(10_000, 10_000);
+        orb.setFees(100_00, 100_00);
     }
 
     function test_revertIfRoyaltyNumeratorExceedsDenominator() public {
@@ -343,14 +343,14 @@ contract SettingFeesTest is OrbTestBase {
     }
 
     function test_setFeesSucceedsCorrectly() public {
-        assertEq(orb.holderTaxNumerator(), 1000);
-        assertEq(orb.royaltyNumerator(), 1000);
+        assertEq(orb.holderTaxNumerator(), 10_00);
+        assertEq(orb.royaltyNumerator(), 10_00);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
-        emit FeesUpdate(1000, 10_000, 1000, 10_000);
-        orb.setFees(10_000, 10_000);
-        assertEq(orb.holderTaxNumerator(), 10_000);
-        assertEq(orb.royaltyNumerator(), 10_000);
+        emit FeesUpdate(10_00, 100_00, 10_00, 100_00);
+        orb.setFees(100_00, 100_00);
+        assertEq(orb.holderTaxNumerator(), 100_00);
+        assertEq(orb.royaltyNumerator(), 100_00);
     }
 }
 
