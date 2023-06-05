@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/2cf884ba476943d997804fd910eda2019e794a40/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/f37a4815190396d804787713635fa8c023271236/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -143,7 +143,10 @@ function royaltyNumerator() external view returns (uint256);
 
 
 ```solidity
-function invocations(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
+function invocations(uint256 invocationId)
+    external
+    view
+    returns (address invoker, bytes32 contentHash, uint256 timestamp);
 ```
 
 ### invocationCount
@@ -393,61 +396,61 @@ function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 ### Creation
 
 ```solidity
-event Creation(bytes32 oathHash, uint256 honoredUntil);
+event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
 ```
 
 ### AuctionStart
 
 ```solidity
-event AuctionStart(uint256 auctionStartTime, uint256 auctionEndTime);
+event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
 ```
 
 ### AuctionBid
 
 ```solidity
-event AuctionBid(address indexed bidder, uint256 bid);
+event AuctionBid(address indexed bidder, uint256 indexed bid);
 ```
 
 ### AuctionExtension
 
 ```solidity
-event AuctionExtension(uint256 newAuctionEndTime);
+event AuctionExtension(uint256 indexed newAuctionEndTime);
 ```
 
 ### AuctionFinalization
 
 ```solidity
-event AuctionFinalization(address indexed winner, uint256 winningBid);
+event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
 ```
 
 ### Deposit
 
 ```solidity
-event Deposit(address indexed depositor, uint256 amount);
+event Deposit(address indexed depositor, uint256 indexed amount);
 ```
 
 ### Withdrawal
 
 ```solidity
-event Withdrawal(address indexed recipient, uint256 amount);
+event Withdrawal(address indexed recipient, uint256 indexed amount);
 ```
 
 ### Settlement
 
 ```solidity
-event Settlement(address indexed holder, address indexed beneficiary, uint256 amount);
+event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
 ```
 
 ### PriceUpdate
 
 ```solidity
-event PriceUpdate(uint256 previousPrice, uint256 newPrice);
+event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
 ```
 
 ### Purchase
 
 ```solidity
-event Purchase(address indexed seller, address indexed buyer, uint256 price);
+event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
 ```
 
 ### Foreclosure
@@ -465,13 +468,13 @@ event Relinquishment(address indexed formerHolder);
 ### Invocation
 
 ```solidity
-event Invocation(address indexed invoker, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
+event Invocation(uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash);
 ```
 
 ### Response
 
 ```solidity
-event Response(address indexed responder, uint256 indexed invocationId, bytes32 contentHash, uint256 timestamp);
+event Response(uint256 indexed invocationId, address indexed responder, uint256 indexed timestamp, bytes32 contentHash);
 ```
 
 ### CleartextRecording
@@ -483,19 +486,19 @@ event CleartextRecording(uint256 indexed invocationId, string cleartext);
 ### ResponseFlagging
 
 ```solidity
-event ResponseFlagging(address indexed flagger, uint256 indexed invocationId);
+event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
 ```
 
 ### OathSwearing
 
 ```solidity
-event OathSwearing(bytes32 oathHash, uint256 honoredUntil);
+event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
 ```
 
 ### HonoredUntilUpdate
 
 ```solidity
-event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
+event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 indexed newHonoredUntil);
 ```
 
 ### AuctionParametersUpdate
@@ -503,11 +506,11 @@ event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 newHonoredUntil);
 ```solidity
 event AuctionParametersUpdate(
     uint256 previousStartingPrice,
-    uint256 newStartingPrice,
+    uint256 indexed newStartingPrice,
     uint256 previousMinimumBidStep,
-    uint256 newMinimumBidStep,
+    uint256 indexed newMinimumBidStep,
     uint256 previousMinimumDuration,
-    uint256 newMinimumDuration,
+    uint256 indexed newMinimumDuration,
     uint256 previousBidExtension,
     uint256 newBidExtension
 );
@@ -518,22 +521,22 @@ event AuctionParametersUpdate(
 ```solidity
 event FeesUpdate(
     uint256 previousHolderTaxNumerator,
-    uint256 newHolderTaxNumerator,
+    uint256 indexed newHolderTaxNumerator,
     uint256 previousRoyaltyNumerator,
-    uint256 newRoyaltyNumerator
+    uint256 indexed newRoyaltyNumerator
 );
 ```
 
 ### CooldownUpdate
 
 ```solidity
-event CooldownUpdate(uint256 previousCooldown, uint256 newCooldown);
+event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
 ```
 
 ### CleartextMaximumLengthUpdate
 
 ```solidity
-event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 newCleartextMaximumLength);
+event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength);
 ```
 
 ## Errors

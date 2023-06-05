@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/2cf884ba476943d997804fd910eda2019e794a40/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/f37a4815190396d804787713635fa8c023271236/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -47,11 +47,11 @@ uint256 public immutable tokenId;
 
 
 ### FEE_DENOMINATOR
-Fee Nominator: basis points. Other fees are in relation to this.
+Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
 
 
 ```solidity
-uint256 internal constant FEE_DENOMINATOR = 10_000;
+uint256 internal constant FEE_DENOMINATOR = 100_00;
 ```
 
 
@@ -113,20 +113,20 @@ mapping(address => uint256) public fundsOf;
 
 
 ### holderTaxNumerator
-Harberger tax for holding. Initial value is 10%.
+Harberger tax for holding. Initial value is 10.00%.
 
 
 ```solidity
-uint256 public holderTaxNumerator = 1_000;
+uint256 public holderTaxNumerator = 10_00;
 ```
 
 
 ### royaltyNumerator
-Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10%.
+Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
 
 
 ```solidity
-uint256 public royaltyNumerator = 1_000;
+uint256 public royaltyNumerator = 10_00;
 ```
 
 
@@ -255,11 +255,11 @@ uint256 public lastInvocationTime;
 
 
 ### invocations
-Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
+Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
 
 
 ```solidity
-mapping(uint256 => HashTime) public invocations;
+mapping(uint256 => InvocationData) public invocations;
 ```
 
 
@@ -273,11 +273,11 @@ uint256 public invocationCount;
 
 
 ### responses
-Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
+Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
 
 
 ```solidity
-mapping(uint256 => HashTime) public responses;
+mapping(uint256 => ResponseData) public responses;
 ```
 
 
@@ -1066,14 +1066,24 @@ function _responseExists(uint256 invocationId_) internal view returns (bool isRe
 
 
 ## Structs
-### HashTime
-Struct used to track invocation and response information: keccak256 content hash and block timestamp.
-When used for responses, timestamp is used to determine if the response can be flagged by the holder.
+### InvocationData
+Structs used to track invocation and response information: keccak256 content hash and block timestamp.
+InvocationData is used to determine if the response can be flagged by the holder.
 Invocation timestamp is tracked for the benefit of other contracts.
 
 
 ```solidity
-struct HashTime {
+struct InvocationData {
+    address invoker;
+    bytes32 contentHash;
+    uint256 timestamp;
+}
+```
+
+### ResponseData
+
+```solidity
+struct ResponseData {
     bytes32 contentHash;
     uint256 timestamp;
 }
