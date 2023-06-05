@@ -77,8 +77,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // Internal Constants
 
-    /// Fee Nominator: basis points. Other fees are in relation to this.
-    uint256 internal constant FEE_DENOMINATOR = 10_000;
+    /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
+    uint256 internal constant FEE_DENOMINATOR = 100_00;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
     uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
     /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
@@ -102,10 +102,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // Fees State Variables
 
-    /// Harberger tax for holding. Initial value is 10%.
-    uint256 public holderTaxNumerator = 1_000;
-    /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10%.
-    uint256 public royaltyNumerator = 1_000;
+    /// Harberger tax for holding. Initial value is 10.00%.
+    uint256 public holderTaxNumerator = 10_00;
+    /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
+    uint256 public royaltyNumerator = 10_00;
     /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
     /// the contract and the auction is not running.
     uint256 public price;
@@ -137,10 +137,17 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // Invocation and Response State Variables
 
-    /// Struct used to track invocation and response information: keccak256 content hash and block timestamp.
-    /// When used for responses, timestamp is used to determine if the response can be flagged by the holder.
+    /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
+    /// InvocationData is used to determine if the response can be flagged by the holder.
     /// Invocation timestamp is tracked for the benefit of other contracts.
-    struct HashTime {
+    struct InvocationData {
+        address invoker;
+        // keccak256 hash of the cleartext
+        bytes32 contentHash;
+        uint256 timestamp;
+    }
+
+    struct ResponseData {
         // keccak256 hash of the cleartext
         bytes32 contentHash;
         uint256 timestamp;
@@ -155,12 +162,12 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
     uint256 public lastInvocationTime;
 
-    /// Mapping for invocations: invocationId to HashTime struct. InvocationId starts at 1.
-    mapping(uint256 => HashTime) public invocations;
+    /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
+    mapping(uint256 => InvocationData) public invocations;
     /// Count of invocations made: used to calculate invocationId of the next invocation.
     uint256 public invocationCount;
-    /// Mapping for responses (answers to invocations): matching invocationId to HashTime struct.
-    mapping(uint256 => HashTime) public responses;
+    /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
+    mapping(uint256 => ResponseData) public responses;
     /// Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
     mapping(uint256 => bool) public responseFlagged;
     /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
@@ -886,10 +893,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         invocationCount += 1;
         uint256 invocationId = invocationCount; // starts at 1
 
-        invocations[invocationId] = HashTime(contentHash, block.timestamp);
+        invocations[invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
         lastInvocationTime = block.timestamp;
 
-        emit Invocation(msg.sender, invocationId, contentHash, block.timestamp);
+        emit Invocation(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
@@ -907,9 +914,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert ResponseExists(invocationId);
         }
 
-        responses[invocationId] = HashTime(contentHash, block.timestamp);
+        responses[invocationId] = ResponseData(contentHash, block.timestamp);
 
-        emit Response(msg.sender, invocationId, contentHash, block.timestamp);
+        emit Response(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  Orb holder can flag a response during Response Flagging Period, counting from when the response is
@@ -942,7 +949,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         responseFlagged[invocationId] = true;
         flaggedResponsesCount += 1;
 
-        emit ResponseFlagging(msg.sender, invocationId);
+        emit ResponseFlagging(invocationId, msg.sender);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
