@@ -18,9 +18,6 @@ abstract contract DeployBase is Script {
     string private orbSymbol;
     uint256 private immutable tokenId;
 
-    string private oath;
-    uint256 private immutable honoredUntil;
-
     uint256 private immutable auctionStartingPrice;
     uint256 private immutable auctionMinimumBidStep;
     uint256 private immutable auctionMinimumDuration;
@@ -45,8 +42,6 @@ abstract contract DeployBase is Script {
         string memory _orbName,
         string memory _orbSymbol,
         uint256 _tokenId,
-        string memory _oath,
-        uint256 _honoredUntil,
         uint256 _auctionStartingPrice,
         uint256 _auctionMinimumBidStep,
         uint256 _auctionMinimumDuration,
@@ -63,9 +58,6 @@ abstract contract DeployBase is Script {
         orbName = _orbName;
         orbSymbol = _orbSymbol;
         tokenId = _tokenId;
-
-        oath = _oath;
-        honoredUntil = _honoredUntil;
 
         auctionStartingPrice = _auctionStartingPrice;
         auctionMinimumBidStep = _auctionMinimumBidStep;
@@ -95,8 +87,8 @@ abstract contract DeployBase is Script {
             orbSymbol,
             tokenId, // tokenId
             splitterAddress, // beneficiary
-            keccak256(abi.encodePacked(oath)), // oathHash
-            honoredUntil,
+            0x0000000000000000000000000000000000000000000000000000000000000000, // oathHash
+            0, // honoredUntil
             "https://static.orb.land/orb/" // baseURI
         );
         orb = Orb(orbPond.orbs(0));

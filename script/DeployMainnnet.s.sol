@@ -17,9 +17,6 @@ contract DeployMainnet is DeployBase {
     string public orbSymbol = "ORB";
     uint256 public immutable tokenId = 1;
 
-    string public oath = "My orb is my promise, and my promise is my orb.";
-    uint256 public immutable honoredUntil = 1_700_000_000;
-
     uint256 public immutable auctionStartingPrice = 0.1 ether;
     uint256 public immutable auctionMinimumBidStep = 0.1 ether;
     uint256 public immutable auctionMinimumDuration = 1 days;
@@ -40,8 +37,6 @@ contract DeployMainnet is DeployBase {
             orbName,
             orbSymbol,
             tokenId,
-            oath,
-            honoredUntil,
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,
