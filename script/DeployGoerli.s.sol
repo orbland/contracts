@@ -40,8 +40,6 @@ contract DeployGoerli is DeployBase {
             orbName,
             orbSymbol,
             tokenId,
-            oath,
-            honoredUntil,
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,

@@ -11,14 +11,11 @@ contract DeployLocal is DeployBase {
     ];
     uint256[] public beneficiaryShares = [65, 20, 15];
 
-    address public immutable creatorAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    address public immutable creatorAddress = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc;
 
     string public orbName = "Test Orb";
     string public orbSymbol = "ORB";
     uint256 public immutable tokenId = 1;
-
-    string public oath = "My orb is my promise, and my promise is my orb.";
-    uint256 public immutable honoredUntil = 1_700_000_000;
 
     uint256 public immutable auctionStartingPrice = 0.1 ether;
     uint256 public immutable auctionMinimumBidStep = 0.1 ether;
@@ -40,8 +37,6 @@ contract DeployLocal is DeployBase {
             orbName,
             orbSymbol,
             tokenId,
-            oath,
-            honoredUntil,
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,
