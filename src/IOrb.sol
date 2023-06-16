@@ -19,15 +19,15 @@ interface IOrb is IERC165 {
     // Funding Events
     event Deposit(address indexed depositor, uint256 indexed amount);
     event Withdrawal(address indexed recipient, uint256 indexed amount);
-    event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
+    event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
 
     // Purchasing Events
     event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
     event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
 
     // Orb Ownership Events
-    event Foreclosure(address indexed formerHolder);
-    event Relinquishment(address indexed formerHolder);
+    event Foreclosure(address indexed formerKeeper);
+    event Relinquishment(address indexed formerKeeper);
 
     // Invoking and Responding Events
     event Invocation(
@@ -53,8 +53,8 @@ interface IOrb is IERC165 {
         uint256 newBidExtension
     );
     event FeesUpdate(
-        uint256 previousHolderTaxNumerator,
-        uint256 indexed newHolderTaxNumerator,
+        uint256 previousKeeperTaxNumerator,
+        uint256 indexed newKeeperTaxNumerator,
         uint256 previousRoyaltyNumerator,
         uint256 indexed newRoyaltyNumerator
     );
@@ -71,8 +71,8 @@ interface IOrb is IERC165 {
     error TransferringNotSupported();
 
     // Authorization Errors
-    error AlreadyHolder();
-    error NotHolder();
+    error AlreadyKeeper();
+    error NotKeeper();
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
     error CreatorDoesNotControlOrb();
@@ -86,8 +86,8 @@ interface IOrb is IERC165 {
     error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
 
     // Funding Errors
-    error HolderSolvent();
-    error HolderInsolvent();
+    error KeeperSolvent();
+    error KeeperInsolvent();
     error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
 
     // Purchasing Errors
@@ -133,15 +133,15 @@ interface IOrb is IERC165 {
     // Funding View Functions
     function fundsOf(address owner) external view returns (uint256);
     function lastSettlementTime() external view returns (uint256);
-    function holderSolvent() external view returns (bool);
+    function keeperSolvent() external view returns (bool);
 
-    function holderTaxNumerator() external view returns (uint256);
+    function keeperTaxNumerator() external view returns (uint256);
     function feeDenominator() external view returns (uint256);
-    function holderTaxPeriod() external view returns (uint256);
+    function keeperTaxPeriod() external view returns (uint256);
 
     // Purchasing View Functions
     function price() external view returns (uint256);
-    function holderReceiveTime() external view returns (uint256);
+    function keeperReceiveTime() external view returns (uint256);
 
     function royaltyNumerator() external view returns (uint256);
 
@@ -187,7 +187,7 @@ interface IOrb is IERC165 {
     function purchase(
         uint256 newPrice,
         uint256 currentPrice,
-        uint256 currentHolderTaxNumerator,
+        uint256 currentKeeperTaxNumerator,
         uint256 currentRoyaltyNumerator,
         uint256 currentCooldown,
         uint256 currentCleartextMaximumLength
@@ -213,7 +213,7 @@ interface IOrb is IERC165 {
         uint256 newMinimumDuration,
         uint256 newBidExtension
     ) external;
-    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) external;
+    function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external;
     function setCooldown(uint256 newCooldown) external;
     function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 }

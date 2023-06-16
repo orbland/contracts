@@ -1,5 +1,5 @@
 # OrbPond
-[Git Source](https://github.com/orbland/orb/blob/f37a4815190396d804787713635fa8c023271236/src/OrbPond.sol)
+[Git Source](https://github.com/orbland/orb/blob/ede71e56991e5a4a14f114e02bbcc807493c9804/src/OrbPond.sol)
 
 **Inherits:**
 Ownable
@@ -75,7 +75,7 @@ function configureOrb(
     uint256 auctionMinimumBidStep,
     uint256 auctionMinimumDuration,
     uint256 auctionBidExtension,
-    uint256 holderTaxNumerator,
+    uint256 keeperTaxNumerator,
     uint256 royaltyNumerator,
     uint256 cooldown,
     uint256 cleartextMaximumLength
@@ -90,7 +90,7 @@ function configureOrb(
 |`auctionMinimumBidStep`|`uint256`|  Minimum difference between bids in the Orb's auction.|
 |`auctionMinimumDuration`|`uint256`| Minimum duration of the Orb's auction.|
 |`auctionBidExtension`|`uint256`|    Auction duration extension for late bids during the Orb auction.|
-|`holderTaxNumerator`|`uint256`|     Harberger tax numerator of the Orb, in basis points.|
+|`keeperTaxNumerator`|`uint256`|     Harberger tax numerator of the Orb, in basis points.|
 |`royaltyNumerator`|`uint256`|       Royalty numerator of the Orb, in basis points.|
 |`cooldown`|`uint256`|               Cooldown of the Orb in seconds.|
 |`cleartextMaximumLength`|`uint256`| Invocation cleartext maximum length for the Orb.|

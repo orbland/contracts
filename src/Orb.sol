@@ -45,7 +45,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 /// @title   Orb - Harberger-taxed NFT with auction and on-chain invocations and responses
 /// @author  Jonas Lekevicius
 /// @author  Eric Wall
-/// @notice  This is a basic Q&A-type Orb. The holder has the right to submit a text-based question to the creator and
+/// @notice  This is a basic Q&A-type Orb. The keeper has the right to submit a text-based question to the creator and
 ///          the right to receive a text-based response. The question is limited in length but responses may come in
 ///          any length. Questions and answers are hash-committed to the blockchain so that the track record cannot be
 ///          changed. The Orb has a cooldown.
@@ -54,7 +54,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 ///          the Orb contract per year in order to maintain the Orb ownership. This amount is accounted for per second,
 ///          and user funds need to be topped up before the foreclosure time to maintain ownership.
 /// @dev     Supports ERC-721 interface but reverts on all transfers. Uses `Ownable`'s `owner()` to identify the
-///          creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current holder of the Orb.
+///          creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current keeper of the Orb.
 contract Orb is Ownable, ERC165, ERC721, IOrb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -72,7 +72,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     address public immutable beneficiary;
 
     /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
-    /// allow easier lookups of Orb holder.
+    /// allow easier lookups of Orb keeper.
     uint256 public immutable tokenId;
 
     // Internal Constants
@@ -80,7 +80,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
     uint256 internal constant FEE_DENOMINATOR = 100_00;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
-    uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
+    uint256 internal constant KEEPER_TAX_PERIOD = 365 days;
     /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
     uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
     /// Maximum Orb price, limited to prevent potential overflows.
@@ -88,14 +88,14 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // STATE
 
-    /// Honored Until: timestamp until which the Orb Oath is honored for the holder.
+    /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
     uint256 public honoredUntil;
 
     /// Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
     string internal baseURI;
 
     /// Funds tracker, per address. Modified by deposits, withdrawals and settlements. The value is without settlement.
-    /// It means effective user funds (withdrawable) would be different for holder (subtracting
+    /// It means effective user funds (withdrawable) would be different for keeper (subtracting
     /// `_owedSinceLastSettlement()`) and beneficiary (adding `_owedSinceLastSettlement()`). If Orb is held by the
     /// creator, funds are not subtracted, as Harberger tax does not apply to the creator.
     mapping(address => uint256) public fundsOf;
@@ -103,13 +103,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     // Fees State Variables
 
     /// Harberger tax for holding. Initial value is 10.00%.
-    uint256 public holderTaxNumerator = 10_00;
+    uint256 public keeperTaxNumerator = 10_00;
     /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
     uint256 public royaltyNumerator = 10_00;
     /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
     /// the contract and the auction is not running.
     uint256 public price;
-    /// Last time Orb holder's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
+    /// Last time Orb keeper's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
     /// if the Orb is held by the contract.
     uint256 public lastSettlementTime;
 
@@ -138,7 +138,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     // Invocation and Response State Variables
 
     /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
-    /// InvocationData is used to determine if the response can be flagged by the holder.
+    /// InvocationData is used to determine if the response can be flagged by the keeper.
     /// Invocation timestamp is tracked for the benefit of other contracts.
     struct InvocationData {
         address invoker;
@@ -157,8 +157,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     uint256 public cooldown = 7 days;
     /// Maximum length for invocation cleartext content.
     uint256 public cleartextMaximumLength = 280;
-    /// Holder receive time: when the Orb was last transferred, except to this contract.
-    uint256 public holderReceiveTime;
+    /// Keeper receive time: when the Orb was last transferred, except to this contract.
+    uint256 public keeperReceiveTime;
     /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
     uint256 public lastInvocationTime;
 
@@ -168,7 +168,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     uint256 public invocationCount;
     /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
     mapping(uint256 => ResponseData) public responses;
-    /// Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
+    /// Mapping for flagged (reported) responses. Used by the keeper not satisfied with a response.
     mapping(uint256 => bool) public responseFlagged;
     /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
     uint256 public flaggedResponsesCount;
@@ -185,7 +185,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @param  tokenId_       ERC-721 token id of the Orb.
     /// @param  beneficiary_   Address to receive all Orb proceeds.
     /// @param  oathHash_      Hash of the Oath taken to create the Orb.
-    /// @param  honoredUntil_  Date until which the Orb creator will honor the Oath for the Orb holder.
+    /// @param  honoredUntil_  Date until which the Orb creator will honor the Oath for the Orb keeper.
     /// @param  baseURI_       Initial baseURI value for tokenURI JSONs.
     constructor(
         string memory name_,
@@ -224,12 +224,12 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // AUTHORIZATION MODIFIERS
 
-    /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyHolderHeld` or on
+    /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
     ///       external functions, otherwise does not make sense.
     ///       Contract inherits `onlyOwner` modifier from `Ownable`.
-    modifier onlyHolder() {
+    modifier onlyKeeper() {
         if (msg.sender != ERC721.ownerOf(tokenId)) {
-            revert NotHolder();
+            revert NotKeeper();
         }
         _;
     }
@@ -237,7 +237,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     // ORB STATE MODIFIERS
 
     /// @dev  Ensures that the Orb belongs to someone, not the contract itself.
-    modifier onlyHolderHeld() {
+    modifier onlyKeeperHeld() {
         if (address(this) == ERC721.ownerOf(tokenId)) {
             revert ContractHoldsOrb();
         }
@@ -246,7 +246,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @dev  Ensures that the Orb belongs to the contract itself or the creator, and the auction hasn't been started.
     ///       Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
-    ///       modified while it is held by the holder or users can bid on the Orb.
+    ///       modified while it is held by the keeper or users can bid on the Orb.
     modifier onlyCreatorControlled() {
         if (address(this) != ERC721.ownerOf(tokenId) && owner() != ERC721.ownerOf(tokenId)) {
             revert CreatorDoesNotControlOrb();
@@ -270,10 +270,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // FUNDS-RELATED MODIFIERS
 
-    /// @dev  Ensures that the current Orb holder has enough funds to cover Harberger tax until now.
-    modifier onlyHolderSolvent() {
-        if (!holderSolvent()) {
-            revert HolderInsolvent();
+    /// @dev  Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
+    modifier onlyKeeperSolvent() {
+        if (!keeperSolvent()) {
+            revert KeeperInsolvent();
         }
         _;
     }
@@ -305,13 +305,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @dev    Transfers the ERC-721 token to the new address. If the new owner is not this contract (an actual user),
-    ///         updates `holderReceiveTime`. `holderReceiveTime` is used to limit response flagging duration.
+    ///         updates `keeperReceiveTime`. `keeperReceiveTime` is used to limit response flagging duration.
     /// @param  from_  Address to transfer the Orb from.
     /// @param  to_    Address to transfer the Orb to.
     function _transferOrb(address from_, address to_) internal {
         _transfer(from_, to_, tokenId);
         if (to_ != address(this)) {
-            holderReceiveTime = block.timestamp;
+            keeperReceiveTime = block.timestamp;
         }
     }
 
@@ -324,7 +324,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          decreased, unlike with the `extendHonoredUntil()` function.
     /// @dev     Emits `OathSwearing`.
     /// @param   oathHash         Hash of the Oath taken to create the Orb.
-    /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb holder.
+    /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb keeper.
     function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner onlyCreatorControlled {
         honoredUntil = newHonoredUntil;
         emit OathSwearing(oathHash, newHonoredUntil);
@@ -333,7 +333,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @notice  Allows the Orb creator to extend the `honoredUntil` date. This function can be called by the Orb
     ///          creator anytime and only allows extending the `honoredUntil` date.
     /// @dev     Emits `HonoredUntilUpdate`.
-    /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb holder. Must be
+    /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb keeper. Must be
     ///                           greater than the current `honoredUntil` date.
     function extendHonoredUntil(uint256 newHonoredUntil) external onlyOwner {
         if (newHonoredUntil < honoredUntil) {
@@ -393,13 +393,13 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         );
     }
 
-    /// @notice  Allows the Orb creator to set the new holder tax and royalty. This function can only be called by the
+    /// @notice  Allows the Orb creator to set the new keeper tax and royalty. This function can only be called by the
     ///          Orb creator when the Orb is in their control.
     /// @dev     Emits `FeesUpdate`.
-    /// @param   newHolderTaxNumerator  New holder tax numerator, in relation to `feeDenominator()`.
+    /// @param   newKeeperTaxNumerator  New keeper tax numerator, in relation to `feeDenominator()`.
     /// @param   newRoyaltyNumerator    New royalty numerator, in relation to `feeDenominator()`. Cannot be larger than
     ///                                 `feeDenominator()`.
-    function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator)
+    function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator)
         external
         onlyOwner
         onlyCreatorControlled
@@ -408,14 +408,14 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert RoyaltyNumeratorExceedsDenominator(newRoyaltyNumerator, FEE_DENOMINATOR);
         }
 
-        uint256 previousHolderTaxNumerator = holderTaxNumerator;
-        holderTaxNumerator = newHolderTaxNumerator;
+        uint256 previousKeeperTaxNumerator = keeperTaxNumerator;
+        keeperTaxNumerator = newKeeperTaxNumerator;
 
         uint256 previousRoyaltyNumerator = royaltyNumerator;
         royaltyNumerator = newRoyaltyNumerator;
 
         emit FeesUpdate(
-            previousHolderTaxNumerator, newHolderTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
+            previousKeeperTaxNumerator, newKeeperTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
         );
     }
 
@@ -567,26 +567,26 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     //  FUNCTIONS: FUNDS AND HOLDING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Allows depositing funds on the contract. Not allowed for insolvent holders.
-    /// @dev     Deposits are not allowed for insolvent holders to prevent cheating via front-running. If the user
+    /// @notice  Allows depositing funds on the contract. Not allowed for insolvent keepers.
+    /// @dev     Deposits are not allowed for insolvent keepers to prevent cheating via front-running. If the user
     ///          becomes insolvent, the Orb will always be returned to the contract as the next step. Emits `Deposit`.
     function deposit() external payable {
-        if (msg.sender == ERC721.ownerOf(tokenId) && !holderSolvent()) {
-            revert HolderInsolvent();
+        if (msg.sender == ERC721.ownerOf(tokenId) && !keeperSolvent()) {
+            revert KeeperInsolvent();
         }
 
         fundsOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
 
-    /// @notice  Function to withdraw all funds on the contract. Not recommended for current Orb holders if the price
+    /// @notice  Function to withdraw all funds on the contract. Not recommended for current Orb keepers if the price
     ///          is not zero, as they will become immediately foreclosable. To give up the Orb, call `relinquish()`.
     /// @dev     Not allowed for the leading auction bidder.
     function withdrawAll() external {
         _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
-    /// @notice  Function to withdraw given amount from the contract. For current Orb holders, reduces the time until
+    /// @notice  Function to withdraw given amount from the contract. For current Orb keepers, reduces the time until
     ///          foreclosure.
     /// @dev     Not allowed for the leading auction bidder.
     /// @param   amount  The amount to withdraw.
@@ -603,24 +603,24 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         _withdraw(beneficiary, fundsOf[beneficiary]);
     }
 
-    /// @notice  Settlements transfer funds from Orb holder to the beneficiary. Orb accounting minimizes required
-    ///          transactions: Orb holder's foreclosure time is only dependent on the price and available funds. Fund
-    ///          transfers are not necessary unless these variables (price, holder funds) are being changed. Settlement
+    /// @notice  Settlements transfer funds from Orb keeper to the beneficiary. Orb accounting minimizes required
+    ///          transactions: Orb keeper's foreclosure time is only dependent on the price and available funds. Fund
+    ///          transfers are not necessary unless these variables (price, keeper funds) are being changed. Settlement
     ///          transfers funds owed since the last settlement, and a new period of virtual accounting begins.
     /// @dev     See also `_settle()`.
-    function settle() external onlyHolderHeld {
+    function settle() external onlyKeeperHeld {
         _settle();
     }
 
-    /// @dev     Returns if the current Orb holder has enough funds to cover Harberger tax until now. Always true if
+    /// @dev     Returns if the current Orb keeper has enough funds to cover Harberger tax until now. Always true if
     ///          creator holds the Orb.
-    /// @return  isHolderSolvent  If the current holder is solvent.
-    function holderSolvent() public view returns (bool isHolderSolvent) {
-        address holder = ERC721.ownerOf(tokenId);
-        if (owner() == holder) {
+    /// @return  isKeeperSolvent  If the current keeper is solvent.
+    function keeperSolvent() public view returns (bool isKeeperSolvent) {
+        address keeper = ERC721.ownerOf(tokenId);
+        if (owner() == keeper) {
             return true;
         }
-        return fundsOf[holder] >= _owedSinceLastSettlement();
+        return fundsOf[keeper] >= _owedSinceLastSettlement();
     }
 
     /// @dev     Returns the accounting base for Orb fees (Harberger tax rate and royalty).
@@ -629,19 +629,19 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         return FEE_DENOMINATOR;
     }
 
-    /// @dev     Returns the Harberger tax period base. Holder tax is for each of this period.
-    /// @return  holderTaxPeriodSeconds  How long is the Harberger tax period, in seconds.
-    function holderTaxPeriod() external pure returns (uint256 holderTaxPeriodSeconds) {
-        return HOLDER_TAX_PERIOD;
+    /// @dev     Returns the Harberger tax period base. Keeper tax is for each of this period.
+    /// @return  keeperTaxPeriodSeconds  How long is the Harberger tax period, in seconds.
+    function keeperTaxPeriod() external pure returns (uint256 keeperTaxPeriodSeconds) {
+        return KEEPER_TAX_PERIOD;
     }
 
-    /// @dev     Calculates how much money Orb holder owes Orb beneficiary. This amount would be transferred between
-    ///          accounts during settlement. **Owed amount can be higher than holder's funds!** It's important to check
-    ///          if holder has enough funds before transferring.
-    /// @return  owedValue  Wei Orb holder owes Orb beneficiary since the last settlement time.
+    /// @dev     Calculates how much money Orb keeper owes Orb beneficiary. This amount would be transferred between
+    ///          accounts during settlement. **Owed amount can be higher than keeper's funds!** It's important to check
+    ///          if keeper has enough funds before transferring.
+    /// @return  owedValue  Wei Orb keeper owes Orb beneficiary since the last settlement time.
     function _owedSinceLastSettlement() internal view returns (uint256 owedValue) {
         uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime;
-        return (price * holderTaxNumerator * secondsSinceLastSettlement) / (HOLDER_TAX_PERIOD * FEE_DENOMINATOR);
+        return (price * keeperTaxNumerator * secondsSinceLastSettlement) / (KEEPER_TAX_PERIOD * FEE_DENOMINATOR);
     }
 
     /// @dev    Executes the withdrawal for a given amount, does the actual value transfer from the contract to user's
@@ -669,28 +669,28 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         Address.sendValue(payable(recipient_), amount_);
     }
 
-    /// @dev  Holder might owe more than they have funds available: it means that the holder is foreclosable.
-    ///       Settlement would transfer all holder funds to the beneficiary, but not more. Does not transfer funds if
+    /// @dev  Keeper might owe more than they have funds available: it means that the keeper is foreclosable.
+    ///       Settlement would transfer all keeper funds to the beneficiary, but not more. Does not transfer funds if
     ///       the creator holds the Orb, but always updates `lastSettlementTime`. Should never be called if Orb is
     ///       owned by the contract. Emits `Settlement`.
     function _settle() internal {
-        address holder = ERC721.ownerOf(tokenId);
+        address keeper = ERC721.ownerOf(tokenId);
 
-        if (owner() == holder) {
+        if (owner() == keeper) {
             lastSettlementTime = block.timestamp;
             return;
         }
 
-        uint256 availableFunds = fundsOf[holder];
+        uint256 availableFunds = fundsOf[keeper];
         uint256 owedFunds = _owedSinceLastSettlement();
         uint256 transferableToBeneficiary = availableFunds <= owedFunds ? availableFunds : owedFunds;
 
-        fundsOf[holder] -= transferableToBeneficiary;
+        fundsOf[keeper] -= transferableToBeneficiary;
         fundsOf[beneficiary] += transferableToBeneficiary;
 
         lastSettlementTime = block.timestamp;
 
-        emit Settlement(holder, beneficiary, transferableToBeneficiary);
+        emit Settlement(keeper, beneficiary, transferableToBeneficiary);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -698,11 +698,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  Sets the new purchase price for the Orb. Harberger tax means the asset is always for sale. The price
-    ///          can be set to zero, making foreclosure time to be never. Can only be called by a solvent holder.
+    ///          can be set to zero, making foreclosure time to be never. Can only be called by a solvent keeper.
     ///          Settles before adjusting the price, as the new price will change foreclosure time.
     /// @dev     Emits `Settlement` and `PriceUpdate`. See also `_setPrice()`.
     /// @param   newPrice  New price for the Orb.
-    function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent {
+    function setPrice(uint256 newPrice) external onlyKeeper onlyKeeperSolvent {
         _settle();
         _setPrice(newPrice);
     }
@@ -728,7 +728,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @notice  Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
-    ///          from its holder. Purchasing is only allowed while the holder is solvent. If not, the Orb has to be
+    ///          from its keeper. Purchasing is only allowed while the keeper is solvent. If not, the Orb has to be
     ///          foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
     ///          required, but purchasing without any reserve would leave the new owner immediately foreclosable.
     ///          Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
@@ -741,23 +741,23 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
     /// @param   newPrice                       New price to use after the purchase.
     /// @param   currentPrice                   Current price, to prevent front-running.
-    /// @param   currentHolderTaxNumerator      Current holder tax numerator, to prevent front-running.
+    /// @param   currentKeeperTaxNumerator      Current keeper tax numerator, to prevent front-running.
     /// @param   currentRoyaltyNumerator        Current royalty numerator, to prevent front-running.
     /// @param   currentCooldown                Current cooldown, to prevent front-running.
     /// @param   currentCleartextMaximumLength  Current cleartext maximum length, to prevent front-running.
     function purchase(
         uint256 newPrice,
         uint256 currentPrice,
-        uint256 currentHolderTaxNumerator,
+        uint256 currentKeeperTaxNumerator,
         uint256 currentRoyaltyNumerator,
         uint256 currentCooldown,
         uint256 currentCleartextMaximumLength
-    ) external payable onlyHolderHeld onlyHolderSolvent {
+    ) external payable onlyKeeperHeld onlyKeeperSolvent {
         if (currentPrice != price) {
             revert CurrentValueIncorrect(currentPrice, price);
         }
-        if (currentHolderTaxNumerator != holderTaxNumerator) {
-            revert CurrentValueIncorrect(currentHolderTaxNumerator, holderTaxNumerator);
+        if (currentKeeperTaxNumerator != keeperTaxNumerator) {
+            revert CurrentValueIncorrect(currentKeeperTaxNumerator, keeperTaxNumerator);
         }
         if (currentRoyaltyNumerator != royaltyNumerator) {
             revert CurrentValueIncorrect(currentRoyaltyNumerator, royaltyNumerator);
@@ -775,10 +775,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         _settle();
 
-        address holder = ERC721.ownerOf(tokenId);
+        address keeper = ERC721.ownerOf(tokenId);
 
-        if (msg.sender == holder) {
-            revert AlreadyHolder();
+        if (msg.sender == keeper) {
+            revert AlreadyKeeper();
         }
         if (msg.sender == beneficiary) {
             revert BeneficiaryDisallowed();
@@ -793,7 +793,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         fundsOf[msg.sender] -= currentPrice;
 
-        if (owner() == holder) {
+        if (owner() == keeper) {
             lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
@@ -801,14 +801,14 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             uint256 currentOwnerShare = currentPrice - beneficiaryRoyalty;
 
             fundsOf[beneficiary] += beneficiaryRoyalty;
-            fundsOf[holder] += currentOwnerShare;
+            fundsOf[keeper] += currentOwnerShare;
         }
 
         _setPrice(newPrice);
 
-        emit Purchase(holder, msg.sender, currentPrice);
+        emit Purchase(keeper, msg.sender, currentPrice);
 
-        _transferOrb(holder, msg.sender);
+        _transferOrb(keeper, msg.sender);
     }
 
     /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
@@ -831,11 +831,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @notice  Relinquishment is a voluntary giving up of the Orb. It's a combination of withdrawing all funds not
     ///          owed to the beneficiary since last settlement, and foreclosing yourself after. Most useful if the
-    ///          creator themselves hold the Orb and want to re-auction it. For any other holder, setting the price to
+    ///          creator themselves hold the Orb and want to re-auction it. For any other keeper, setting the price to
     ///          zero would be more practical.
     /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment` and
     ///          `Withdrawal`.
-    function relinquish() external onlyHolder onlyHolderSolvent {
+    function relinquish() external onlyKeeper onlyKeeperSolvent {
         _settle();
 
         price = 0;
@@ -846,29 +846,29 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         _withdraw(msg.sender, fundsOf[msg.sender]);
     }
 
-    /// @notice  Foreclose can be called by anyone after the Orb holder runs out of funds to cover the Harberger tax.
+    /// @notice  Foreclose can be called by anyone after the Orb keeper runs out of funds to cover the Harberger tax.
     ///          It returns the Orb to the contract, readying it for re-auction.
     /// @dev     Emits `Foreclosure`.
-    function foreclose() external onlyHolderHeld {
-        if (holderSolvent()) {
-            revert HolderSolvent();
+    function foreclose() external onlyKeeperHeld {
+        if (keeperSolvent()) {
+            revert KeeperSolvent();
         }
 
         _settle();
 
-        address holder = ERC721.ownerOf(tokenId);
+        address keeper = ERC721.ownerOf(tokenId);
         price = 0;
 
-        emit Foreclosure(holder);
+        emit Foreclosure(keeper);
 
-        _transferOrb(holder, address(this));
+        _transferOrb(keeper, address(this));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: INVOKING AND RESPONDING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Invokes the Orb. Allows the holder to submit cleartext.
+    /// @notice  Invokes the Orb. Allows the keeper to submit cleartext.
     /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
     /// @param   cleartext  Invocation cleartext.
     function invokeWithCleartext(string memory cleartext) external {
@@ -880,12 +880,12 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         emit CleartextRecording(invocationCount, cleartext);
     }
 
-    /// @notice  Invokes the Orb. Allows the holder to submit content hash, that represents a question to the Orb
-    ///          creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent holders.
+    /// @notice  Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
+    ///          creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent keepers.
     /// @dev     Content hash is keccak256 of the cleartext. `invocationCount` is used to track the id of the next
     ///          invocation. Invocation ids start from 1. Emits `Invocation`.
     /// @param   contentHash  Required keccak256 hash of the cleartext.
-    function invokeWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent {
+    function invokeWithHash(bytes32 contentHash) public onlyKeeper onlyKeeperHeld onlyKeeperSolvent {
         if (block.timestamp < lastInvocationTime + cooldown) {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
@@ -919,16 +919,16 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         emit Response(invocationId, msg.sender, block.timestamp, contentHash);
     }
 
-    /// @notice  Orb holder can flag a response during Response Flagging Period, counting from when the response is
-    ///          made. Flag indicates a "report", that the Orb holder was not satisfied with the response provided.
-    ///          This is meant to act as a social signal to future Orb holders. It also increments
+    /// @notice  Orb keeper can flag a response during Response Flagging Period, counting from when the response is
+    ///          made. Flag indicates a "report", that the Orb keeper was not satisfied with the response provided.
+    ///          This is meant to act as a social signal to future Orb keepers. It also increments
     ///          `flaggedResponsesCount`, allowing anyone to quickly look up how many responses were flagged.
     /// @dev     Only existing responses (with non-zero timestamps) can be flagged. Responses can only be flagged by
-    ///          solvent holders to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
-    ///          holder must have received the Orb after the response was made; this is to prevent holders from
+    ///          solvent keepers to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
+    ///          keeper must have received the Orb after the response was made; this is to prevent keepers from
     ///          flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.
     /// @param   invocationId  Id of an invocation to which the response is being flagged.
-    function flagResponse(uint256 invocationId) external onlyHolder onlyHolderSolvent {
+    function flagResponse(uint256 invocationId) external onlyKeeper onlyKeeperSolvent {
         if (!_responseExists(invocationId)) {
             revert ResponseNotFound(invocationId);
         }
@@ -939,8 +939,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         if (block.timestamp - responseTime > cooldown) {
             revert FlaggingPeriodExpired(invocationId, block.timestamp - responseTime, cooldown);
         }
-        if (holderReceiveTime >= responseTime) {
-            revert FlaggingPeriodExpired(invocationId, holderReceiveTime, responseTime);
+        if (keeperReceiveTime >= responseTime) {
+            revert FlaggingPeriodExpired(invocationId, keeperReceiveTime, responseTime);
         }
         if (responseFlagged[invocationId]) {
             revert ResponseAlreadyFlagged(invocationId);

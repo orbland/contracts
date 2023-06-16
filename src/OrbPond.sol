@@ -58,7 +58,7 @@ contract OrbPond is Ownable {
     /// @param   auctionMinimumBidStep   Minimum difference between bids in the Orb's auction.
     /// @param   auctionMinimumDuration  Minimum duration of the Orb's auction.
     /// @param   auctionBidExtension     Auction duration extension for late bids during the Orb auction.
-    /// @param   holderTaxNumerator      Harberger tax numerator of the Orb, in basis points.
+    /// @param   keeperTaxNumerator      Harberger tax numerator of the Orb, in basis points.
     /// @param   royaltyNumerator        Royalty numerator of the Orb, in basis points.
     /// @param   cooldown                Cooldown of the Orb in seconds.
     /// @param   cleartextMaximumLength  Invocation cleartext maximum length for the Orb.
@@ -68,7 +68,7 @@ contract OrbPond is Ownable {
         uint256 auctionMinimumBidStep,
         uint256 auctionMinimumDuration,
         uint256 auctionBidExtension,
-        uint256 holderTaxNumerator,
+        uint256 keeperTaxNumerator,
         uint256 royaltyNumerator,
         uint256 cooldown,
         uint256 cleartextMaximumLength
@@ -76,7 +76,7 @@ contract OrbPond is Ownable {
         orbs[orbId].setAuctionParameters(
             auctionStartingPrice, auctionMinimumBidStep, auctionMinimumDuration, auctionBidExtension
         );
-        orbs[orbId].setFees(holderTaxNumerator, royaltyNumerator);
+        orbs[orbId].setFees(keeperTaxNumerator, royaltyNumerator);
         orbs[orbId].setCooldown(cooldown);
         orbs[orbId].setCleartextMaximumLength(cleartextMaximumLength);
     }

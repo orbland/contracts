@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/f37a4815190396d804787713635fa8c023271236/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/ede71e56991e5a4a14f114e02bbcc807493c9804/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -7,7 +7,7 @@ Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
 **Authors:**
 Jonas Lekevicius, Eric Wall
 
-This is a basic Q&A-type Orb. The holder has the right to submit a text-based question to the creator and
+This is a basic Q&A-type Orb. The keeper has the right to submit a text-based question to the creator and
 the right to receive a text-based response. The question is limited in length but responses may come in
 any length. Questions and answers are hash-committed to the blockchain so that the track record cannot be
 changed. The Orb has a cooldown.
@@ -17,7 +17,7 @@ the Orb contract per year in order to maintain the Orb ownership. This amount is
 and user funds need to be topped up before the foreclosure time to maintain ownership.
 
 *Supports ERC-721 interface but reverts on all transfers. Uses `Ownable`'s `owner()` to identify the
-creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current holder of the Orb.*
+creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current keeper of the Orb.*
 
 
 ## State Variables
@@ -38,7 +38,7 @@ address public immutable beneficiary;
 
 ### tokenId
 Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
-allow easier lookups of Orb holder.
+allow easier lookups of Orb keeper.
 
 
 ```solidity
@@ -55,12 +55,12 @@ uint256 internal constant FEE_DENOMINATOR = 100_00;
 ```
 
 
-### HOLDER_TAX_PERIOD
+### KEEPER_TAX_PERIOD
 Harberger tax period: for how long the tax rate applies. Value: 1 year.
 
 
 ```solidity
-uint256 internal constant HOLDER_TAX_PERIOD = 365 days;
+uint256 internal constant KEEPER_TAX_PERIOD = 365 days;
 ```
 
 
@@ -83,7 +83,7 @@ uint256 internal constant MAXIMUM_PRICE = 2 ** 128;
 
 
 ### honoredUntil
-Honored Until: timestamp until which the Orb Oath is honored for the holder.
+Honored Until: timestamp until which the Orb Oath is honored for the keeper.
 
 
 ```solidity
@@ -102,7 +102,7 @@ string internal baseURI;
 
 ### fundsOf
 Funds tracker, per address. Modified by deposits, withdrawals and settlements. The value is without settlement.
-It means effective user funds (withdrawable) would be different for holder (subtracting
+It means effective user funds (withdrawable) would be different for keeper (subtracting
 `_owedSinceLastSettlement()`) and beneficiary (adding `_owedSinceLastSettlement()`). If Orb is held by the
 creator, funds are not subtracted, as Harberger tax does not apply to the creator.
 
@@ -112,12 +112,12 @@ mapping(address => uint256) public fundsOf;
 ```
 
 
-### holderTaxNumerator
+### keeperTaxNumerator
 Harberger tax for holding. Initial value is 10.00%.
 
 
 ```solidity
-uint256 public holderTaxNumerator = 10_00;
+uint256 public keeperTaxNumerator = 10_00;
 ```
 
 
@@ -141,7 +141,7 @@ uint256 public price;
 
 
 ### lastSettlementTime
-Last time Orb holder's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
+Last time Orb keeper's funds were settled. Used to calculate amount owed since last settlement. Has no meaning
 if the Orb is held by the contract.
 
 
@@ -236,12 +236,12 @@ uint256 public cleartextMaximumLength = 280;
 ```
 
 
-### holderReceiveTime
-Holder receive time: when the Orb was last transferred, except to this contract.
+### keeperReceiveTime
+Keeper receive time: when the Orb was last transferred, except to this contract.
 
 
 ```solidity
-uint256 public holderReceiveTime;
+uint256 public keeperReceiveTime;
 ```
 
 
@@ -282,7 +282,7 @@ mapping(uint256 => ResponseData) public responses;
 
 
 ### responseFlagged
-Mapping for flagged (reported) responses. Used by the holder not satisfied with a response.
+Mapping for flagged (reported) responses. Used by the keeper not satisfied with a response.
 
 
 ```solidity
@@ -327,7 +327,7 @@ constructor(
 |`tokenId_`|`uint256`|      ERC-721 token id of the Orb.|
 |`beneficiary_`|`address`|  Address to receive all Orb proceeds.|
 |`oathHash_`|`bytes32`|     Hash of the Oath taken to create the Orb.|
-|`honoredUntil_`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb holder.|
+|`honoredUntil_`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper.|
 |`baseURI_`|`string`|      Initial baseURI value for tokenURI JSONs.|
 
 
@@ -356,31 +356,31 @@ function supportsInterface(bytes4 interfaceId)
 |`isInterfaceSupported`|`bool`| If interface with given 4 bytes id is supported.|
 
 
-### onlyHolder
+### onlyKeeper
 
-*Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyHolderHeld` or on
+*Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
 external functions, otherwise does not make sense.
 Contract inherits `onlyOwner` modifier from `Ownable`.*
 
 
 ```solidity
-modifier onlyHolder();
+modifier onlyKeeper();
 ```
 
-### onlyHolderHeld
+### onlyKeeperHeld
 
 *Ensures that the Orb belongs to someone, not the contract itself.*
 
 
 ```solidity
-modifier onlyHolderHeld();
+modifier onlyKeeperHeld();
 ```
 
 ### onlyCreatorControlled
 
 *Ensures that the Orb belongs to the contract itself or the creator, and the auction hasn't been started.
 Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
-modified while it is held by the holder or users can bid on the Orb.*
+modified while it is held by the keeper or users can bid on the Orb.*
 
 
 ```solidity
@@ -397,13 +397,13 @@ over but not finalized, or auction finalized.*
 modifier notDuringAuction();
 ```
 
-### onlyHolderSolvent
+### onlyKeeperSolvent
 
-*Ensures that the current Orb holder has enough funds to cover Harberger tax until now.*
+*Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.*
 
 
 ```solidity
-modifier onlyHolderSolvent();
+modifier onlyKeeperSolvent();
 ```
 
 ### _baseURI
@@ -453,7 +453,7 @@ function safeTransferFrom(address, address, uint256, bytes memory) public pure o
 ### _transferOrb
 
 *Transfers the ERC-721 token to the new address. If the new owner is not this contract (an actual user),
-updates `holderReceiveTime`. `holderReceiveTime` is used to limit response flagging duration.*
+updates `keeperReceiveTime`. `keeperReceiveTime` is used to limit response flagging duration.*
 
 
 ```solidity
@@ -484,7 +484,7 @@ function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner
 |Name|Type|Description|
 |----|----|-----------|
 |`oathHash`|`bytes32`|        Hash of the Oath taken to create the Orb.|
-|`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb holder.|
+|`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper.|
 
 
 ### extendHonoredUntil
@@ -502,7 +502,7 @@ function extendHonoredUntil(uint256 newHonoredUntil) external onlyOwner;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb holder. Must be greater than the current `honoredUntil` date.|
+|`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper. Must be greater than the current `honoredUntil` date.|
 
 
 ### setBaseURI
@@ -549,20 +549,20 @@ function setAuctionParameters(
 
 ### setFees
 
-Allows the Orb creator to set the new holder tax and royalty. This function can only be called by the
+Allows the Orb creator to set the new keeper tax and royalty. This function can only be called by the
 Orb creator when the Orb is in their control.
 
 *Emits `FeesUpdate`.*
 
 
 ```solidity
-function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) external onlyOwner onlyCreatorControlled;
+function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external onlyOwner onlyCreatorControlled;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newHolderTaxNumerator`|`uint256`| New holder tax numerator, in relation to `feeDenominator()`.|
+|`newKeeperTaxNumerator`|`uint256`| New keeper tax numerator, in relation to `feeDenominator()`.|
 |`newRoyaltyNumerator`|`uint256`|   New royalty numerator, in relation to `feeDenominator()`. Cannot be larger than `feeDenominator()`.|
 
 
@@ -685,9 +685,9 @@ function finalizeAuction() external notDuringAuction;
 
 ### deposit
 
-Allows depositing funds on the contract. Not allowed for insolvent holders.
+Allows depositing funds on the contract. Not allowed for insolvent keepers.
 
-*Deposits are not allowed for insolvent holders to prevent cheating via front-running. If the user
+*Deposits are not allowed for insolvent keepers to prevent cheating via front-running. If the user
 becomes insolvent, the Orb will always be returned to the contract as the next step. Emits `Deposit`.*
 
 
@@ -697,7 +697,7 @@ function deposit() external payable;
 
 ### withdrawAll
 
-Function to withdraw all funds on the contract. Not recommended for current Orb holders if the price
+Function to withdraw all funds on the contract. Not recommended for current Orb keepers if the price
 is not zero, as they will become immediately foreclosable. To give up the Orb, call `relinquish()`.
 
 *Not allowed for the leading auction bidder.*
@@ -709,7 +709,7 @@ function withdrawAll() external;
 
 ### withdraw
 
-Function to withdraw given amount from the contract. For current Orb holders, reduces the time until
+Function to withdraw given amount from the contract. For current Orb keepers, reduces the time until
 foreclosure.
 
 *Not allowed for the leading auction bidder.*
@@ -738,32 +738,32 @@ function withdrawAllForBeneficiary() external;
 
 ### settle
 
-Settlements transfer funds from Orb holder to the beneficiary. Orb accounting minimizes required
-transactions: Orb holder's foreclosure time is only dependent on the price and available funds. Fund
-transfers are not necessary unless these variables (price, holder funds) are being changed. Settlement
+Settlements transfer funds from Orb keeper to the beneficiary. Orb accounting minimizes required
+transactions: Orb keeper's foreclosure time is only dependent on the price and available funds. Fund
+transfers are not necessary unless these variables (price, keeper funds) are being changed. Settlement
 transfers funds owed since the last settlement, and a new period of virtual accounting begins.
 
 *See also `_settle()`.*
 
 
 ```solidity
-function settle() external onlyHolderHeld;
+function settle() external onlyKeeperHeld;
 ```
 
-### holderSolvent
+### keeperSolvent
 
-*Returns if the current Orb holder has enough funds to cover Harberger tax until now. Always true if
+*Returns if the current Orb keeper has enough funds to cover Harberger tax until now. Always true if
 creator holds the Orb.*
 
 
 ```solidity
-function holderSolvent() public view returns (bool isHolderSolvent);
+function keeperSolvent() public view returns (bool isKeeperSolvent);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`isHolderSolvent`|`bool`| If the current holder is solvent.|
+|`isKeeperSolvent`|`bool`| If the current keeper is solvent.|
 
 
 ### feeDenominator
@@ -781,26 +781,26 @@ function feeDenominator() external pure returns (uint256 feeDenominatorValue);
 |`feeDenominatorValue`|`uint256`| The accounting base for Orb fees.|
 
 
-### holderTaxPeriod
+### keeperTaxPeriod
 
-*Returns the Harberger tax period base. Holder tax is for each of this period.*
+*Returns the Harberger tax period base. Keeper tax is for each of this period.*
 
 
 ```solidity
-function holderTaxPeriod() external pure returns (uint256 holderTaxPeriodSeconds);
+function keeperTaxPeriod() external pure returns (uint256 keeperTaxPeriodSeconds);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`holderTaxPeriodSeconds`|`uint256`| How long is the Harberger tax period, in seconds.|
+|`keeperTaxPeriodSeconds`|`uint256`| How long is the Harberger tax period, in seconds.|
 
 
 ### _owedSinceLastSettlement
 
-*Calculates how much money Orb holder owes Orb beneficiary. This amount would be transferred between
-accounts during settlement. **Owed amount can be higher than holder's funds!** It's important to check
-if holder has enough funds before transferring.*
+*Calculates how much money Orb keeper owes Orb beneficiary. This amount would be transferred between
+accounts during settlement. **Owed amount can be higher than keeper's funds!** It's important to check
+if keeper has enough funds before transferring.*
 
 
 ```solidity
@@ -810,7 +810,7 @@ function _owedSinceLastSettlement() internal view returns (uint256 owedValue);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`owedValue`|`uint256`| Wei Orb holder owes Orb beneficiary since the last settlement time.|
+|`owedValue`|`uint256`| Wei Orb keeper owes Orb beneficiary since the last settlement time.|
 
 
 ### _withdraw
@@ -833,8 +833,8 @@ function _withdraw(address recipient_, uint256 amount_) internal;
 
 ### _settle
 
-*Holder might owe more than they have funds available: it means that the holder is foreclosable.
-Settlement would transfer all holder funds to the beneficiary, but not more. Does not transfer funds if
+*Keeper might owe more than they have funds available: it means that the keeper is foreclosable.
+Settlement would transfer all keeper funds to the beneficiary, but not more. Does not transfer funds if
 the creator holds the Orb, but always updates `lastSettlementTime`. Should never be called if Orb is
 owned by the contract. Emits `Settlement`.*
 
@@ -846,14 +846,14 @@ function _settle() internal;
 ### setPrice
 
 Sets the new purchase price for the Orb. Harberger tax means the asset is always for sale. The price
-can be set to zero, making foreclosure time to be never. Can only be called by a solvent holder.
+can be set to zero, making foreclosure time to be never. Can only be called by a solvent keeper.
 Settles before adjusting the price, as the new price will change foreclosure time.
 
 *Emits `Settlement` and `PriceUpdate`. See also `_setPrice()`.*
 
 
 ```solidity
-function setPrice(uint256 newPrice) external onlyHolder onlyHolderSolvent;
+function setPrice(uint256 newPrice) external onlyKeeper onlyKeeperSolvent;
 ```
 **Parameters**
 
@@ -886,7 +886,7 @@ function listWithPrice(uint256 listingPrice) external onlyOwner;
 ### purchase
 
 Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
-from its holder. Purchasing is only allowed while the holder is solvent. If not, the Orb has to be
+from its keeper. Purchasing is only allowed while the keeper is solvent. If not, the Orb has to be
 foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
 required, but purchasing without any reserve would leave the new owner immediately foreclosable.
 Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
@@ -904,11 +904,11 @@ royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` a
 function purchase(
     uint256 newPrice,
     uint256 currentPrice,
-    uint256 currentHolderTaxNumerator,
+    uint256 currentKeeperTaxNumerator,
     uint256 currentRoyaltyNumerator,
     uint256 currentCooldown,
     uint256 currentCleartextMaximumLength
-) external payable onlyHolderHeld onlyHolderSolvent;
+) external payable onlyKeeperHeld onlyKeeperSolvent;
 ```
 **Parameters**
 
@@ -916,7 +916,7 @@ function purchase(
 |----|----|-----------|
 |`newPrice`|`uint256`|                      New price to use after the purchase.|
 |`currentPrice`|`uint256`|                  Current price, to prevent front-running.|
-|`currentHolderTaxNumerator`|`uint256`|     Current holder tax numerator, to prevent front-running.|
+|`currentKeeperTaxNumerator`|`uint256`|     Current keeper tax numerator, to prevent front-running.|
 |`currentRoyaltyNumerator`|`uint256`|       Current royalty numerator, to prevent front-running.|
 |`currentCooldown`|`uint256`|               Current cooldown, to prevent front-running.|
 |`currentCleartextMaximumLength`|`uint256`| Current cleartext maximum length, to prevent front-running.|
@@ -942,7 +942,7 @@ function _setPrice(uint256 newPrice_) internal;
 
 Relinquishment is a voluntary giving up of the Orb. It's a combination of withdrawing all funds not
 owed to the beneficiary since last settlement, and foreclosing yourself after. Most useful if the
-creator themselves hold the Orb and want to re-auction it. For any other holder, setting the price to
+creator themselves hold the Orb and want to re-auction it. For any other keeper, setting the price to
 zero would be more practical.
 
 *Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment` and
@@ -950,24 +950,24 @@ zero would be more practical.
 
 
 ```solidity
-function relinquish() external onlyHolder onlyHolderSolvent;
+function relinquish() external onlyKeeper onlyKeeperSolvent;
 ```
 
 ### foreclose
 
-Foreclose can be called by anyone after the Orb holder runs out of funds to cover the Harberger tax.
+Foreclose can be called by anyone after the Orb keeper runs out of funds to cover the Harberger tax.
 It returns the Orb to the contract, readying it for re-auction.
 
 *Emits `Foreclosure`.*
 
 
 ```solidity
-function foreclose() external onlyHolderHeld;
+function foreclose() external onlyKeeperHeld;
 ```
 
 ### invokeWithCleartext
 
-Invokes the Orb. Allows the holder to submit cleartext.
+Invokes the Orb. Allows the keeper to submit cleartext.
 
 *Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.*
 
@@ -984,15 +984,15 @@ function invokeWithCleartext(string memory cleartext) external;
 
 ### invokeWithHash
 
-Invokes the Orb. Allows the holder to submit content hash, that represents a question to the Orb
-creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent holders.
+Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
+creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent keepers.
 
 *Content hash is keccak256 of the cleartext. `invocationCount` is used to track the id of the next
 invocation. Invocation ids start from 1. Emits `Invocation`.*
 
 
 ```solidity
-function invokeWithHash(bytes32 contentHash) public onlyHolder onlyHolderHeld onlyHolderSolvent;
+function invokeWithHash(bytes32 contentHash) public onlyKeeper onlyKeeperHeld onlyKeeperSolvent;
 ```
 **Parameters**
 
@@ -1023,19 +1023,19 @@ function respond(uint256 invocationId, bytes32 contentHash) external onlyOwner;
 
 ### flagResponse
 
-Orb holder can flag a response during Response Flagging Period, counting from when the response is
-made. Flag indicates a "report", that the Orb holder was not satisfied with the response provided.
-This is meant to act as a social signal to future Orb holders. It also increments
+Orb keeper can flag a response during Response Flagging Period, counting from when the response is
+made. Flag indicates a "report", that the Orb keeper was not satisfied with the response provided.
+This is meant to act as a social signal to future Orb keepers. It also increments
 `flaggedResponsesCount`, allowing anyone to quickly look up how many responses were flagged.
 
 *Only existing responses (with non-zero timestamps) can be flagged. Responses can only be flagged by
-solvent holders to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
-holder must have received the Orb after the response was made; this is to prevent holders from
+solvent keepers to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
+keeper must have received the Orb after the response was made; this is to prevent keepers from
 flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.*
 
 
 ```solidity
-function flagResponse(uint256 invocationId) external onlyHolder onlyHolderSolvent;
+function flagResponse(uint256 invocationId) external onlyKeeper onlyKeeperSolvent;
 ```
 **Parameters**
 
@@ -1068,7 +1068,7 @@ function _responseExists(uint256 invocationId_) internal view returns (bool isRe
 ## Structs
 ### InvocationData
 Structs used to track invocation and response information: keccak256 content hash and block timestamp.
-InvocationData is used to determine if the response can be flagged by the holder.
+InvocationData is used to determine if the response can be flagged by the keeper.
 Invocation timestamp is tracked for the benefit of other contracts.
 
 
