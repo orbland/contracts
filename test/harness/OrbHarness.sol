@@ -35,8 +35,8 @@ contract OrbHarness is
         lastSettlementTime = time;
     }
 
-    function workaround_setOrbHolder(address holder) public {
-        _transferOrb(ownerOf(tokenId), holder);
+    function workaround_setOrbKeeper(address keeper) public {
+        _transferOrb(ownerOf(tokenId), keeper);
     }
 
     function workaround_owedSinceLastSettlement() public view returns (uint256) {
