@@ -2,10 +2,10 @@
 
 Auction + Harberger taxed ownership. Used by [orb.land](https://orb.land). Uses Forge toolkit for building and testing. The contract combines the following areas of functionality:
 
-- **Auction.** Allows the contract owner to start the Orb auction, determining the first owner of the Orb.
+- **Auction.** Allows the contract owner to start the Orb auction, determining the first Keeper of the Orb.
 - **Funds management.** Allows any user to deposit and withdraw funds. Funds are used to make auction bids and pay Harberger Tax.
-- **Harberger Tax.** Uses delayed accounting (settling) to allocate funds from the current owner to the contract beneficiary, based on the price set by the owner and tax rate.
-- **On-chain Orb Invocations.** Allows the owner to periodically invoke the Orb, requesting a response from the Orb creator.
+- **Harberger Tax.** Uses delayed accounting (settling) to allocate funds from the current Keeper to the contract beneficiary, based on the price set by the Keeper and tax rate.
+- **On-chain Orb Invocations.** Allows the Keeper to periodically invoke the Orb, requesting a response from the Orb creator.
 - **ERC-721 compatibility.** All transfers revert, but otherwise, the contract appears as supporting all ERC-721 functions.
 
 The contract is fully documented in NatSpec format.
