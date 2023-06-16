@@ -22,7 +22,7 @@ contract DeploySepolia is DeployBase {
     uint256 public immutable auctionMinimumDuration = 15 minutes;
     uint256 public immutable auctionBidExtension = 1 minutes;
 
-    uint256 public immutable holderTaxNumerator = 10_00;
+    uint256 public immutable keeperTaxNumerator = 10_00;
     uint256 public immutable royaltyNumerator = 10_00;
 
     uint256 public immutable cooldown = 5 minutes;
@@ -41,7 +41,7 @@ contract DeploySepolia is DeployBase {
             auctionMinimumBidStep,
             auctionMinimumDuration,
             auctionBidExtension,
-            holderTaxNumerator,
+            keeperTaxNumerator,
             royaltyNumerator,
             cooldown,
             cleartextMaximumLength

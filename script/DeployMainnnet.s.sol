@@ -22,7 +22,7 @@ contract DeployMainnet is DeployBase {
     uint256 public immutable auctionMinimumDuration = 1 days;
     uint256 public immutable auctionBidExtension = 3 minutes;
 
-    uint256 public immutable holderTaxNumerator = 150_00;
+    uint256 public immutable keeperTaxNumerator = 150_00;
     uint256 public immutable royaltyNumerator = 10_00;
 
     uint256 public immutable cooldown = 7 days;
@@ -41,7 +41,7 @@ contract DeployMainnet is DeployBase {
             auctionMinimumBidStep,
             auctionMinimumDuration,
             auctionBidExtension,
-            holderTaxNumerator,
+            keeperTaxNumerator,
             royaltyNumerator,
             cooldown,
             cleartextMaximumLength
