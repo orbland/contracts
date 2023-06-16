@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/f37a4815190396d804787713635fa8c023271236/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/ede71e56991e5a4a14f114e02bbcc807493c9804/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -90,18 +90,18 @@ function fundsOf(address owner) external view returns (uint256);
 function lastSettlementTime() external view returns (uint256);
 ```
 
-### holderSolvent
+### keeperSolvent
 
 
 ```solidity
-function holderSolvent() external view returns (bool);
+function keeperSolvent() external view returns (bool);
 ```
 
-### holderTaxNumerator
+### keeperTaxNumerator
 
 
 ```solidity
-function holderTaxNumerator() external view returns (uint256);
+function keeperTaxNumerator() external view returns (uint256);
 ```
 
 ### feeDenominator
@@ -111,11 +111,11 @@ function holderTaxNumerator() external view returns (uint256);
 function feeDenominator() external view returns (uint256);
 ```
 
-### holderTaxPeriod
+### keeperTaxPeriod
 
 
 ```solidity
-function holderTaxPeriod() external view returns (uint256);
+function keeperTaxPeriod() external view returns (uint256);
 ```
 
 ### price
@@ -125,11 +125,11 @@ function holderTaxPeriod() external view returns (uint256);
 function price() external view returns (uint256);
 ```
 
-### holderReceiveTime
+### keeperReceiveTime
 
 
 ```solidity
-function holderReceiveTime() external view returns (uint256);
+function keeperReceiveTime() external view returns (uint256);
 ```
 
 ### royaltyNumerator
@@ -289,7 +289,7 @@ function setPrice(uint256 newPrice) external;
 function purchase(
     uint256 newPrice,
     uint256 currentPrice,
-    uint256 currentHolderTaxNumerator,
+    uint256 currentKeeperTaxNumerator,
     uint256 currentRoyaltyNumerator,
     uint256 currentCooldown,
     uint256 currentCleartextMaximumLength
@@ -375,7 +375,7 @@ function setAuctionParameters(
 
 
 ```solidity
-function setFees(uint256 newHolderTaxNumerator, uint256 newRoyaltyNumerator) external;
+function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external;
 ```
 
 ### setCooldown
@@ -438,7 +438,7 @@ event Withdrawal(address indexed recipient, uint256 indexed amount);
 ### Settlement
 
 ```solidity
-event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
+event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
 ```
 
 ### PriceUpdate
@@ -456,13 +456,13 @@ event Purchase(address indexed seller, address indexed buyer, uint256 indexed pr
 ### Foreclosure
 
 ```solidity
-event Foreclosure(address indexed formerHolder);
+event Foreclosure(address indexed formerKeeper);
 ```
 
 ### Relinquishment
 
 ```solidity
-event Relinquishment(address indexed formerHolder);
+event Relinquishment(address indexed formerKeeper);
 ```
 
 ### Invocation
@@ -520,8 +520,8 @@ event AuctionParametersUpdate(
 
 ```solidity
 event FeesUpdate(
-    uint256 previousHolderTaxNumerator,
-    uint256 indexed newHolderTaxNumerator,
+    uint256 previousKeeperTaxNumerator,
+    uint256 indexed newKeeperTaxNumerator,
     uint256 previousRoyaltyNumerator,
     uint256 indexed newRoyaltyNumerator
 );
@@ -546,16 +546,16 @@ event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint2
 error TransferringNotSupported();
 ```
 
-### AlreadyHolder
+### AlreadyKeeper
 
 ```solidity
-error AlreadyHolder();
+error AlreadyKeeper();
 ```
 
-### NotHolder
+### NotKeeper
 
 ```solidity
-error NotHolder();
+error NotKeeper();
 ```
 
 ### ContractHoldsOrb
@@ -612,16 +612,16 @@ error NotPermittedForLeadingBidder();
 error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
 ```
 
-### HolderSolvent
+### KeeperSolvent
 
 ```solidity
-error HolderSolvent();
+error KeeperSolvent();
 ```
 
-### HolderInsolvent
+### KeeperInsolvent
 
 ```solidity
-error HolderInsolvent();
+error KeeperInsolvent();
 ```
 
 ### InsufficientFunds
