@@ -42,35 +42,35 @@ contract OrbTestBase is Test {
         orb.bid{value: finalAmount}(bidAmount, bidAmount);
     }
 
-    function makeHolderAndWarp(address newHolder, uint256 bid) public {
+    function makeKeeperAndWarp(address newKeeper, uint256 bid) public {
         orb.startAuction();
-        prankAndBid(newHolder, bid);
+        prankAndBid(newKeeper, bid);
         vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
         vm.warp(block.timestamp + 30 days);
     }
 
     function fundsRequiredToBidOneYear(uint256 amount) public view returns (uint256) {
-        return amount + (amount * orb.holderTaxNumerator()) / orb.feeDenominator();
+        return amount + (amount * orb.keeperTaxNumerator()) / orb.feeDenominator();
     }
 
     function effectiveFundsOf(address user_) public view returns (uint256) {
         uint256 unadjustedFunds = orb.fundsOf(user_);
-        address holder = orb.ownerOf(orb.tokenId());
+        address keeper = orb.ownerOf(orb.tokenId());
 
         if (user_ == orb.owner()) {
             return unadjustedFunds;
         }
 
-        if (user_ == beneficiary || user_ == holder) {
+        if (user_ == beneficiary || user_ == keeper) {
             uint256 owedFunds = orb.workaround_owedSinceLastSettlement();
-            uint256 holderFunds = orb.fundsOf(holder);
-            uint256 transferableToBeneficiary = holderFunds <= owedFunds ? holderFunds : owedFunds;
+            uint256 keeperFunds = orb.fundsOf(keeper);
+            uint256 transferableToBeneficiary = keeperFunds <= owedFunds ? keeperFunds : owedFunds;
 
             if (user_ == beneficiary) {
                 return unadjustedFunds + transferableToBeneficiary;
             }
-            if (user_ == holder) {
+            if (user_ == keeper) {
                 return unadjustedFunds - transferableToBeneficiary;
             }
         }
@@ -93,7 +93,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.cleartextMaximumLength(), 280);
 
         assertEq(orb.price(), 0);
-        assertEq(orb.holderTaxNumerator(), 10_00);
+        assertEq(orb.keeperTaxNumerator(), 10_00);
         assertEq(orb.royaltyNumerator(), 10_00);
         assertEq(orb.lastInvocationTime(), 0);
         assertEq(orb.invocationCount(), 0);
@@ -110,12 +110,12 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.leadingBid(), 0);
 
         assertEq(orb.lastSettlementTime(), 0);
-        assertEq(orb.holderReceiveTime(), 0);
+        assertEq(orb.keeperReceiveTime(), 0);
     }
 
     function test_constants() public {
         assertEq(orb.feeDenominator(), 100_00);
-        assertEq(orb.holderTaxPeriod(), 365 days);
+        assertEq(orb.keeperTaxPeriod(), 365 days);
 
         assertEq(orb.tokenId(), 69);
         assertEq(orb.workaround_maximumPrice(), 2 ** 128);
@@ -130,7 +130,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0xa46de429)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0xad393d6f)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -190,20 +190,20 @@ contract ExtendHonoredUntilTest is OrbTestBase {
         vm.expectRevert("Ownable: caller is not the owner");
         orb.extendHonoredUntil(101);
 
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(owner);
         orb.extendHonoredUntil(101);
     }
 
     function test_extendHonoredUntilNotDecrease() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(owner);
         vm.expectRevert(IOrb.HonoredUntilNotDecreasable.selector);
         orb.extendHonoredUntil(99);
     }
 
     function test_extendHonoredUntilCorrectly() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit HonoredUntilUpdate(100, 101);
@@ -297,8 +297,8 @@ contract SettingAuctionParametersTest is OrbTestBase {
 
 contract SettingFeesTest is OrbTestBase {
     event FeesUpdate(
-        uint256 previousHolderTaxNumerator,
-        uint256 indexed newHolderTaxNumerator,
+        uint256 previousKeeperTaxNumerator,
+        uint256 indexed newKeeperTaxNumerator,
         uint256 previousRoyaltyNumerator,
         uint256 indexed newRoyaltyNumerator
     );
@@ -338,18 +338,18 @@ contract SettingFeesTest is OrbTestBase {
         vm.prank(owner);
         orb.setFees(largeNumerator, orb.feeDenominator());
 
-        assertEq(orb.holderTaxNumerator(), largeNumerator);
+        assertEq(orb.keeperTaxNumerator(), largeNumerator);
         assertEq(orb.royaltyNumerator(), orb.feeDenominator());
     }
 
     function test_setFeesSucceedsCorrectly() public {
-        assertEq(orb.holderTaxNumerator(), 10_00);
+        assertEq(orb.keeperTaxNumerator(), 10_00);
         assertEq(orb.royaltyNumerator(), 10_00);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit FeesUpdate(10_00, 100_00, 10_00, 100_00);
         orb.setFees(100_00, 100_00);
-        assertEq(orb.holderTaxNumerator(), 100_00);
+        assertEq(orb.keeperTaxNumerator(), 100_00);
         assertEq(orb.royaltyNumerator(), 100_00);
     }
 }
@@ -468,10 +468,10 @@ contract StartAuctionTest is OrbTestBase {
     }
 
     function test_startAuctionOnlyContractHeld() public {
-        orb.workaround_setOrbHolder(address(0xBEEF));
+        orb.workaround_setOrbKeeper(address(0xBEEF));
         vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
         orb.startAuction();
-        orb.workaround_setOrbHolder(address(orb));
+        orb.workaround_setOrbKeeper(address(orb));
         vm.expectEmit(true, true, true, true);
         emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
         orb.startAuction();
@@ -740,13 +740,13 @@ contract FinalizeAuctionTest is OrbTestBase {
 
 contract ListingTest is OrbTestBase {
     function test_revertsIfHeldByUser() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
         orb.listWithPrice(1 ether);
     }
 
     function test_revertsIfAlreadyHeldByCreator() public {
-        makeHolderAndWarp(owner, 1 ether);
+        makeKeeperAndWarp(owner, 1 ether);
         vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
         orb.listWithPrice(1 ether);
     }
@@ -763,7 +763,7 @@ contract ListingTest is OrbTestBase {
     }
 
     function test_revertsIfCalledByUser() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user);
         orb.listWithPrice(1 ether);
@@ -797,7 +797,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
         orb.finalizeAuction();
         vm.warp(block.timestamp + 1 days);
 
-        // One day has passed since the Orb holder got the orb
+        // One day has passed since the Orb keeper got the orb
         // for bid = 1 ether. That means that the price of the
         // Orb is now 1 ether. Thus the Orb beneficiary is owed the tax
         // for 1 day.
@@ -827,7 +827,7 @@ contract EffectiveFundsOfTest is OrbTestBase {
         orb.finalizeAuction();
         vm.warp(block.timestamp + 1 days);
 
-        // One day has passed since the Orb holder got the Orb
+        // One day has passed since the Orb keeper got the Orb
         // for bid = 1 ether. That means that the price of the
         // Orb is now 1 ether. Thus the Orb beneficiary is owed the tax
         // for 1 day.
@@ -868,12 +868,12 @@ contract DepositTest is OrbTestBase {
         assertEq(orb.fundsOf(user), amount);
     }
 
-    function test_depositHolderSolvent() public {
+    function test_depositKeeperSolvent() public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
         uint256 bidAmount = 1 ether;
         uint256 depositAmount = 2 ether;
-        makeHolderAndWarp(user, bidAmount);
+        makeKeeperAndWarp(user, bidAmount);
         // User bids 1 ether, but deposit enough funds
         // to cover the tax for a year, according to
         // fundsRequiredToBidOneYear(bidAmount)
@@ -886,12 +886,12 @@ contract DepositTest is OrbTestBase {
         assertEq(orb.fundsOf(user), funds + depositAmount);
     }
 
-    function testFuzz_depositHolderSolvent(uint256 bidAmount, uint256 depositAmount) public {
+    function testFuzz_depositKeeperSolvent(uint256 bidAmount, uint256 depositAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
         bidAmount = bound(bidAmount, 0.1 ether, orb.workaround_maximumPrice());
         depositAmount = bound(depositAmount, 0.1 ether, orb.workaround_maximumPrice());
-        makeHolderAndWarp(user, bidAmount);
+        makeKeeperAndWarp(user, bidAmount);
         // User bids 1 ether, but deposit enough funds
         // to cover the tax for a year, according to
         // fundsRequiredToBidOneYear(bidAmount)
@@ -905,11 +905,11 @@ contract DepositTest is OrbTestBase {
         assertEq(orb.fundsOf(user), funds + depositAmount);
     }
 
-    function test_depositRevertsifHolderInsolvent() public {
+    function test_depositRevertsifKeeperInsolvent() public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
         uint256 bidAmount = 1 ether;
-        makeHolderAndWarp(user, bidAmount);
+        makeKeeperAndWarp(user, bidAmount);
 
         // let's make the user insolvent
         // fundsRequiredToBidOneYear(bidAmount) ensures enough
@@ -921,8 +921,8 @@ contract DepositTest is OrbTestBase {
         orb.deposit{value: 1 ether}();
         assertEq(orb.fundsOf(user2), 1 ether);
 
-        // if the insolvent holder deposits, it should not work
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
+        // if the insolvent keeper deposits, it should not work
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
         vm.prank(user);
         orb.deposit{value: 1 ether}();
     }
@@ -958,9 +958,9 @@ contract WithdrawTest is OrbTestBase {
         assertEq(user.balance, startingBalance + fundsBefore);
     }
 
-    event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
+    event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
 
-    function test_withdrawSettlesFirstIfHolder() public {
+    function test_withdrawSettlesFirstIfKeeper() public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
         uint256 bidAmount = 10 ether;
@@ -999,7 +999,7 @@ contract WithdrawTest is OrbTestBase {
         // move ahead 10 days;
         vm.warp(block.timestamp + 10 days);
 
-        // not holder
+        // not keeper
         vm.prank(user2);
         initialBalance = user2.balance;
         orb.withdraw(withdrawAmount);
@@ -1046,7 +1046,7 @@ contract WithdrawTest is OrbTestBase {
     }
 
     function test_withdrawAllForBeneficiaryWhenContractOwned() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         orb.relinquish();
 
@@ -1067,7 +1067,7 @@ contract WithdrawTest is OrbTestBase {
     }
 
     function test_withdrawAllForBeneficiaryWhenCreatorOwned() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         orb.relinquish();
         vm.prank(owner);
@@ -1087,11 +1087,11 @@ contract WithdrawTest is OrbTestBase {
         assertEq(beneficiary.balance, initialBalance + beneficiaryFunds);
     }
 
-    function testFuzz_withdrawSettlesFirstIfHolder(uint256 bidAmount, uint256 withdrawAmount) public {
+    function testFuzz_withdrawSettlesFirstIfKeeper(uint256 bidAmount, uint256 withdrawAmount) public {
         assertEq(orb.fundsOf(user), 0);
         // winning bid  = 1 ether
         bidAmount = bound(bidAmount, orb.auctionStartingPrice(), orb.workaround_maximumPrice());
-        makeHolderAndWarp(user, bidAmount);
+        makeKeeperAndWarp(user, bidAmount);
 
         // beneficiaryEffective = beneficiaryFunds + transferableToBeneficiary
         // userEffective = userFunds - transferableToBeneficiary
@@ -1135,13 +1135,13 @@ contract WithdrawTest is OrbTestBase {
 }
 
 contract SettleTest is OrbTestBase {
-    event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
+    event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
 
-    function test_settleOnlyIfHolderHeld() public {
+    function test_settleOnlyIfKeeperHeld() public {
         vm.expectRevert(IOrb.ContractHoldsOrb.selector);
         orb.settle();
         assertEq(orb.lastSettlementTime(), 0);
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         orb.settle();
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
@@ -1156,7 +1156,7 @@ contract SettleTest is OrbTestBase {
         assertEq(orb.fundsOf(beneficiary), 0);
         assertEq(orb.lastSettlementTime(), 0);
         // it warps 30 days by default
-        makeHolderAndWarp(user, amount);
+        makeKeeperAndWarp(user, amount);
 
         uint256 userEffective = effectiveFundsOf(user);
         uint256 beneficiaryEffective = effectiveFundsOf(beneficiary);
@@ -1193,25 +1193,25 @@ contract SettleTest is OrbTestBase {
     }
 }
 
-contract HolderSolventTest is OrbTestBase {
-    function test_holderSolventCorrectIfNotOwner() public {
+contract KeeperSolventTest is OrbTestBase {
+    function test_keeperSolventCorrectIfNotOwner() public {
         assertEq(orb.fundsOf(user), 0);
         assertEq(orb.fundsOf(owner), 0);
         assertEq(orb.lastSettlementTime(), 0);
         // it warps 30 days by default
-        makeHolderAndWarp(user, 1 ether);
-        assert(orb.holderSolvent());
+        makeKeeperAndWarp(user, 1 ether);
+        assert(orb.keeperSolvent());
         vm.warp(block.timestamp + 700 days);
-        assertFalse(orb.holderSolvent());
+        assertFalse(orb.keeperSolvent());
     }
 
-    function test_holderSolventCorrectIfOwner() public {
+    function test_keeperSolventCorrectIfOwner() public {
         assertEq(orb.fundsOf(user), 0);
         assertEq(orb.fundsOf(owner), 0);
         assertEq(orb.lastSettlementTime(), 0);
-        assert(orb.holderSolvent());
+        assert(orb.keeperSolvent());
         vm.warp(block.timestamp + 4885828483 days);
-        assert(orb.holderSolvent());
+        assert(orb.keeperSolvent());
     }
 }
 
@@ -1219,11 +1219,11 @@ contract OwedSinceLastSettlementTest is OrbTestBase {
     function test_owedSinceLastSettlementCorrectMath() public {
         // _lastSettlementTime = 0
         // secondsSinceLastSettlement = block.timestamp - _lastSettlementTime
-        // HOLDER_TAX_NUMERATOR = 1_000
+        // KEEPER_TAX_NUMERATOR = 1_000
         // feeDenominator = 10_000
-        // holderTaxPeriod  = 365 days = 31_536_000 seconds
-        // owed = _price * HOLDER_TAX_NUMERATOR * secondsSinceLastSettlement)
-        // / (holderTaxPeriod * feeDenominator);
+        // keeperTaxPeriod  = 365 days = 31_536_000 seconds
+        // owed = _price * KEEPER_TAX_NUMERATOR * secondsSinceLastSettlement)
+        // / (keeperTaxPeriod * feeDenominator);
         // Scenario:
         // _price = 17 ether = 17_000_000_000_000_000_000 wei
         // block.timestamp = 167710711
@@ -1236,10 +1236,10 @@ contract OwedSinceLastSettlementTest is OrbTestBase {
 }
 
 contract SetPriceTest is OrbTestBase {
-    function test_setPriceRevertsIfNotHolder() public {
+    function test_setPriceRevertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.NotHolder.selector);
+        makeKeeperAndWarp(user, leadingBid);
+        vm.expectRevert(IOrb.NotKeeper.selector);
         vm.prank(user2);
         orb.setPrice(1 ether);
         assertEq(orb.price(), 10 ether);
@@ -1249,12 +1249,12 @@ contract SetPriceTest is OrbTestBase {
         assertEq(orb.price(), 1 ether);
     }
 
-    function test_setPriceRevertsIfHolderInsolvent() public {
+    function test_setPriceRevertsIfKeeperInsolvent() public {
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
+        makeKeeperAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 600 days);
         vm.startPrank(user);
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
         orb.setPrice(1 ether);
 
         // As the user can't deposit funds to become solvent again
@@ -1266,7 +1266,7 @@ contract SetPriceTest is OrbTestBase {
 
     function test_setPriceSettlesBefore() public {
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
+        makeKeeperAndWarp(user, leadingBid);
         vm.prank(user);
         orb.setPrice(2 ether);
         assertEq(orb.price(), 2 ether);
@@ -1278,7 +1278,7 @@ contract SetPriceTest is OrbTestBase {
     function test_setPriceRevertsIfMaxPrice() public {
         uint256 maxPrice = orb.workaround_maximumPrice();
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
+        makeKeeperAndWarp(user, leadingBid);
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidNewPrice.selector, maxPrice + 1));
         orb.setPrice(maxPrice + 1);
@@ -1296,17 +1296,17 @@ contract PurchaseTest is OrbTestBase {
         orb.purchase(100, 0, 10_00, 10_00, 7 days, 280);
     }
 
-    function test_revertsIfHolderInsolvent() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertsIfKeeperInsolvent() public {
+        makeKeeperAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user2);
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
         orb.purchase(100, 1 ether, 10_00, 10_00, 7 days, 280);
     }
 
     function test_purchaseSettlesFirst() public {
-        makeHolderAndWarp(user, 1 ether);
-        // after making `user` the current holder of the Orb, `makeHolderAndWarp(user, )` warps 30 days into the future
+        makeKeeperAndWarp(user, 1 ether);
+        // after making `user` the current keeper of the Orb, `makeKeeperAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user2);
         orb.purchase{value: 1.1 ether}(2 ether, 1 ether, 10_00, 10_00, 7 days, 280);
@@ -1314,7 +1314,7 @@ contract PurchaseTest is OrbTestBase {
     }
 
     function test_revertsIfBeneficiary() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.deal(beneficiary, 1.1 ether);
         vm.prank(beneficiary);
         vm.expectRevert(abi.encodeWithSelector(IOrb.BeneficiaryDisallowed.selector));
@@ -1328,7 +1328,7 @@ contract PurchaseTest is OrbTestBase {
     }
 
     function test_revertsIfWrongCurrentPrice() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentValueIncorrect.selector, 2 ether, 1 ether));
         orb.purchase{value: 1.1 ether}(3 ether, 2 ether, 10_00, 10_00, 7 days, 280);
@@ -1357,22 +1357,22 @@ contract PurchaseTest is OrbTestBase {
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
     }
 
-    function test_revertsIfIfAlreadyHolder() public {
-        makeHolderAndWarp(user, 1 ether);
-        vm.expectRevert(IOrb.AlreadyHolder.selector);
+    function test_revertsIfIfAlreadyKeeper() public {
+        makeKeeperAndWarp(user, 1 ether);
+        vm.expectRevert(IOrb.AlreadyKeeper.selector);
         vm.prank(user);
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
     }
 
     function test_revertsIfInsufficientFunds() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
         vm.prank(user2);
         orb.purchase{value: 1 ether - 1}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
     }
 
     function test_revertsIfPurchasingAfterSetPrice() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         orb.setPrice(0);
         vm.expectRevert(abi.encodeWithSelector(IOrb.PurchasingNotPermitted.selector));
@@ -1383,7 +1383,7 @@ contract PurchaseTest is OrbTestBase {
     event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
-    event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
+    event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
 
     function test_beneficiaryAllProceedsIfOwnerSells() public {
         uint256 bidAmount = 1 ether;
@@ -1391,7 +1391,7 @@ contract PurchaseTest is OrbTestBase {
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
         // bidAmount will be the `_price` of the Orb
-        makeHolderAndWarp(owner, bidAmount);
+        makeKeeperAndWarp(owner, bidAmount);
         orb.settle();
         vm.warp(block.timestamp + 1 days);
         uint256 ownerBefore = orb.fundsOf(owner);
@@ -1415,7 +1415,7 @@ contract PurchaseTest is OrbTestBase {
         assertEq(orb.fundsOf(user), 1);
         assertEq(orb.price(), newPrice);
         assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
-        assertEq(orb.holderSolvent(), true);
+        assertEq(orb.keeperSolvent(), true);
     }
 
     function test_succeedsCorrectly() public {
@@ -1425,7 +1425,7 @@ contract PurchaseTest is OrbTestBase {
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
         // bidAmount will be the `_price` of the Orb
-        makeHolderAndWarp(user, bidAmount);
+        makeKeeperAndWarp(user, bidAmount);
         orb.settle();
         vm.prank(user);
         orb.deposit{value: expectedSettlement}();
@@ -1472,7 +1472,7 @@ contract PurchaseTest is OrbTestBase {
         uint256 purchaseAmount = buyPrice - diff;
         uint256 depositAmount = diff;
         // bidAmount will be the `_price` of the Orb
-        makeHolderAndWarp(user, bidAmount);
+        makeKeeperAndWarp(user, bidAmount);
         vm.deal(user, bidAmount + expectedSettlement);
         orb.settle();
         vm.startPrank(user);
@@ -1512,10 +1512,10 @@ contract PurchaseTest is OrbTestBase {
 }
 
 contract RelinquishmentTest is OrbTestBase {
-    function test_revertsIfNotHolder() public {
+    function test_revertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.NotHolder.selector);
+        makeKeeperAndWarp(user, leadingBid);
+        vm.expectRevert(IOrb.NotKeeper.selector);
         vm.prank(user2);
         orb.relinquish();
 
@@ -1524,11 +1524,11 @@ contract RelinquishmentTest is OrbTestBase {
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
     }
 
-    function test_revertsIfHolderInsolvent() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertsIfKeeperInsolvent() public {
+        makeKeeperAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
         orb.relinquish();
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
@@ -1537,19 +1537,19 @@ contract RelinquishmentTest is OrbTestBase {
     }
 
     function test_settlesFirst() public {
-        makeHolderAndWarp(user, 1 ether);
-        // after making `user` the current holder of the Orb, `makeHolderAndWarp(user, )` warps 30 days into the future
+        makeKeeperAndWarp(user, 1 ether);
+        // after making `user` the current keeper of the Orb, `makeKeeperAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user);
         orb.relinquish();
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
-    event Relinquishment(address indexed formerHolder);
+    event Relinquishment(address indexed formerKeeper);
     event Withdrawal(address indexed recipient, uint256 indexed amount);
 
     function test_succeedsCorrectly() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         assertEq(orb.ownerOf(orb.tokenId()), user);
         vm.expectEmit(true, true, true, true);
@@ -1565,25 +1565,25 @@ contract RelinquishmentTest is OrbTestBase {
 }
 
 contract ForecloseTest is OrbTestBase {
-    function test_revertsIfNotHolderHeld() public {
+    function test_revertsIfNotKeeperHeld() public {
         vm.expectRevert(IOrb.ContractHoldsOrb.selector);
         vm.prank(user2);
         orb.foreclose();
 
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
+        makeKeeperAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 100000 days);
         vm.prank(user2);
         orb.foreclose();
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
     }
 
-    event Foreclosure(address indexed formerHolder);
+    event Foreclosure(address indexed formerKeeper);
 
-    function test_revertsifHolderSolvent() public {
+    function test_revertsifKeeperSolvent() public {
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.HolderSolvent.selector);
+        makeKeeperAndWarp(user, leadingBid);
+        vm.expectRevert(IOrb.KeeperSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, true, true, true);
@@ -1593,7 +1593,7 @@ contract ForecloseTest is OrbTestBase {
 
     function test_succeeds() public {
         uint256 leadingBid = 10 ether;
-        makeHolderAndWarp(user, leadingBid);
+        makeKeeperAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, true, true, true);
         emit Foreclosure(user);
@@ -1621,7 +1621,7 @@ contract InvokeWithCleartextTest is OrbTestBase {
 
     function test_callsInvokeWithHashCorrectly() public {
         string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         vm.expectEmit(true, true, true, true);
         emit Invocation(1, user, block.timestamp, keccak256(abi.encodePacked(text)));
         vm.expectEmit(true, true, true, true);
@@ -1636,11 +1636,11 @@ contract InvokeWthHashTest is OrbTestBase {
         uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash
     );
 
-    function test_revertWhen_NotHolder() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertWhen_NotKeeper() public {
+        makeKeeperAndWarp(user, 1 ether);
         bytes32 hash = "asdfsaf";
         vm.prank(user2);
-        vm.expectRevert(IOrb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotKeeper.selector);
         orb.invokeWithHash(hash);
 
         vm.expectEmit(true, true, true, true);
@@ -1649,17 +1649,17 @@ contract InvokeWthHashTest is OrbTestBase {
         orb.invokeWithHash(hash);
     }
 
-    function test_revertWhen_HolderInsolvent() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertWhen_KeeperInsolvent() public {
+        makeKeeperAndWarp(user, 1 ether);
         bytes32 hash = "asdfsaf";
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
         orb.invokeWithHash(hash);
     }
 
     function test_revertWhen_CooldownIncomplete() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         orb.invokeWithHash(hash);
@@ -1687,7 +1687,7 @@ contract InvokeWthHashTest is OrbTestBase {
     }
 
     function test_success() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         bytes32 hash = "asdfsaf";
         vm.startPrank(user);
         vm.expectEmit(true, true, true, true);
@@ -1708,7 +1708,7 @@ contract RespondTest is OrbTestBase {
     );
 
     function test_revertWhen_notOwner() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
@@ -1725,7 +1725,7 @@ contract RespondTest is OrbTestBase {
     }
 
     function test_revertWhen_invocationIdIncorrect() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
@@ -1745,7 +1745,7 @@ contract RespondTest is OrbTestBase {
     }
 
     function test_revertWhen_responseAlreadyExists() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
@@ -1759,7 +1759,7 @@ contract RespondTest is OrbTestBase {
     }
 
     function test_success() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.startPrank(user);
@@ -1779,8 +1779,8 @@ contract RespondTest is OrbTestBase {
 contract FlagResponseTest is OrbTestBase {
     event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
 
-    function test_revertWhen_NotHolder() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertWhen_NotKeeper() public {
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
@@ -1788,15 +1788,15 @@ contract FlagResponseTest is OrbTestBase {
         vm.prank(owner);
         orb.respond(1, response);
         vm.prank(user2);
-        vm.expectRevert(IOrb.NotHolder.selector);
+        vm.expectRevert(IOrb.NotKeeper.selector);
         orb.flagResponse(1);
 
         vm.prank(user);
         orb.flagResponse(1);
     }
 
-    function test_revertWhen_HolderInsolvent() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertWhen_KeeperInsolvent() public {
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
@@ -1805,7 +1805,7 @@ contract FlagResponseTest is OrbTestBase {
         orb.respond(1, response);
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(IOrb.HolderInsolvent.selector);
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
         orb.flagResponse(1);
 
         vm.warp(block.timestamp - 13130000 days);
@@ -1814,7 +1814,7 @@ contract FlagResponseTest is OrbTestBase {
     }
 
     function test_revertWhen_ResponseNotExist() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
@@ -1830,7 +1830,7 @@ contract FlagResponseTest is OrbTestBase {
     }
 
     function test_revertWhen_outsideFlaggingPeriod() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
@@ -1848,7 +1848,7 @@ contract FlagResponseTest is OrbTestBase {
     }
 
     function test_revertWhen_flaggingTwice() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
@@ -1863,8 +1863,8 @@ contract FlagResponseTest is OrbTestBase {
         orb.flagResponse(1);
     }
 
-    function test_revertWhen_responseToPreviousHolder() public {
-        makeHolderAndWarp(user, 1 ether);
+    function test_revertWhen_responseToPreviousKeeper() public {
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
@@ -1875,7 +1875,7 @@ contract FlagResponseTest is OrbTestBase {
         vm.startPrank(user2);
         orb.purchase{value: 3 ether}(2 ether, 1 ether, 10_00, 10_00, 7 days, 280);
         vm.expectRevert(
-            abi.encodeWithSelector(IOrb.FlaggingPeriodExpired.selector, 1, orb.holderReceiveTime(), block.timestamp)
+            abi.encodeWithSelector(IOrb.FlaggingPeriodExpired.selector, 1, orb.keeperReceiveTime(), block.timestamp)
         );
         orb.flagResponse(1);
 
@@ -1889,7 +1889,7 @@ contract FlagResponseTest is OrbTestBase {
     }
 
     function test_success() public {
-        makeHolderAndWarp(user, 1 ether);
+        makeKeeperAndWarp(user, 1 ether);
         string memory cleartext = "this is a cleartext";
         bytes32 response = "response hash";
         vm.prank(user);
