@@ -21,11 +21,11 @@ interface IOrb is IERC165 {
     event Withdrawal(address indexed recipient, uint256 indexed amount);
     event Settlement(address indexed holder, address indexed beneficiary, uint256 indexed amount);
 
-    // Purchasing Errors
+    // Purchasing Events
     event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
     event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
 
-    // Orb Ownership Functions
+    // Orb Ownership Events
     event Foreclosure(address indexed formerHolder);
     event Relinquishment(address indexed formerHolder);
 
