@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+/* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
 import {Orb} from "src/Orb.sol";
 import {OrbPond} from "src/OrbPond.sol";
