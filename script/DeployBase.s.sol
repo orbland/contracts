@@ -87,8 +87,6 @@ abstract contract DeployBase is Script {
             orbSymbol,
             tokenId, // tokenId
             splitterAddress, // beneficiary
-            0x0000000000000000000000000000000000000000000000000000000000000000, // oathHash
-            0, // honoredUntil
             "https://static.orb.land/orb/" // baseURI
         );
         orb = Orb(orbPond.orbs(0));

@@ -11,9 +11,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 ///          creator.
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator.
 contract OrbPond is Ownable {
-    event OrbCreation(
-        uint256 indexed orbId, address indexed orbAddress, bytes32 indexed oathHash, uint256 honoredUntil
-    );
+    event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
 
     /// The mapping of Orb ids to Orbs. Increases monotonically.
     mapping(uint256 => Orb) public orbs;
@@ -25,16 +23,12 @@ contract OrbPond is Ownable {
     /// @param   symbol        Symbol of the Orb, used for display purposes. Suggestion: "ORB".
     /// @param   tokenId       TokenId of the Orb. Only one ERC-721 token will be minted, with this id.
     /// @param   beneficiary   Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.
-    /// @param   oathHash      Keccak-256 hash of the Orb's Oath.
-    /// @param   honoredUntil  Timestamp until which the Orb will be honored by its creator.
     /// @param   baseURI       Initial baseURI of the Orb, used as part of ERC-721 tokenURI.
     function createOrb(
         string memory name,
         string memory symbol,
         uint256 tokenId,
         address beneficiary,
-        bytes32 oathHash,
-        uint256 honoredUntil,
         string memory baseURI
     ) external onlyOwner {
         orbs[orbCount] = new Orb(
@@ -42,12 +36,10 @@ contract OrbPond is Ownable {
             symbol,
             tokenId,
             beneficiary,
-            oathHash,
-            honoredUntil,
             baseURI
         );
 
-        emit OrbCreation(orbCount, address(orbs[orbCount]), oathHash, honoredUntil);
+        emit OrbCreation(orbCount, address(orbs[orbCount]));
 
         orbCount++;
     }
