@@ -184,24 +184,19 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @param  symbol_        Orb symbol or ticker, used in ERC-721 metadata.
     /// @param  tokenId_       ERC-721 token id of the Orb.
     /// @param  beneficiary_   Address to receive all Orb proceeds.
-    /// @param  oathHash_      Hash of the Oath taken to create the Orb.
-    /// @param  honoredUntil_  Date until which the Orb creator will honor the Oath for the Orb keeper.
     /// @param  baseURI_       Initial baseURI value for tokenURI JSONs.
     constructor(
         string memory name_,
         string memory symbol_,
         uint256 tokenId_,
         address beneficiary_,
-        bytes32 oathHash_,
-        uint256 honoredUntil_,
         string memory baseURI_
     ) ERC721(name_, symbol_) {
         tokenId = tokenId_;
         beneficiary = beneficiary_;
-        honoredUntil = honoredUntil_;
         baseURI = baseURI_;
 
-        emit Creation(oathHash_, honoredUntil_);
+        emit Creation();
 
         _safeMint(address(this), tokenId);
     }

@@ -27,15 +27,7 @@ contract OrbPondTestBase is Test {
     }
 
     function deployDefaults() public returns (Orb orb) {
-        orbPond.createOrb(
-            "TestOrb",
-            "TEST",
-            100,
-            beneficiary,
-            0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc,
-            100,
-            "test baseURI"
-        );
+        orbPond.createOrb("TestOrb", "TEST", 100, beneficiary, "test baseURI");
 
         return orbPond.orbs(0);
     }
@@ -52,44 +44,20 @@ contract DeployTest is OrbPondTestBase {
     function test_revertWhen_NotOwner() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orbPond.createOrb(
-            "TestOrb",
-            "TEST",
-            100,
-            beneficiary,
-            0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc,
-            100,
-            "test baseURI"
-        );
+        orbPond.createOrb("TestOrb", "TEST", 100, beneficiary, "test baseURI");
     }
 
-    event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
-    event OrbCreation(
-        uint256 indexed orbId, address indexed orbAddress, bytes32 indexed oathHash, uint256 honoredUntil
-    );
+    event Creation();
+    event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
 
     function test_deploy() public {
         vm.expectEmit(true, true, true, true);
-        // keccak hash of "test oath"
-        emit Creation(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
+        emit Creation();
 
         vm.expectEmit(true, true, true, true);
-        emit OrbCreation(
-            0,
-            0x104fBc016F4bb334D775a19E8A6510109AC63E00,
-            0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc,
-            100
-        );
+        emit OrbCreation(0, 0x104fBc016F4bb334D775a19E8A6510109AC63E00);
 
-        orbPond.createOrb(
-            "TestOrb",
-            "TEST",
-            100,
-            beneficiary,
-            0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc,
-            100,
-            "test baseURI"
-        );
+        orbPond.createOrb("TestOrb", "TEST", 100, beneficiary, "test baseURI");
     }
 }
 

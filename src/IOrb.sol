@@ -8,7 +8,7 @@ interface IOrb is IERC165 {
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event Creation();
 
     // Auction Events
     event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
