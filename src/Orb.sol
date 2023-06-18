@@ -90,6 +90,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
     uint256 public honoredUntil;
+    /// Response Period: time period in which the keeper promises to respond to an invocation.
+    /// There are no penalties for being late within this contract.
+    uint256 public responsePeriod;
 
     /// Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
     string internal baseURI;
@@ -320,9 +323,14 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @dev     Emits `OathSwearing`.
     /// @param   oathHash         Hash of the Oath taken to create the Orb.
     /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb keeper.
-    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner onlyCreatorControlled {
+    function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod)
+        external
+        onlyOwner
+        onlyCreatorControlled
+    {
         honoredUntil = newHonoredUntil;
-        emit OathSwearing(oathHash, newHonoredUntil);
+        responsePeriod = newResponsePeriod;
+        emit OathSwearing(oathHash, newHonoredUntil, newResponsePeriod);
     }
 
     /// @notice  Allows the Orb creator to extend the `honoredUntil` date. This function can be called by the Orb

@@ -40,7 +40,7 @@ interface IOrb is IERC165 {
     event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
 
     // Orb Parameter Events
-    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
     event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 indexed newHonoredUntil);
     event AuctionParametersUpdate(
         uint256 previousStartingPrice,
@@ -163,6 +163,7 @@ interface IOrb is IERC165 {
 
     // Orb Parameter View Functions
     function honoredUntil() external view returns (uint256);
+    function responsePeriod() external view returns (uint256);
     function beneficiary() external view returns (address);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +205,7 @@ interface IOrb is IERC165 {
     function flagResponse(uint256 invocationId) external;
 
     // Orb Parameter Functions
-    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external;
+    function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod) external;
     function extendHonoredUntil(uint256 newHonoredUntil) external;
     function setBaseURI(string memory newBaseURI) external;
     function setAuctionParameters(
