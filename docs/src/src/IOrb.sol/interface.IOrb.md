@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/ede71e56991e5a4a14f114e02bbcc807493c9804/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/b920ffa5c5298491a4db27902136f8424c03170e/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -205,6 +205,13 @@ function cleartextMaximumLength() external view returns (uint256);
 function honoredUntil() external view returns (uint256);
 ```
 
+### responsePeriod
+
+
+```solidity
+function responsePeriod() external view returns (uint256);
+```
+
 ### beneficiary
 
 
@@ -342,7 +349,7 @@ function flagResponse(uint256 invocationId) external;
 
 
 ```solidity
-function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external;
+function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod) external;
 ```
 
 ### extendHonoredUntil
@@ -396,7 +403,7 @@ function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 ### Creation
 
 ```solidity
-event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+event Creation();
 ```
 
 ### AuctionStart
@@ -492,7 +499,7 @@ event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
 ### OathSwearing
 
 ```solidity
-event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
 ```
 
 ### HonoredUntilUpdate
