@@ -18,12 +18,12 @@ contract OrbTestBase is Test {
 
     uint256 internal startingBalance;
 
-    event Creation(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event Creation();
 
     function setUp() public {
         vm.expectEmit(true, true, true, true);
         // keccak hash of "test oath"
-        emit Creation(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
+        emit Creation();
         orb = new OrbHarness();
         orb.setAuctionParameters(0.1 ether, 0.1 ether, 1 days, 5 minutes);
         user = address(0xBEEF);
