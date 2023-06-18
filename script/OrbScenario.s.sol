@@ -14,6 +14,7 @@ contract OrbScenario is Script {
 
     string public oath = "My orb is my promise, and my promise is my orb.";
     uint256 public immutable honoredUntil = 1_700_000_000;
+    uint256 public immutable responsePeriod = 7 * 24 * 60 * 60;
 
     constructor() {
         creatorAddress = vm.envAddress("CREATOR_ADDRESS");
@@ -32,7 +33,7 @@ contract OrbScenario is Script {
 
         vm.startBroadcast(creatorKey);
 
-        orb.swearOath(keccak256(abi.encodePacked(oath)), honoredUntil);
+        orb.swearOath(keccak256(abi.encodePacked(oath)), honoredUntil, responsePeriod);
 
         vm.stopBroadcast();
     }

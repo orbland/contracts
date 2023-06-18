@@ -25,6 +25,11 @@ contract OrbTestBase is Test {
         // keccak hash of "test oath"
         emit Creation();
         orb = new OrbHarness();
+        orb.swearOath(
+            keccak256(abi.encodePacked("test oath")), // oathHash
+            100, // 1_700_000_000 // honoredUntil
+            3600 // responsePeriod
+        );
         orb.setAuctionParameters(0.1 ether, 0.1 ether, 1 days, 5 minutes);
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
@@ -87,6 +92,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
         assertEq(orb.honoredUntil(), 100); // 1_700_000_000
+        assertEq(orb.responsePeriod(), 3600);
 
         assertEq(orb.workaround_baseURI(), "https://static.orb.land/orb/");
 
@@ -130,7 +136,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0xad393d6f)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0xc1ca7121)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -148,19 +154,19 @@ contract TransfersRevertTest is OrbTestBase {
 }
 
 contract SwearOathTest is OrbTestBase {
-    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
 
     function test_swearOathOnlyOwnerControlled() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
 
         vm.prank(owner);
         orb.startAuction();
 
         vm.prank(owner);
         vm.expectRevert(IOrb.AuctionRunning.selector);
-        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
 
         prankAndBid(user, 1 ether);
         vm.warp(orb.auctionEndTime() + 1);
@@ -169,16 +175,17 @@ contract SwearOathTest is OrbTestBase {
 
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
-        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
     }
 
     function test_swearOathCorrectly() public {
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         // keccak hash of "test oath"
-        emit OathSwearing(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100);
-        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100);
+        emit OathSwearing(0xa0a79538f3c69ab225db00333ba71e9265d3835a715fd7e15ada45dc746608bc, 100, 3600);
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
         assertEq(orb.honoredUntil(), 100);
+        assertEq(orb.responsePeriod(), 3600);
     }
 }
 
