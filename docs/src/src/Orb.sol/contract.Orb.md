@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/ede71e56991e5a4a14f114e02bbcc807493c9804/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/b920ffa5c5298491a4db27902136f8424c03170e/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -88,6 +88,16 @@ Honored Until: timestamp until which the Orb Oath is honored for the keeper.
 
 ```solidity
 uint256 public honoredUntil;
+```
+
+
+### responsePeriod
+Response Period: time period in which the keeper promises to respond to an invocation.
+There are no penalties for being late within this contract.
+
+
+```solidity
+uint256 public responsePeriod;
 ```
 
 
@@ -308,15 +318,8 @@ This token represents the Orb and is called the Orb elsewhere in the contract.
 
 
 ```solidity
-constructor(
-    string memory name_,
-    string memory symbol_,
-    uint256 tokenId_,
-    address beneficiary_,
-    bytes32 oathHash_,
-    uint256 honoredUntil_,
-    string memory baseURI_
-) ERC721(name_, symbol_);
+constructor(string memory name_, string memory symbol_, uint256 tokenId_, address beneficiary_, string memory baseURI_)
+    ERC721(name_, symbol_);
 ```
 **Parameters**
 
@@ -326,8 +329,6 @@ constructor(
 |`symbol_`|`string`|       Orb symbol or ticker, used in ERC-721 metadata.|
 |`tokenId_`|`uint256`|      ERC-721 token id of the Orb.|
 |`beneficiary_`|`address`|  Address to receive all Orb proceeds.|
-|`oathHash_`|`bytes32`|     Hash of the Oath taken to create the Orb.|
-|`honoredUntil_`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper.|
 |`baseURI_`|`string`|      Initial baseURI value for tokenURI JSONs.|
 
 
@@ -477,7 +478,10 @@ decreased, unlike with the `extendHonoredUntil()` function.
 
 
 ```solidity
-function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner onlyCreatorControlled;
+function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod)
+    external
+    onlyOwner
+    onlyCreatorControlled;
 ```
 **Parameters**
 
@@ -485,6 +489,7 @@ function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external onlyOwner
 |----|----|-----------|
 |`oathHash`|`bytes32`|        Hash of the Oath taken to create the Orb.|
 |`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper.|
+|`newResponsePeriod`|`uint256`||
 
 
 ### extendHonoredUntil

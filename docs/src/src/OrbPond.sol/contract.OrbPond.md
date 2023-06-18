@@ -1,5 +1,5 @@
 # OrbPond
-[Git Source](https://github.com/orbland/orb/blob/ede71e56991e5a4a14f114e02bbcc807493c9804/src/OrbPond.sol)
+[Git Source](https://github.com/orbland/orb/blob/b920ffa5c5298491a4db27902136f8424c03170e/src/OrbPond.sol)
 
 **Inherits:**
 Ownable
@@ -45,8 +45,6 @@ function createOrb(
     string memory symbol,
     uint256 tokenId,
     address beneficiary,
-    bytes32 oathHash,
-    uint256 honoredUntil,
     string memory baseURI
 ) external onlyOwner;
 ```
@@ -58,8 +56,6 @@ function createOrb(
 |`symbol`|`string`|       Symbol of the Orb, used for display purposes. Suggestion: "ORB".|
 |`tokenId`|`uint256`|      TokenId of the Orb. Only one ERC-721 token will be minted, with this id.|
 |`beneficiary`|`address`|  Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.|
-|`oathHash`|`bytes32`|     Keccak-256 hash of the Orb's Oath.|
-|`honoredUntil`|`uint256`| Timestamp until which the Orb will be honored by its creator.|
 |`baseURI`|`string`|      Initial baseURI of the Orb, used as part of ERC-721 tokenURI.|
 
 
@@ -117,6 +113,6 @@ function transferOrbOwnership(uint256 orbId, address creatorAddress) external on
 ### OrbCreation
 
 ```solidity
-event OrbCreation(uint256 indexed orbId, address indexed orbAddress, bytes32 indexed oathHash, uint256 honoredUntil);
+event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
 ```
 
