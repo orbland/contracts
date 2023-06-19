@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/b920ffa5c5298491a4db27902136f8424c03170e/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/8e1a9d33d24551d76e2256ec589cabf97e8c78aa/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -487,9 +487,9 @@ function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newRespons
 
 |Name|Type|Description|
 |----|----|-----------|
-|`oathHash`|`bytes32`|        Hash of the Oath taken to create the Orb.|
-|`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper.|
-|`newResponsePeriod`|`uint256`||
+|`oathHash`|`bytes32`|          Hash of the Oath taken to create the Orb.|
+|`newHonoredUntil`|`uint256`|   Date until which the Orb creator will honor the Oath for the Orb keeper.|
+|`newResponsePeriod`|`uint256`| Duration within which the Orb creator promises to respond to an invocation.|
 
 
 ### extendHonoredUntil
