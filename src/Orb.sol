@@ -321,8 +321,9 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          by the Orb creator when the Orb is in their control. With `swearOath()`, `honoredUntil` date can be
     ///          decreased, unlike with the `extendHonoredUntil()` function.
     /// @dev     Emits `OathSwearing`.
-    /// @param   oathHash         Hash of the Oath taken to create the Orb.
-    /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb keeper.
+    /// @param   oathHash           Hash of the Oath taken to create the Orb.
+    /// @param   newHonoredUntil    Date until which the Orb creator will honor the Oath for the Orb keeper.
+    /// @param   newResponsePeriod  Duration within which the Orb creator promises to respond to an invocation.
     function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod)
         external
         onlyOwner
