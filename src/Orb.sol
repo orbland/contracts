@@ -137,6 +137,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     address public leadingBidder;
     /// Leading bid: highest current bid. 0 not during the auction and before first bid.
     uint256 public leadingBid;
+    /// Auction Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
+    address public auctionBeneficiary = address(0);
 
     // Invocation and Response State Variables
 
@@ -539,9 +541,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
-    ///          Sets `lastInvocationTime` so that the Orb could be invoked immediately. The price has been set when
-    ///          bidding, now becomes relevant. If no bids were made, resets the state to allow the auction to be
-    ///          started again later.
+    ///          If the auction was started by previous Keeper with `relinquishWithAuction()`, then most of the auction
+    ///          proceeds (minus the royalty) will be sent to the previous Keeper. Sets `lastInvocationTime` so that
+    ///          the Orb could be invoked immediately. The price has been set when bidding, now becomes relevant. If no
+    ///          bids were made, resets the state to allow the auction to be started again later.
     /// @dev     Critical state transition function. Called after `auctionEndTime`, but only if it's not 0. Can be
     ///          called by anyone, although probably will be called by the creator or the winner. Emits `PriceUpdate`
     ///          and `AuctionFinalization`.
@@ -552,7 +555,15 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         if (leadingBidder != address(0)) {
             fundsOf[leadingBidder] -= leadingBid;
-            fundsOf[beneficiary] += leadingBid;
+            if (auctionBeneficiary != address(0)) {
+                uint256 beneficiaryRoyalty = (leadingBid * royaltyNumerator) / FEE_DENOMINATOR;
+                uint256 auctionBeneficiaryShare = leadingBid - beneficiaryRoyalty;
+                fundsOf[beneficiary] += beneficiaryRoyalty;
+                fundsOf[auctionBeneficiary] += auctionBeneficiaryShare;
+                auctionBeneficiary = address(0);
+            } else {
+                fundsOf[beneficiary] += leadingBid;
+            }
 
             lastSettlementTime = block.timestamp;
             lastInvocationTime = block.timestamp - cooldown;
@@ -849,6 +860,26 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         price = 0;
 
         emit Relinquishment(msg.sender);
+
+        _transferOrb(msg.sender, address(this));
+        _withdraw(msg.sender, fundsOf[msg.sender]);
+    }
+
+    /// @notice  Relinquishment with Auction is an alternative to `relinquish()` that starts an auction for the benefit
+    ///          of the Keeper. It's a combination of withdrawing all funds not owed to the beneficiary since last
+    ///          settlement, transferring the Orb to the contract, and immediately starting an auction for it.
+    ///          Once auction is finalized, most of the proceeds (minus the royalty) go to the Keeper.
+    /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment`,
+    ///          `AuctionStart` and `Withdrawal`.
+    function relinquishWithAuction() external onlyKeeper onlyKeeperSolvent {
+        _settle();
+
+        price = 0;
+        auctionBeneficiary = msg.sender;
+        auctionEndTime = block.timestamp + auctionMinimumDuration;
+
+        emit Relinquishment(msg.sender);
+        emit AuctionStart(block.timestamp, auctionEndTime);
 
         _transferOrb(msg.sender, address(this));
         _withdraw(msg.sender, fundsOf[msg.sender]);

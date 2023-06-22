@@ -129,6 +129,7 @@ interface IOrb is IERC165 {
     function leadingBidder() external view returns (address);
     function leadingBid() external view returns (uint256);
     function minimumBid() external view returns (uint256);
+    function auctionBeneficiary() external view returns (address);
 
     function auctionStartingPrice() external view returns (uint256);
     function auctionMinimumBidStep() external view returns (uint256);
@@ -202,6 +203,7 @@ interface IOrb is IERC165 {
 
     // Orb Ownership Functions
     function relinquish() external;
+    function relinquishWithAuction() external;
     function foreclose() external;
 
     // Invoking and Responding Functions
