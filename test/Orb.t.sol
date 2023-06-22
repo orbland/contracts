@@ -136,7 +136,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0xc1ca7121)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0x1d20b18b)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -362,19 +362,24 @@ contract SettingFeesTest is OrbTestBase {
 }
 
 contract SettingCooldownTest is OrbTestBase {
-    event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
+    event CooldownUpdate(
+        uint256 previousCooldown,
+        uint256 indexed newCooldown,
+        uint256 previousFlaggingPeriod,
+        uint256 indexed newFlaggingPeriod
+    );
 
     function test_setCooldownOnlyOwnerControlled() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.setCooldown(1 days);
+        orb.setCooldown(1 days, 2 days);
 
         vm.prank(owner);
         orb.startAuction();
 
         vm.prank(owner);
         vm.expectRevert(IOrb.AuctionRunning.selector);
-        orb.setCooldown(1 days);
+        orb.setCooldown(1 days, 2 days);
 
         prankAndBid(user, 1 ether);
         vm.warp(orb.auctionEndTime() + 1);
@@ -383,22 +388,24 @@ contract SettingCooldownTest is OrbTestBase {
 
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
-        orb.setCooldown(1 days);
+        orb.setCooldown(1 days, 2 days);
     }
 
     function test_revertsWhenCooldownTooLong() public {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(IOrb.CooldownExceedsMaximumDuration.selector, 3651 days, 3650 days));
-        orb.setCooldown(3651 days);
+        orb.setCooldown(3651 days, 2 days);
     }
 
     function test_setCooldownSucceedsCorrectly() public {
         assertEq(orb.cooldown(), 7 days);
+        assertEq(orb.flaggingPeriod(), 7 days);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
-        emit CooldownUpdate(7 days, 1 days);
-        orb.setCooldown(1 days);
+        emit CooldownUpdate(7 days, 1 days, 7 days, 2 days);
+        orb.setCooldown(1 days, 2 days);
         assertEq(orb.cooldown(), 1 days);
+        assertEq(orb.flaggingPeriod(), 2 days);
     }
 }
 

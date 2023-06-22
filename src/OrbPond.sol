@@ -63,13 +63,14 @@ contract OrbPond is Ownable {
         uint256 keeperTaxNumerator,
         uint256 royaltyNumerator,
         uint256 cooldown,
+        uint256 flaggingPeriod,
         uint256 cleartextMaximumLength
     ) external onlyOwner {
         orbs[orbId].setAuctionParameters(
             auctionStartingPrice, auctionMinimumBidStep, auctionMinimumDuration, auctionBidExtension
         );
         orbs[orbId].setFees(keeperTaxNumerator, royaltyNumerator);
-        orbs[orbId].setCooldown(cooldown);
+        orbs[orbId].setCooldown(cooldown, flaggingPeriod);
         orbs[orbId].setCleartextMaximumLength(cleartextMaximumLength);
     }
 

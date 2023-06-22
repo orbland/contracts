@@ -27,6 +27,7 @@ abstract contract DeployBase is Script {
     uint256 private immutable royaltyNumerator;
 
     uint256 private immutable cooldown;
+    uint256 private immutable flaggingPeriod;
 
     uint256 private immutable cleartextMaximumLength;
 
@@ -49,6 +50,7 @@ abstract contract DeployBase is Script {
         uint256 _keeperTaxNumerator,
         uint256 _royaltyNumerator,
         uint256 _cooldown,
+        uint256 _flaggingPeriod,
         uint256 _cleartextMaximumLength
     ) {
         beneficiaryAddresses = _beneficiaryAddresses;
@@ -68,6 +70,7 @@ abstract contract DeployBase is Script {
         royaltyNumerator = _royaltyNumerator;
 
         cooldown = _cooldown;
+        flaggingPeriod = _flaggingPeriod;
 
         cleartextMaximumLength = _cleartextMaximumLength;
     }
@@ -100,6 +103,7 @@ abstract contract DeployBase is Script {
             keeperTaxNumerator,
             royaltyNumerator,
             cooldown,
+            flaggingPeriod,
             cleartextMaximumLength
         );
 

@@ -26,6 +26,7 @@ contract DeployMainnet is DeployBase {
     uint256 public immutable royaltyNumerator = 10_00;
 
     uint256 public immutable cooldown = 7 days;
+    uint256 public immutable flaggingPeriod = 7 days;
 
     uint256 public immutable cleartextMaximumLength = 280;
 
@@ -44,6 +45,7 @@ contract DeployMainnet is DeployBase {
             keeperTaxNumerator,
             royaltyNumerator,
             cooldown,
+            flaggingPeriod,
             cleartextMaximumLength
         )
     /* solhint-disable no-empty-blocks */
