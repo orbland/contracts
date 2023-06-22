@@ -58,7 +58,12 @@ interface IOrb is IERC165 {
         uint256 previousRoyaltyNumerator,
         uint256 indexed newRoyaltyNumerator
     );
-    event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
+    event CooldownUpdate(
+        uint256 previousCooldown,
+        uint256 indexed newCooldown,
+        uint256 previousFlaggingPeriod,
+        uint256 indexed newFlaggingPeriod
+    );
     event CleartextMaximumLengthUpdate(
         uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength
     );
@@ -157,6 +162,7 @@ interface IOrb is IERC165 {
     function flaggedResponsesCount() external view returns (uint256);
 
     function cooldown() external view returns (uint256);
+    function flaggingPeriod() external view returns (uint256);
     function lastInvocationTime() external view returns (uint256);
 
     function cleartextMaximumLength() external view returns (uint256);
@@ -215,6 +221,6 @@ interface IOrb is IERC165 {
         uint256 newBidExtension
     ) external;
     function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external;
-    function setCooldown(uint256 newCooldown) external;
+    function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external;
     function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 }

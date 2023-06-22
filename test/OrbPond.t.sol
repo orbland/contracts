@@ -74,6 +74,7 @@ contract ConfigureTest is OrbPondTestBase {
             20_00, // keeperTaxNumerator
             20_00, // royaltyNumerator
             3 days, // cooldownDuration
+            2 days, // flaggingPeriodDuration
             100 // cooldownMaximumDuration
         );
     }
@@ -94,7 +95,12 @@ contract ConfigureTest is OrbPondTestBase {
         uint256 previousRoyaltyNumerator,
         uint256 indexed newRoyaltyNumerator
     );
-    event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
+    event CooldownUpdate(
+        uint256 previousCooldown,
+        uint256 indexed newCooldown,
+        uint256 previousFlaggingPeriod,
+        uint256 indexed newFlaggingPeriod
+    );
     event CleartextMaximumLengthUpdate(
         uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength
     );
@@ -111,6 +117,7 @@ contract ConfigureTest is OrbPondTestBase {
         assertEq(orb.royaltyNumerator(), 10_00);
 
         assertEq(orb.cooldown(), 7 days);
+        assertEq(orb.flaggingPeriod(), 7 days);
 
         assertEq(orb.cleartextMaximumLength(), 280);
 
@@ -135,7 +142,7 @@ contract ConfigureTest is OrbPondTestBase {
         );
 
         vm.expectEmit(true, true, true, true);
-        emit CooldownUpdate(7 days, 3 days);
+        emit CooldownUpdate(7 days, 3 days, 7 days, 2 days);
 
         vm.expectEmit(true, true, true, true);
         emit CleartextMaximumLengthUpdate(280, 100);
@@ -150,6 +157,7 @@ contract ConfigureTest is OrbPondTestBase {
             20_00, // keeperTaxNumerator
             20_00, // royaltyNumerator
             3 days, // cooldown
+            2 days, // flaggingPeriodDuration
             100 // cleartextMaximumLength
         );
 
@@ -162,6 +170,7 @@ contract ConfigureTest is OrbPondTestBase {
         assertEq(orb.royaltyNumerator(), 20_00);
 
         assertEq(orb.cooldown(), 3 days);
+        assertEq(orb.flaggingPeriod(), 2 days);
 
         assertEq(orb.cleartextMaximumLength(), 100);
     }
