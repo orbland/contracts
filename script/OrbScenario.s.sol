@@ -12,7 +12,10 @@ contract OrbScenario is Script {
     Orb public orb;
     OrbPond public orbPond;
 
-    string public oath = "My orb is my promise, and my promise is my orb.";
+    /* solhint-disable quotes,max-line-length */
+    string public oath =
+        '{"oath":"My orb is my promise, and my promise is my orb.","allowPrivateInvocations":true,"allowPrivateResponses":true,"allowRevealOwnResponses":true,"allowReadPastResponses":true,"allowRevealPastResponses":true}';
+    /* solhint-enable quotes,max-line-length */
     uint256 public immutable honoredUntil = 1_700_000_000;
     uint256 public immutable responsePeriod = 7 * 24 * 60 * 60;
 

@@ -41,3 +41,5 @@ deploy-mainnet :; @forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-u
 
 # This is the private key of account from the mnemonic from the "make anvil" command
 deploy-anvil :; @forge script script/DeployLocal.s.sol:DeployLocal --rpc-url http://localhost:8545 --broadcast
+
+scenario-anvil :; @forge script script/OrbScenario.s.sol:OrbScenario --rpc-url http://localhost:8545 --broadcast
