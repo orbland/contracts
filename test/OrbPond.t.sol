@@ -8,7 +8,7 @@ import {OrbHarness} from "./harness/OrbHarness.sol";
 import {Orb} from "src/Orb.sol";
 import {IOrb} from "src/IOrb.sol";
 
-/* solhint-disable func-name-mixedcase */
+/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbPondTestBase is Test {
     OrbPond internal orbPond;
 
@@ -70,6 +70,7 @@ contract ConfigureTest is OrbPondTestBase {
             0.1 ether, // auctionStartingPrice
             0.1 ether, // auctionMinimumBidStep
             1 days, // auctionMinimumDuration
+            1 days, // auctionKeeperMinimumDuration
             5 minutes, // auctionBidExtension
             20_00, // keeperTaxNumerator
             20_00, // royaltyNumerator
@@ -86,6 +87,8 @@ contract ConfigureTest is OrbPondTestBase {
         uint256 indexed newMinimumBidStep,
         uint256 previousMinimumDuration,
         uint256 indexed newMinimumDuration,
+        uint256 previousKeeperMinimumDuration,
+        uint256 newKeeperMinimumDuration,
         uint256 previousBidExtension,
         uint256 newBidExtension
     );
@@ -111,6 +114,7 @@ contract ConfigureTest is OrbPondTestBase {
         assertEq(orb.auctionStartingPrice(), 0);
         assertEq(orb.auctionMinimumBidStep(), 1);
         assertEq(orb.auctionMinimumDuration(), 1 days);
+        assertEq(orb.auctionKeeperMinimumDuration(), 1 days);
         assertEq(orb.auctionBidExtension(), 5 minutes);
 
         assertEq(orb.keeperTaxNumerator(), 10_00);
@@ -129,6 +133,8 @@ contract ConfigureTest is OrbPondTestBase {
             0.2 ether, // newMinimumBidStep
             1 days, // previousMinimumDuration
             2 days, // newMinimumDuration
+            1 days, // previousKeeperMinimumDuration
+            6 hours, // newKeeperMinimumDuration
             5 minutes, // previousBidExtension
             10 minutes // newBidExtension
         );
@@ -153,6 +159,7 @@ contract ConfigureTest is OrbPondTestBase {
             0.2 ether, // auctionStartingPrice
             0.2 ether, // auctionMinimumBidStep
             2 days, // auctionMinimumDuration
+            6 hours, // auctionMinimumDuration
             10 minutes, // auctionBidExtension
             20_00, // keeperTaxNumerator
             20_00, // royaltyNumerator
@@ -164,6 +171,7 @@ contract ConfigureTest is OrbPondTestBase {
         assertEq(orb.auctionStartingPrice(), 0.2 ether);
         assertEq(orb.auctionMinimumBidStep(), 0.2 ether);
         assertEq(orb.auctionMinimumDuration(), 2 days);
+        assertEq(orb.auctionKeeperMinimumDuration(), 6 hours);
         assertEq(orb.auctionBidExtension(), 10 minutes);
 
         assertEq(orb.keeperTaxNumerator(), 20_00);

@@ -30,7 +30,7 @@ contract OrbTestBase is Test {
             100, // 1_700_000_000 // honoredUntil
             3600 // responsePeriod
         );
-        orb.setAuctionParameters(0.1 ether, 0.1 ether, 1 days, 5 minutes);
+        orb.setAuctionParameters(0.1 ether, 0.1 ether, 1 days, 6 hours, 5 minutes);
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
         beneficiary = address(0xC0FFEE);
@@ -109,6 +109,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.auctionStartingPrice(), 0.1 ether);
         assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
         assertEq(orb.auctionMinimumDuration(), 1 days);
+        assertEq(orb.auctionKeeperMinimumDuration(), 6 hours);
         assertEq(orb.auctionBidExtension(), 5 minutes);
 
         assertEq(orb.auctionBeneficiary(), address(0));
@@ -137,7 +138,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0xb691a11d)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0xda3793a8)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -241,6 +242,8 @@ contract SettingAuctionParametersTest is OrbTestBase {
         uint256 indexed newMinimumBidStep,
         uint256 previousMinimumDuration,
         uint256 indexed newMinimumDuration,
+        uint256 previousKeeperMinimumDuration,
+        uint256 newKeeperMinimumDuration,
         uint256 previousBidExtension,
         uint256 newBidExtension
     );
@@ -248,14 +251,14 @@ contract SettingAuctionParametersTest is OrbTestBase {
     function test_setAuctionParametersOnlyOwnerControlled() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
 
         vm.prank(owner);
         orb.startAuction();
 
         vm.prank(owner);
         vm.expectRevert(IOrb.AuctionRunning.selector);
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
 
         prankAndBid(user, 1 ether);
         vm.warp(orb.auctionEndTime() + 1);
@@ -264,25 +267,31 @@ contract SettingAuctionParametersTest is OrbTestBase {
 
         vm.prank(owner);
         vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
     }
 
     function test_revertIfAuctionDurationZero() public {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidAuctionDuration.selector, 0));
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 10 minutes);
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 1 days, 10 minutes);
+    }
+
+    function test_revertIfKeeperAuctionDurationZero() public {
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidAuctionDuration.selector, 0));
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 0, 10 minutes);
     }
 
     function test_boundMinBidStepToAbove0() public {
         assertEq(orb.auctionStartingPrice(), 0.1 ether);
         assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
         vm.prank(owner);
-        orb.setAuctionParameters(0, 0, 1 days, 10 minutes);
+        orb.setAuctionParameters(0, 0, 1 days, 1 days, 10 minutes);
         assertEq(orb.auctionStartingPrice(), 0);
         assertEq(orb.auctionMinimumBidStep(), 1);
 
         vm.prank(owner);
-        orb.setAuctionParameters(0, 2, 1 days, 10 minutes);
+        orb.setAuctionParameters(0, 2, 1 days, 1 days, 10 minutes);
         assertEq(orb.auctionStartingPrice(), 0);
         assertEq(orb.auctionMinimumBidStep(), 2);
     }
@@ -291,14 +300,18 @@ contract SettingAuctionParametersTest is OrbTestBase {
         assertEq(orb.auctionStartingPrice(), 0.1 ether);
         assertEq(orb.auctionMinimumBidStep(), 0.1 ether);
         assertEq(orb.auctionMinimumDuration(), 1 days);
+        assertEq(orb.auctionKeeperMinimumDuration(), 6 hours);
         assertEq(orb.auctionBidExtension(), 5 minutes);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
-        emit AuctionParametersUpdate(0.1 ether, 0.2 ether, 0.1 ether, 0.2 ether, 1 days, 2 days, 5 minutes, 10 minutes);
-        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 10 minutes);
+        emit AuctionParametersUpdate(
+            0.1 ether, 0.2 ether, 0.1 ether, 0.2 ether, 1 days, 2 days, 6 hours, 1 days, 5 minutes, 10 minutes
+        );
+        orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
         assertEq(orb.auctionStartingPrice(), 0.2 ether);
         assertEq(orb.auctionMinimumBidStep(), 0.2 ether);
         assertEq(orb.auctionMinimumDuration(), 2 days);
+        assertEq(orb.auctionKeeperMinimumDuration(), 1 days);
         assertEq(orb.auctionBidExtension(), 10 minutes);
     }
 }
@@ -1675,7 +1688,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         vm.expectEmit(true, true, true, true);
         emit Relinquishment(user);
         vm.expectEmit(true, true, true, true);
-        emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
+        emit AuctionStart(block.timestamp, block.timestamp + orb.auctionKeeperMinimumDuration());
         vm.expectEmit(true, true, true, true);
         emit Withdrawal(user, effectiveFunds);
         vm.prank(user);
