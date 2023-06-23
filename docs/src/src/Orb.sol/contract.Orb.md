@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/8e1a9d33d24551d76e2256ec589cabf97e8c78aa/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/133c7cb7df46e92042d00791655e7fc3990e50c3/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -190,6 +190,17 @@ uint256 public auctionMinimumDuration = 1 days;
 ```
 
 
+### auctionKeeperMinimumDuration
+Keeper's Auction minimum duration: auction started by the keeper via `relinquishWithAuction()` will run for at
+least this long. Initial value is 1 day, and this value cannot be set to zero, as it would prevent any bids
+from being made.
+
+
+```solidity
+uint256 public auctionKeeperMinimumDuration = 1 days;
+```
+
+
 ### auctionBidExtension
 Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
 for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
@@ -228,12 +239,30 @@ uint256 public leadingBid;
 ```
 
 
+### auctionBeneficiary
+Auction Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
+
+
+```solidity
+address public auctionBeneficiary = address(0);
+```
+
+
 ### cooldown
 Cooldown: how often the Orb can be invoked.
 
 
 ```solidity
 uint256 public cooldown = 7 days;
+```
+
+
+### flaggingPeriod
+Flagging Period: for how long after an invocation the keeper can flag the response.
+
+
+```solidity
+uint256 public flaggingPeriod = 7 days;
 ```
 
 
@@ -539,6 +568,7 @@ function setAuctionParameters(
     uint256 newStartingPrice,
     uint256 newMinimumBidStep,
     uint256 newMinimumDuration,
+    uint256 newKeeperMinimumDuration,
     uint256 newBidExtension
 ) external onlyOwner onlyCreatorControlled;
 ```
@@ -549,6 +579,7 @@ function setAuctionParameters(
 |`newStartingPrice`|`uint256`|   New starting price for the auction. Can be 0.|
 |`newMinimumBidStep`|`uint256`|  New minimum bid step for the auction. Will always be set to at least 1.|
 |`newMinimumDuration`|`uint256`| New minimum duration for the auction. Must be > 0.|
+|`newKeeperMinimumDuration`|`uint256`||
 |`newBidExtension`|`uint256`|    New bid extension for the auction. Can be 0.|
 
 
@@ -580,13 +611,14 @@ creator when the Orb is in their control.
 
 
 ```solidity
-function setCooldown(uint256 newCooldown) external onlyOwner onlyCreatorControlled;
+function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external onlyOwner onlyCreatorControlled;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`newCooldown`|`uint256`| New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.|
+|`newFlaggingPeriod`|`uint256`||
 
 
 ### setCleartextMaximumLength
@@ -675,9 +707,10 @@ function bid(uint256 amount, uint256 priceIfWon) external payable;
 ### finalizeAuction
 
 Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
-Sets `lastInvocationTime` so that the Orb could be invoked immediately. The price has been set when
-bidding, now becomes relevant. If no bids were made, resets the state to allow the auction to be
-started again later.
+If the auction was started by previous Keeper with `relinquishWithAuction()`, then most of the auction
+proceeds (minus the royalty) will be sent to the previous Keeper. Sets `lastInvocationTime` so that
+the Orb could be invoked immediately. The price has been set when bidding, now becomes relevant. If no
+bids were made, resets the state to allow the auction to be started again later.
 
 *Critical state transition function. Called after `auctionEndTime`, but only if it's not 0. Can be
 called by anyone, although probably will be called by the creator or the winner. Emits `PriceUpdate`
@@ -956,6 +989,21 @@ zero would be more practical.
 
 ```solidity
 function relinquish() external onlyKeeper onlyKeeperSolvent;
+```
+
+### relinquishWithAuction
+
+Relinquishment with Auction is an alternative to `relinquish()` that starts an auction for the benefit
+of the Keeper. It's a combination of withdrawing all funds not owed to the beneficiary since last
+settlement, transferring the Orb to the contract, and immediately starting an auction for it.
+Once auction is finalized, most of the proceeds (minus the royalty) go to the Keeper.
+
+*Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment`,
+`AuctionStart` and `Withdrawal`.*
+
+
+```solidity
+function relinquishWithAuction() external onlyKeeper onlyKeeperSolvent;
 ```
 
 ### foreclose

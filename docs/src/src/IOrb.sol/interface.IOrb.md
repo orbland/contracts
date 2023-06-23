@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/8e1a9d33d24551d76e2256ec589cabf97e8c78aa/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/133c7cb7df46e92042d00791655e7fc3990e50c3/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -48,6 +48,13 @@ function leadingBid() external view returns (uint256);
 function minimumBid() external view returns (uint256);
 ```
 
+### auctionBeneficiary
+
+
+```solidity
+function auctionBeneficiary() external view returns (address);
+```
+
 ### auctionStartingPrice
 
 
@@ -67,6 +74,13 @@ function auctionMinimumBidStep() external view returns (uint256);
 
 ```solidity
 function auctionMinimumDuration() external view returns (uint256);
+```
+
+### auctionKeeperMinimumDuration
+
+
+```solidity
+function auctionKeeperMinimumDuration() external view returns (uint256);
 ```
 
 ### auctionBidExtension
@@ -182,6 +196,13 @@ function flaggedResponsesCount() external view returns (uint256);
 
 ```solidity
 function cooldown() external view returns (uint256);
+```
+
+### flaggingPeriod
+
+
+```solidity
+function flaggingPeriod() external view returns (uint256);
 ```
 
 ### lastInvocationTime
@@ -310,6 +331,13 @@ function purchase(
 function relinquish() external;
 ```
 
+### relinquishWithAuction
+
+
+```solidity
+function relinquishWithAuction() external;
+```
+
 ### foreclose
 
 
@@ -374,6 +402,7 @@ function setAuctionParameters(
     uint256 newStartingPrice,
     uint256 newMinimumBidStep,
     uint256 newMinimumDuration,
+    uint256 newKeeperMinimumDuration,
     uint256 newBidExtension
 ) external;
 ```
@@ -389,7 +418,7 @@ function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) ext
 
 
 ```solidity
-function setCooldown(uint256 newCooldown) external;
+function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external;
 ```
 
 ### setCleartextMaximumLength
@@ -518,6 +547,8 @@ event AuctionParametersUpdate(
     uint256 indexed newMinimumBidStep,
     uint256 previousMinimumDuration,
     uint256 indexed newMinimumDuration,
+    uint256 previousKeeperMinimumDuration,
+    uint256 newKeeperMinimumDuration,
     uint256 previousBidExtension,
     uint256 newBidExtension
 );
@@ -537,7 +568,12 @@ event FeesUpdate(
 ### CooldownUpdate
 
 ```solidity
-event CooldownUpdate(uint256 previousCooldown, uint256 indexed newCooldown);
+event CooldownUpdate(
+    uint256 previousCooldown,
+    uint256 indexed newCooldown,
+    uint256 previousFlaggingPeriod,
+    uint256 indexed newFlaggingPeriod
+);
 ```
 
 ### CleartextMaximumLengthUpdate

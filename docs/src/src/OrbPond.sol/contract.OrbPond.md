@@ -1,5 +1,5 @@
 # OrbPond
-[Git Source](https://github.com/orbland/orb/blob/8e1a9d33d24551d76e2256ec589cabf97e8c78aa/src/OrbPond.sol)
+[Git Source](https://github.com/orbland/orb/blob/133c7cb7df46e92042d00791655e7fc3990e50c3/src/OrbPond.sol)
 
 **Inherits:**
 Ownable
@@ -70,10 +70,12 @@ function configureOrb(
     uint256 auctionStartingPrice,
     uint256 auctionMinimumBidStep,
     uint256 auctionMinimumDuration,
+    uint256 auctionKeeperMinimumDuration,
     uint256 auctionBidExtension,
     uint256 keeperTaxNumerator,
     uint256 royaltyNumerator,
     uint256 cooldown,
+    uint256 flaggingPeriod,
     uint256 cleartextMaximumLength
 ) external onlyOwner;
 ```
@@ -81,15 +83,17 @@ function configureOrb(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orbId`|`uint256`|                  Id of the Orb to configure.|
-|`auctionStartingPrice`|`uint256`|   Starting price of the Orb's auction.|
-|`auctionMinimumBidStep`|`uint256`|  Minimum difference between bids in the Orb's auction.|
-|`auctionMinimumDuration`|`uint256`| Minimum duration of the Orb's auction.|
-|`auctionBidExtension`|`uint256`|    Auction duration extension for late bids during the Orb auction.|
-|`keeperTaxNumerator`|`uint256`|     Harberger tax numerator of the Orb, in basis points.|
-|`royaltyNumerator`|`uint256`|       Royalty numerator of the Orb, in basis points.|
-|`cooldown`|`uint256`|               Cooldown of the Orb in seconds.|
-|`cleartextMaximumLength`|`uint256`| Invocation cleartext maximum length for the Orb.|
+|`orbId`|`uint256`|                        Id of the Orb to configure.|
+|`auctionStartingPrice`|`uint256`|         Starting price of the Orb's auction.|
+|`auctionMinimumBidStep`|`uint256`|        Minimum difference between bids in the Orb's auction.|
+|`auctionMinimumDuration`|`uint256`|       Minimum duration of the Orb's auction.|
+|`auctionKeeperMinimumDuration`|`uint256`| Minimum duration of the Orb's auction.|
+|`auctionBidExtension`|`uint256`|          Auction duration extension for late bids during the Orb auction.|
+|`keeperTaxNumerator`|`uint256`|           Harberger tax numerator of the Orb, in basis points.|
+|`royaltyNumerator`|`uint256`|             Royalty numerator of the Orb, in basis points.|
+|`cooldown`|`uint256`|                     Cooldown of the Orb in seconds.|
+|`flaggingPeriod`|`uint256`||
+|`cleartextMaximumLength`|`uint256`|       Invocation cleartext maximum length for the Orb.|
 
 
 ### transferOrbOwnership
