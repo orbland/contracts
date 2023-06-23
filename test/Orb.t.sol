@@ -814,6 +814,30 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(user2), funds - amount);
         assertEq(orb.fundsOf(user), userFunds + auctionBeneficiaryShare);
     }
+
+    function test_finalizeAuctionWithBeneficiaryWithoutWinner() public {
+        makeKeeperAndWarp(user, 1 ether);
+        assertEq(orb.auctionBeneficiary(), address(0));
+        vm.prank(user);
+        orb.relinquishWithAuction();
+        uint256 contractBalance = address(orb).balance;
+        assertEq(orb.auctionBeneficiary(), user);
+        vm.warp(orb.auctionEndTime() + 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit AuctionFinalization(address(0), 0);
+        orb.finalizeAuction();
+
+        // Assert storage after
+        assertEq(orb.auctionBeneficiary(), user);
+        assertEq(orb.auctionEndTime(), 0);
+        assertEq(orb.leadingBid(), 0);
+        assertEq(orb.leadingBidder(), address(0));
+        assertEq(orb.price(), 0);
+
+        orb.startAuction();
+        assertEq(orb.auctionBeneficiary(), address(0));
+    }
 }
 
 contract ListingTest is OrbTestBase {
