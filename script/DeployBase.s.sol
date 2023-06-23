@@ -7,6 +7,7 @@ import {Orb} from "src/Orb.sol";
 import {OrbPond} from "src/OrbPond.sol";
 import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 
+/* solhint-disable private-vars-leading-underscore */
 abstract contract DeployBase is Script {
     // Environment specific variables.
     address[] private beneficiaryAddresses;
@@ -21,6 +22,7 @@ abstract contract DeployBase is Script {
     uint256 private immutable auctionStartingPrice;
     uint256 private immutable auctionMinimumBidStep;
     uint256 private immutable auctionMinimumDuration;
+    uint256 private immutable auctionKeeperMinimumDuration;
     uint256 private immutable auctionBidExtension;
 
     uint256 private immutable keeperTaxNumerator;
@@ -46,6 +48,7 @@ abstract contract DeployBase is Script {
         uint256 _auctionStartingPrice,
         uint256 _auctionMinimumBidStep,
         uint256 _auctionMinimumDuration,
+        uint256 _auctionKeeperMinimumDuration,
         uint256 _auctionBidExtension,
         uint256 _keeperTaxNumerator,
         uint256 _royaltyNumerator,
@@ -64,6 +67,7 @@ abstract contract DeployBase is Script {
         auctionStartingPrice = _auctionStartingPrice;
         auctionMinimumBidStep = _auctionMinimumBidStep;
         auctionMinimumDuration = _auctionMinimumDuration;
+        auctionKeeperMinimumDuration = _auctionKeeperMinimumDuration;
         auctionBidExtension = _auctionBidExtension;
 
         keeperTaxNumerator = _keeperTaxNumerator;
@@ -99,6 +103,7 @@ abstract contract DeployBase is Script {
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,
+            auctionKeeperMinimumDuration,
             auctionBidExtension,
             keeperTaxNumerator,
             royaltyNumerator,
