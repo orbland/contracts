@@ -20,6 +20,7 @@ contract DeployMainnet is DeployBase {
     uint256 public immutable auctionStartingPrice = 0.1 ether;
     uint256 public immutable auctionMinimumBidStep = 0.1 ether;
     uint256 public immutable auctionMinimumDuration = 1 days;
+    uint256 public immutable auctionKeeperMinimumDuration = 1 days;
     uint256 public immutable auctionBidExtension = 3 minutes;
 
     uint256 public immutable keeperTaxNumerator = 150_00;
@@ -41,6 +42,7 @@ contract DeployMainnet is DeployBase {
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,
+            auctionKeeperMinimumDuration,
             auctionBidExtension,
             keeperTaxNumerator,
             royaltyNumerator,

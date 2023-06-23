@@ -20,6 +20,7 @@ contract DeployLocal is DeployBase {
     uint256 public immutable auctionStartingPrice = 0.1 ether;
     uint256 public immutable auctionMinimumBidStep = 0.1 ether;
     uint256 public immutable auctionMinimumDuration = 2 minutes;
+    uint256 public immutable auctionKeeperMinimumDuration = 1 minutes;
     uint256 public immutable auctionBidExtension = 30 seconds;
 
     uint256 public immutable keeperTaxNumerator = 10_00;
@@ -41,6 +42,7 @@ contract DeployLocal is DeployBase {
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,
+            auctionKeeperMinimumDuration,
             auctionBidExtension,
             keeperTaxNumerator,
             royaltyNumerator,
