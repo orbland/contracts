@@ -7,7 +7,7 @@ import {OrbHarness} from "./harness/OrbHarness.sol";
 import {Orb} from "src/Orb.sol";
 import {IOrb} from "src/IOrb.sol";
 
-/* solhint-disable func-name-mixedcase */
+/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbTestBase is Test {
     OrbHarness internal orb;
 
@@ -111,6 +111,7 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.auctionMinimumDuration(), 1 days);
         assertEq(orb.auctionBidExtension(), 5 minutes);
 
+        assertEq(orb.auctionBeneficiary(), address(0));
         assertEq(orb.auctionEndTime(), 0);
         assertEq(orb.leadingBidder(), address(0));
         assertEq(orb.leadingBid(), 0);
@@ -749,6 +750,56 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
         assertEq(orb.fundsOf(user), funds - amount);
         assertEq(orb.price(), amount);
+    }
+
+    function test_finalizeAuctionWithBeneficiary() public {
+        makeKeeperAndWarp(user, 1 ether);
+        assertEq(orb.auctionBeneficiary(), address(0));
+        vm.prank(user);
+        orb.relinquishWithAuction();
+        uint256 contractBalance = address(orb).balance;
+        assertEq(orb.auctionBeneficiary(), user);
+
+        uint256 amount = orb.minimumBid();
+        uint256 funds = fundsRequiredToBidOneYear(amount);
+        // Bid `amount` and transfer `funds` to the contract
+        prankAndBid(user2, amount);
+        vm.warp(orb.auctionEndTime() + 1);
+
+        // Assert storage before
+        assertEq(orb.leadingBidder(), user2);
+        assertEq(orb.leadingBid(), amount);
+        assertEq(orb.price(), amount);
+        assertEq(orb.fundsOf(user2), funds);
+        assertEq(orb.fundsOf(address(orb)), 0);
+
+        uint256 beneficiaryRoyalty = (amount * orb.royaltyNumerator()) / orb.feeDenominator();
+        uint256 auctionBeneficiaryShare = amount - beneficiaryRoyalty;
+        uint256 userFunds = orb.fundsOf(user);
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
+
+        vm.expectEmit(true, true, true, true);
+        emit AuctionFinalization(user2, amount);
+        vm.expectEmit(true, true, true, true);
+        emit PriceUpdate(0, amount);
+
+        orb.finalizeAuction();
+
+        // Assert storage after
+        // storage that is reset
+        assertEq(orb.auctionEndTime(), 0);
+        assertEq(orb.leadingBid(), 0);
+        assertEq(orb.leadingBidder(), address(0));
+        assertEq(orb.price(), amount);
+
+        // storage that persists
+        assertEq(address(orb).balance, contractBalance + funds);
+        assertEq(orb.fundsOf(beneficiary), beneficiaryFunds + beneficiaryRoyalty);
+        assertEq(orb.ownerOf(orb.tokenId()), user2);
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+        assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
+        assertEq(orb.fundsOf(user2), funds - amount);
+        assertEq(orb.fundsOf(user), userFunds + auctionBeneficiaryShare);
     }
 }
 
@@ -1575,6 +1626,63 @@ contract RelinquishmentTest is OrbTestBase {
         orb.relinquish();
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
         assertEq(orb.price(), 0);
+    }
+}
+
+contract RelinquishmentWithAuctionTest is OrbTestBase {
+    function test_revertsIfNotKeeper() public {
+        uint256 leadingBid = 10 ether;
+        makeKeeperAndWarp(user, leadingBid);
+        vm.expectRevert(IOrb.NotKeeper.selector);
+        vm.prank(user2);
+        orb.relinquishWithAuction();
+
+        vm.prank(user);
+        orb.relinquishWithAuction();
+        assertEq(orb.ownerOf(orb.tokenId()), address(orb));
+    }
+
+    function test_revertsIfKeeperInsolvent() public {
+        makeKeeperAndWarp(user, 1 ether);
+        vm.warp(block.timestamp + 1300 days);
+        vm.prank(user);
+        vm.expectRevert(IOrb.KeeperInsolvent.selector);
+        orb.relinquishWithAuction();
+        vm.warp(block.timestamp - 1300 days);
+        vm.prank(user);
+        orb.relinquishWithAuction();
+        assertEq(orb.ownerOf(orb.tokenId()), address(orb));
+    }
+
+    function test_settlesFirst() public {
+        makeKeeperAndWarp(user, 1 ether);
+        // after making `user` the current keeper of the Orb, `makeKeeperAndWarp(user, )` warps 30 days into the future
+        assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
+        vm.prank(user);
+        orb.relinquishWithAuction();
+        assertEq(orb.lastSettlementTime(), block.timestamp);
+    }
+
+    event Relinquishment(address indexed formerKeeper);
+    event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
+    event Withdrawal(address indexed recipient, uint256 indexed amount);
+
+    function test_succeedsCorrectly() public {
+        makeKeeperAndWarp(user, 1 ether);
+        vm.prank(user);
+        assertEq(orb.ownerOf(orb.tokenId()), user);
+        uint256 effectiveFunds = effectiveFundsOf(user);
+        vm.expectEmit(true, true, true, true);
+        emit Relinquishment(user);
+        vm.expectEmit(true, true, true, true);
+        emit AuctionStart(block.timestamp, block.timestamp + orb.auctionMinimumDuration());
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(user, effectiveFunds);
+        vm.prank(user);
+        orb.relinquishWithAuction();
+        assertEq(orb.ownerOf(orb.tokenId()), address(orb));
+        assertEq(orb.price(), 0);
+        assertEq(orb.auctionBeneficiary(), user);
     }
 }
 
