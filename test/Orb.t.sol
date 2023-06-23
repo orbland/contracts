@@ -1684,6 +1684,9 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         assertEq(orb.ownerOf(orb.tokenId()), user);
+        assertEq(orb.price(), 1 ether);
+        assertEq(orb.auctionBeneficiary(), address(0));
+        assertEq(orb.auctionEndTime(), 0);
         uint256 effectiveFunds = effectiveFundsOf(user);
         vm.expectEmit(true, true, true, true);
         emit Relinquishment(user);
@@ -1696,6 +1699,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
         assertEq(orb.price(), 0);
         assertEq(orb.auctionBeneficiary(), user);
+        assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionKeeperMinimumDuration());
     }
 }
 
