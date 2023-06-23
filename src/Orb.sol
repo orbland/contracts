@@ -127,6 +127,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
     /// cannot be set to zero, as it would prevent any bids from being made.
     uint256 public auctionMinimumDuration = 1 days;
+    /// Keeper's Auction minimum duration: auction started by the keeper via `relinquishWithAuction()` will run for at
+    /// least this long. Initial value is 1 day, and this value cannot be set to zero, as it would prevent any bids
+    /// from being made.
+    uint256 public auctionKeeperMinimumDuration = 1 days;
     /// Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
     /// long. Initial value is 5 minutes.
@@ -370,21 +374,27 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         uint256 newStartingPrice,
         uint256 newMinimumBidStep,
         uint256 newMinimumDuration,
+        uint256 newKeeperMinimumDuration,
         uint256 newBidExtension
     ) external onlyOwner onlyCreatorControlled {
         if (newMinimumDuration == 0) {
             revert InvalidAuctionDuration(newMinimumDuration);
+        }
+        if (newKeeperMinimumDuration == 0) {
+            revert InvalidAuctionDuration(newKeeperMinimumDuration);
         }
 
         uint256 previousStartingPrice = auctionStartingPrice;
         auctionStartingPrice = newStartingPrice;
 
         uint256 previousMinimumBidStep = auctionMinimumBidStep;
-        uint256 boundedMinimumBidStep = newMinimumBidStep > 0 ? newMinimumBidStep : 1;
-        auctionMinimumBidStep = boundedMinimumBidStep;
+        auctionMinimumBidStep = newMinimumBidStep > 0 ? newMinimumBidStep : 1;
 
         uint256 previousMinimumDuration = auctionMinimumDuration;
         auctionMinimumDuration = newMinimumDuration;
+
+        uint256 previousKeeperMinimumDuration = auctionKeeperMinimumDuration;
+        auctionKeeperMinimumDuration = newKeeperMinimumDuration;
 
         uint256 previousBidExtension = auctionBidExtension;
         auctionBidExtension = newBidExtension;
@@ -393,9 +403,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             previousStartingPrice,
             newStartingPrice,
             previousMinimumBidStep,
-            boundedMinimumBidStep,
+            auctionMinimumBidStep,
             previousMinimumDuration,
             newMinimumDuration,
+            previousKeeperMinimumDuration,
+            newKeeperMinimumDuration,
             previousBidExtension,
             newBidExtension
         );
@@ -876,7 +888,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         price = 0;
         auctionBeneficiary = msg.sender;
-        auctionEndTime = block.timestamp + auctionMinimumDuration;
+        auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
 
         emit Relinquishment(msg.sender);
         emit AuctionStart(block.timestamp, auctionEndTime);

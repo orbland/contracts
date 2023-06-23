@@ -49,6 +49,8 @@ interface IOrb is IERC165 {
         uint256 indexed newMinimumBidStep,
         uint256 previousMinimumDuration,
         uint256 indexed newMinimumDuration,
+        uint256 previousKeeperMinimumDuration,
+        uint256 newKeeperMinimumDuration,
         uint256 previousBidExtension,
         uint256 newBidExtension
     );
@@ -134,6 +136,7 @@ interface IOrb is IERC165 {
     function auctionStartingPrice() external view returns (uint256);
     function auctionMinimumBidStep() external view returns (uint256);
     function auctionMinimumDuration() external view returns (uint256);
+    function auctionKeeperMinimumDuration() external view returns (uint256);
     function auctionBidExtension() external view returns (uint256);
 
     // Funding View Functions
@@ -220,6 +223,7 @@ interface IOrb is IERC165 {
         uint256 newStartingPrice,
         uint256 newMinimumBidStep,
         uint256 newMinimumDuration,
+        uint256 newKeeperMinimumDuration,
         uint256 newBidExtension
     ) external;
     function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external;
