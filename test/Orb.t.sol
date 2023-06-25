@@ -1775,6 +1775,7 @@ contract ForecloseTest is OrbTestBase {
     }
 
     event Foreclosure(address indexed formerKeeper);
+    event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
 
     function test_revertsifKeeperSolvent() public {
         uint256 leadingBid = 10 ether;
@@ -1787,14 +1788,31 @@ contract ForecloseTest is OrbTestBase {
         orb.foreclose();
     }
 
-    function test_succeeds() public {
-        uint256 leadingBid = 10 ether;
-        makeKeeperAndWarp(user, leadingBid);
+    function test_noAuctionIfKeeperDurationZero() public {
+        orb.setAuctionParameters(0, 1, 1 days, 0, 5 minutes);
+        makeKeeperAndWarp(user, 10 ether);
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, true, true, true);
         emit Foreclosure(user);
         assertEq(orb.ownerOf(orb.tokenId()), user);
         orb.foreclose();
+        assertEq(orb.auctionEndTime(), 0);
+        assertEq(orb.ownerOf(orb.tokenId()), address(orb));
+        assertEq(orb.price(), 0);
+    }
+
+    function test_succeeds() public {
+        makeKeeperAndWarp(user, 10 ether);
+        vm.warp(block.timestamp + 10000 days);
+        uint256 exepectedEndTime = block.timestamp + orb.auctionKeeperMinimumDuration();
+        vm.expectEmit(true, true, true, true);
+        emit Foreclosure(user);
+        vm.expectEmit(true, true, true, true);
+        emit AuctionStart(block.timestamp, exepectedEndTime);
+        assertEq(orb.ownerOf(orb.tokenId()), user);
+        orb.foreclose();
+        assertEq(orb.auctionBeneficiary(), user);
+        assertEq(orb.auctionEndTime(), exepectedEndTime);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
         assertEq(orb.price(), 0);
     }
