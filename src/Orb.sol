@@ -879,7 +879,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         price = 0;
         emit Relinquishment(msg.sender);
 
-        if (withAuction) {
+        if (withAuction && auctionKeeperMinimumDuration > 0) {
             if (owner() == msg.sender) {
                 revert NotPermittedForCreator();
             }
@@ -907,9 +907,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         emit Foreclosure(keeper);
 
-        auctionBeneficiary = keeper;
-        auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
-        emit AuctionStart(block.timestamp, auctionEndTime);
+        if (auctionKeeperMinimumDuration > 0) {
+            auctionBeneficiary = keeper;
+            auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
+            emit AuctionStart(block.timestamp, auctionEndTime);
+        }
 
         _transferOrb(keeper, address(this));
     }
