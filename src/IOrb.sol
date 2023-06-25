@@ -83,6 +83,7 @@ interface IOrb is IERC165 {
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
     error CreatorDoesNotControlOrb();
+    error NotPermittedForCreator();
     error BeneficiaryDisallowed();
 
     // Auction Errors
@@ -205,8 +206,7 @@ interface IOrb is IERC165 {
     ) external payable;
 
     // Orb Ownership Functions
-    function relinquish() external;
-    function relinquishWithAuction() external;
+    function relinquish(bool withAuction) external;
     function foreclose() external;
 
     // Invoking and Responding Functions
