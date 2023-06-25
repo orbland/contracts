@@ -370,7 +370,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @param   newMinimumBidStep         New minimum bid step for the auction. Will always be set to at least 1.
     /// @param   newMinimumDuration        New minimum duration for the auction. Must be > 0.
     /// @param   newKeeperMinimumDuration  New minimum duration for the auction is started by the keeper via
-    ///                                    `relinquishWithAuction()`. Must be > 0.
+    ///                                    `relinquishWithAuction()`. Setting to 0 effectively disables keeper
+    ///                                    auctions.
     /// @param   newBidExtension           New bid extension for the auction. Can be 0.
     function setAuctionParameters(
         uint256 newStartingPrice,
@@ -381,9 +382,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ) external onlyOwner onlyCreatorControlled {
         if (newMinimumDuration == 0) {
             revert InvalidAuctionDuration(newMinimumDuration);
-        }
-        if (newKeeperMinimumDuration == 0) {
-            revert InvalidAuctionDuration(newKeeperMinimumDuration);
         }
 
         uint256 previousStartingPrice = auctionStartingPrice;
