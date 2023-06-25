@@ -570,15 +570,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         if (leadingBidder != address(0)) {
             fundsOf[leadingBidder] -= leadingBid;
-            if (auctionBeneficiary != address(0)) {
-                uint256 beneficiaryRoyalty = (leadingBid * royaltyNumerator) / FEE_DENOMINATOR;
-                uint256 auctionBeneficiaryShare = leadingBid - beneficiaryRoyalty;
-                fundsOf[beneficiary] += beneficiaryRoyalty;
-                fundsOf[auctionBeneficiary] += auctionBeneficiaryShare;
-                auctionBeneficiary = address(0);
-            } else {
-                fundsOf[beneficiary] += leadingBid;
-            }
+            _splitProceeds(leadingBid, auctionBeneficiary);
 
             lastSettlementTime = block.timestamp;
             lastInvocationTime = block.timestamp - cooldown;
@@ -826,16 +818,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         }
 
         fundsOf[msg.sender] -= currentPrice;
-
         if (owner() == keeper) {
             lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
-            uint256 beneficiaryRoyalty = (currentPrice * royaltyNumerator) / FEE_DENOMINATOR;
-            uint256 currentOwnerShare = currentPrice - beneficiaryRoyalty;
-
-            fundsOf[beneficiary] += beneficiaryRoyalty;
-            fundsOf[keeper] += currentOwnerShare;
+            _splitProceeds(currentPrice, keeper);
         }
 
         _setPrice(newPrice);
@@ -843,6 +830,19 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         emit Purchase(keeper, msg.sender, currentPrice);
 
         _transferOrb(keeper, msg.sender);
+    }
+
+    /// @dev    Assigns proceeds to beneficiary and primary receiver, accounting for royalty. Used by `purchase()` and
+    ///         `finalizeAuction()`. Fund deducation should happen before calling this function. Receiver might be
+    ///         beneficiary if no split is needed.
+    ///         MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
+    /// @param  proceeds_  Total proceeds to split between beneficiary and receiver.
+    /// @param  receiver_  Address of the receiver of the proceeds minus royalty.
+    function _splitProceeds(uint256 proceeds_, address receiver_) internal {
+        uint256 beneficiaryRoyalty = (proceeds_ * royaltyNumerator) / FEE_DENOMINATOR;
+        uint256 receiverShare = proceeds_ - beneficiaryRoyalty;
+        fundsOf[beneficiary] += beneficiaryRoyalty;
+        fundsOf[receiver_] += receiverShare;
     }
 
     /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
