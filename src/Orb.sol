@@ -909,6 +909,10 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         emit Foreclosure(keeper);
 
+        auctionBeneficiary = keeper;
+        auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
+        emit AuctionStart(block.timestamp, auctionEndTime);
+
         _transferOrb(keeper, address(this));
     }
 
