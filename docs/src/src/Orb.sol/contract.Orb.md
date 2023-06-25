@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/1839d33b7b1eb2cbcb52f508c53bc055edf9bfb2/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/1444163b9922788790de284c6d2d30eca3e6316e/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -1020,7 +1020,7 @@ Foreclose can be called by anyone after the Orb keeper runs out of funds to cove
 It returns the Orb to the contract and starts a auction to find the next keeper. Most of the proceeds
 (minus the royalty) go to the previous keeper.
 
-*Emits `Foreclosure`.*
+*Emits `Foreclosure`, and optionally `AuctionStart`.*
 
 
 ```solidity
