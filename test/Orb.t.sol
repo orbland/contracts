@@ -138,7 +138,7 @@ contract SupportsInterfaceTest is OrbTestBase {
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0xda3793a8)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0xff6b26ff)); // ERC165 Interface ID for Orb
     }
 }
 
@@ -767,9 +767,9 @@ contract FinalizeAuctionTest is OrbTestBase {
 
     function test_finalizeAuctionWithBeneficiary() public {
         makeKeeperAndWarp(user, 1 ether);
-        assertEq(orb.auctionBeneficiary(), address(0));
+        assertEq(orb.auctionBeneficiary(), beneficiary);
         vm.prank(user);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
         uint256 contractBalance = address(orb).balance;
         assertEq(orb.auctionBeneficiary(), user);
 
@@ -817,10 +817,9 @@ contract FinalizeAuctionTest is OrbTestBase {
 
     function test_finalizeAuctionWithBeneficiaryWithoutWinner() public {
         makeKeeperAndWarp(user, 1 ether);
-        assertEq(orb.auctionBeneficiary(), address(0));
+        assertEq(orb.auctionBeneficiary(), beneficiary);
         vm.prank(user);
-        orb.relinquishWithAuction();
-        uint256 contractBalance = address(orb).balance;
+        orb.relinquish(true);
         assertEq(orb.auctionBeneficiary(), user);
         vm.warp(orb.auctionEndTime() + 1);
 
@@ -836,7 +835,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.price(), 0);
 
         orb.startAuction();
-        assertEq(orb.auctionBeneficiary(), address(0));
+        assertEq(orb.auctionBeneficiary(), beneficiary);
     }
 }
 
@@ -1150,7 +1149,7 @@ contract WithdrawTest is OrbTestBase {
     function test_withdrawAllForBeneficiaryWhenContractOwned() public {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
-        orb.relinquish();
+        orb.relinquish(false);
 
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
         uint256 initialBalance = beneficiary.balance;
@@ -1171,7 +1170,7 @@ contract WithdrawTest is OrbTestBase {
     function test_withdrawAllForBeneficiaryWhenCreatorOwned() public {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
-        orb.relinquish();
+        orb.relinquish(false);
         vm.prank(owner);
         orb.listWithPrice(1 ether);
 
@@ -1619,10 +1618,10 @@ contract RelinquishmentTest is OrbTestBase {
         makeKeeperAndWarp(user, leadingBid);
         vm.expectRevert(IOrb.NotKeeper.selector);
         vm.prank(user2);
-        orb.relinquish();
+        orb.relinquish(false);
 
         vm.prank(user);
-        orb.relinquish();
+        orb.relinquish(false);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
     }
 
@@ -1631,10 +1630,10 @@ contract RelinquishmentTest is OrbTestBase {
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
         vm.expectRevert(IOrb.KeeperInsolvent.selector);
-        orb.relinquish();
+        orb.relinquish(false);
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
-        orb.relinquish();
+        orb.relinquish(false);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
     }
 
@@ -1643,7 +1642,7 @@ contract RelinquishmentTest is OrbTestBase {
         // after making `user` the current keeper of the Orb, `makeKeeperAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user);
-        orb.relinquish();
+        orb.relinquish(false);
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
@@ -1660,7 +1659,7 @@ contract RelinquishmentTest is OrbTestBase {
         uint256 effectiveFunds = effectiveFundsOf(user);
         emit Withdrawal(user, effectiveFunds);
         vm.prank(user);
-        orb.relinquish();
+        orb.relinquish(false);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
         assertEq(orb.price(), 0);
     }
@@ -1672,10 +1671,10 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         makeKeeperAndWarp(user, leadingBid);
         vm.expectRevert(IOrb.NotKeeper.selector);
         vm.prank(user2);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
 
         vm.prank(user);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
     }
 
@@ -1684,10 +1683,10 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
         vm.expectRevert(IOrb.KeeperInsolvent.selector);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
     }
 
@@ -1696,7 +1695,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         // after making `user` the current keeper of the Orb, `makeKeeperAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
@@ -1709,7 +1708,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         vm.prank(user);
         assertEq(orb.ownerOf(orb.tokenId()), user);
         assertEq(orb.price(), 1 ether);
-        assertEq(orb.auctionBeneficiary(), address(0));
+        assertEq(orb.auctionBeneficiary(), beneficiary);
         assertEq(orb.auctionEndTime(), 0);
         uint256 effectiveFunds = effectiveFundsOf(user);
         vm.expectEmit(true, true, true, true);
@@ -1719,7 +1718,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         vm.expectEmit(true, true, true, true);
         emit Withdrawal(user, effectiveFunds);
         vm.prank(user);
-        orb.relinquishWithAuction();
+        orb.relinquish(true);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
         assertEq(orb.price(), 0);
         assertEq(orb.auctionBeneficiary(), user);
