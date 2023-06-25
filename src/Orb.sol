@@ -864,37 +864,28 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  Relinquishment is a voluntary giving up of the Orb. It's a combination of withdrawing all funds not
-    ///          owed to the beneficiary since last settlement, and foreclosing yourself after. Most useful if the
-    ///          creator themselves hold the Orb and want to re-auction it. For any other keeper, setting the price to
-    ///          zero would be more practical.
-    /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment` and
-    ///          `Withdrawal`.
-    function relinquish() external onlyKeeper onlyKeeperSolvent {
-        _settle();
-
-        price = 0;
-
-        emit Relinquishment(msg.sender);
-
-        _transferOrb(msg.sender, address(this));
-        _withdraw(msg.sender, fundsOf[msg.sender]);
-    }
-
-    /// @notice  Relinquishment with Auction is an alternative to `relinquish()` that starts an auction for the benefit
-    ///          of the Keeper. It's a combination of withdrawing all funds not owed to the beneficiary since last
-    ///          settlement, transferring the Orb to the contract, and immediately starting an auction for it.
-    ///          Once auction is finalized, most of the proceeds (minus the royalty) go to the Keeper.
+    ///          owed to the beneficiary since last settlement and transferring the Orb to the contract. Keepers giving
+    ///          up the Orb may start an auction for it for their own benefit. Once auction is finalized, most of the
+    ///          proceeds (minus the royalty) go to the relinquishing Keeper. Alternatives to relinquisment are setting
+    ///          the price to zero or withdrawing all funds. Orb creator cannot start the keeper auction via this
+    ///          function, and must call `relinquish(false)` and `startAuction()` separately to run the creator
+    ///          auction.
     /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment`,
-    ///          `AuctionStart` and `Withdrawal`.
-    function relinquishWithAuction() external onlyKeeper onlyKeeperSolvent {
+    ///          `Withdrawal`, and optionally `AuctionStart`.
+    function relinquish(bool withAuction) external onlyKeeper onlyKeeperSolvent {
         _settle();
 
         price = 0;
-        auctionBeneficiary = msg.sender;
-        auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
-
         emit Relinquishment(msg.sender);
-        emit AuctionStart(block.timestamp, auctionEndTime);
+
+        if (withAuction) {
+            if (owner() == msg.sender) {
+                revert NotPermittedForCreator();
+            }
+            auctionBeneficiary = msg.sender;
+            auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
+            emit AuctionStart(block.timestamp, auctionEndTime);
+        }
 
         _transferOrb(msg.sender, address(this));
         _withdraw(msg.sender, fundsOf[msg.sender]);
