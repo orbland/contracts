@@ -814,6 +814,27 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(user), userFunds + auctionBeneficiaryShare);
     }
 
+    function test_finalizeAuctionWithBeneficiaryLowRoyalties() public {
+        orb.setFees(100_00, 0);
+        makeKeeperAndWarp(user, 1 ether);
+        vm.prank(user);
+        orb.relinquish(true);
+        uint256 amount = orb.minimumBid();
+        // Bid `amount` and transfer `funds` to the contract
+        prankAndBid(user2, amount);
+        vm.warp(orb.auctionEndTime() + 1);
+        uint256 minBeneficiaryNumerator =
+            orb.keeperTaxNumerator() * orb.auctionKeeperMinimumDuration() / orb.keeperTaxPeriod();
+        assertTrue(minBeneficiaryNumerator > orb.royaltyNumerator());
+        uint256 minBeneficiaryRoyalty = (amount * minBeneficiaryNumerator) / orb.feeDenominator();
+        uint256 auctionBeneficiaryShare = amount - minBeneficiaryRoyalty;
+        uint256 userFunds = orb.fundsOf(user);
+        uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
+        orb.finalizeAuction();
+        assertEq(orb.fundsOf(beneficiary), beneficiaryFunds + minBeneficiaryRoyalty);
+        assertEq(orb.fundsOf(user), userFunds + auctionBeneficiaryShare);
+    }
+
     function test_finalizeAuctionWithBeneficiaryWithoutWinner() public {
         makeKeeperAndWarp(user, 1 ether);
         assertEq(orb.auctionBeneficiary(), beneficiary);
@@ -1687,6 +1708,20 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         vm.prank(user);
         orb.relinquish(true);
         assertEq(orb.ownerOf(orb.tokenId()), address(orb));
+    }
+
+    function test_revertsIfCreator() public {
+        orb.listWithPrice(1 ether);
+        vm.expectRevert(IOrb.NotPermittedForCreator.selector);
+        orb.relinquish(true);
+    }
+
+    function test_noAuctionIfKeeperDurationZero() public {
+        orb.setAuctionParameters(0, 1, 1 days, 0, 5 minutes);
+        makeKeeperAndWarp(user, 1 ether);
+        vm.prank(user);
+        orb.relinquish(true);
+        assertEq(orb.auctionEndTime(), 0);
     }
 
     function test_settlesFirst() public {
