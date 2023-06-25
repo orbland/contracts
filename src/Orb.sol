@@ -839,6 +839,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///         beneficiary if no split is needed.
     /// @param  proceeds_  Total proceeds to split between beneficiary and receiver.
     /// @param  receiver_  Address of the receiver of the proceeds minus royalty.
+    /// @param  royalty_   Beneficiary royalty numerator to use for the split.
     function _splitProceeds(uint256 proceeds_, address receiver_, uint256 royalty_) internal {
         uint256 beneficiaryRoyalty = (proceeds_ * royalty_) / FEE_DENOMINATOR;
         uint256 receiverShare = proceeds_ - beneficiaryRoyalty;

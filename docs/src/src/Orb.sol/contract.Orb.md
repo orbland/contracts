@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/4884960208c025411fb80bb5ca6618bb05dd2627/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/d276c4f3e5d63b502bfa11f2f239d0e4d5af694a/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -579,7 +579,7 @@ function setAuctionParameters(
 |`newStartingPrice`|`uint256`|         New starting price for the auction. Can be 0.|
 |`newMinimumBidStep`|`uint256`|        New minimum bid step for the auction. Will always be set to at least 1.|
 |`newMinimumDuration`|`uint256`|       New minimum duration for the auction. Must be > 0.|
-|`newKeeperMinimumDuration`|`uint256`| New minimum duration for the auction is started by the keeper via `relinquishWithAuction()`. Must be > 0.|
+|`newKeeperMinimumDuration`|`uint256`| New minimum duration for the auction is started by the keeper via `relinquishWithAuction()`. Setting to 0 effectively disables keeper auctions.|
 |`newBidExtension`|`uint256`|          New bid extension for the auction. Can be 0.|
 
 
@@ -968,7 +968,7 @@ beneficiary if no split is needed.*
 
 
 ```solidity
-function _splitProceeds(uint256 proceeds_, address receiver_) internal;
+function _splitProceeds(uint256 proceeds_, address receiver_, uint256 royalty_) internal;
 ```
 **Parameters**
 
@@ -976,6 +976,7 @@ function _splitProceeds(uint256 proceeds_, address receiver_) internal;
 |----|----|-----------|
 |`proceeds_`|`uint256`| Total proceeds to split between beneficiary and receiver.|
 |`receiver_`|`address`| Address of the receiver of the proceeds minus royalty.|
+|`royalty_`|`uint256`|  Beneficiary royalty numerator to use for the split.|
 
 
 ### _setPrice
