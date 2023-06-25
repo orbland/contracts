@@ -570,7 +570,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         if (leadingBidder != address(0)) {
             fundsOf[leadingBidder] -= leadingBid;
-            _splitProceeds(leadingBid, auctionBeneficiary);
+            uint256 auctionMinimumRoyaltyNumerator =
+                (keeperTaxNumerator * auctionKeeperMinimumDuration) / KEEPER_TAX_PERIOD;
+            uint256 auctionRoyalty =
+                auctionMinimumRoyaltyNumerator > royaltyNumerator ? auctionMinimumRoyaltyNumerator : royaltyNumerator;
+            _splitProceeds(leadingBid, auctionBeneficiary, auctionRoyalty);
 
             lastSettlementTime = block.timestamp;
             lastInvocationTime = block.timestamp - cooldown;
@@ -822,7 +826,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
-            _splitProceeds(currentPrice, keeper);
+            _splitProceeds(currentPrice, keeper, royaltyNumerator);
         }
 
         _setPrice(newPrice);
@@ -837,8 +841,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///         beneficiary if no split is needed.
     /// @param  proceeds_  Total proceeds to split between beneficiary and receiver.
     /// @param  receiver_  Address of the receiver of the proceeds minus royalty.
-    function _splitProceeds(uint256 proceeds_, address receiver_) internal {
-        uint256 beneficiaryRoyalty = (proceeds_ * royaltyNumerator) / FEE_DENOMINATOR;
+    function _splitProceeds(uint256 proceeds_, address receiver_, uint256 royalty_) internal {
+        uint256 beneficiaryRoyalty = (proceeds_ * royalty_) / FEE_DENOMINATOR;
         uint256 receiverShare = proceeds_ - beneficiaryRoyalty;
         fundsOf[beneficiary] += beneficiaryRoyalty;
         fundsOf[receiver_] += receiverShare;
