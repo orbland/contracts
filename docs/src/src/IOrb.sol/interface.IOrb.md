@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/133c7cb7df46e92042d00791655e7fc3990e50c3/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/cb187170016470708cbd1cff130aa6bcf6c25d76/src/IOrb.sol)
 
 **Inherits:**
 IERC165
@@ -328,14 +328,7 @@ function purchase(
 
 
 ```solidity
-function relinquish() external;
-```
-
-### relinquishWithAuction
-
-
-```solidity
-function relinquishWithAuction() external;
+function relinquish(bool withAuction) external;
 ```
 
 ### foreclose
@@ -617,6 +610,12 @@ error ContractDoesNotHoldOrb();
 
 ```solidity
 error CreatorDoesNotControlOrb();
+```
+
+### NotPermittedForCreator
+
+```solidity
+error NotPermittedForCreator();
 ```
 
 ### BeneficiaryDisallowed

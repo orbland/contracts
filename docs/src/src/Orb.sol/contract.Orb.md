@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/133c7cb7df46e92042d00791655e7fc3990e50c3/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/cb187170016470708cbd1cff130aa6bcf6c25d76/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -244,7 +244,7 @@ Auction Beneficiary: address that receives most of the auction proceeds. Zero ad
 
 
 ```solidity
-address public auctionBeneficiary = address(0);
+address public auctionBeneficiary;
 ```
 
 
@@ -576,11 +576,11 @@ function setAuctionParameters(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newStartingPrice`|`uint256`|   New starting price for the auction. Can be 0.|
-|`newMinimumBidStep`|`uint256`|  New minimum bid step for the auction. Will always be set to at least 1.|
-|`newMinimumDuration`|`uint256`| New minimum duration for the auction. Must be > 0.|
-|`newKeeperMinimumDuration`|`uint256`||
-|`newBidExtension`|`uint256`|    New bid extension for the auction. Can be 0.|
+|`newStartingPrice`|`uint256`|         New starting price for the auction. Can be 0.|
+|`newMinimumBidStep`|`uint256`|        New minimum bid step for the auction. Will always be set to at least 1.|
+|`newMinimumDuration`|`uint256`|       New minimum duration for the auction. Must be > 0.|
+|`newKeeperMinimumDuration`|`uint256`| New minimum duration for the auction is started by the keeper via `relinquishWithAuction()`. Must be > 0.|
+|`newBidExtension`|`uint256`|          New bid extension for the auction. Can be 0.|
 
 
 ### setFees
@@ -960,6 +960,25 @@ function purchase(
 |`currentCleartextMaximumLength`|`uint256`| Current cleartext maximum length, to prevent front-running.|
 
 
+### _splitProceeds
+
+*Assigns proceeds to beneficiary and primary receiver, accounting for royalty. Used by `purchase()` and
+`finalizeAuction()`. Fund deducation should happen before calling this function. Receiver might be
+beneficiary if no split is needed.
+MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
+
+
+```solidity
+function _splitProceeds(uint256 proceeds_, address receiver_) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proceeds_`|`uint256`| Total proceeds to split between beneficiary and receiver.|
+|`receiver_`|`address`| Address of the receiver of the proceeds minus royalty.|
+
+
 ### _setPrice
 
 *Does not check if the new price differs from the previous price: no risk. Limits the price to
@@ -979,31 +998,19 @@ function _setPrice(uint256 newPrice_) internal;
 ### relinquish
 
 Relinquishment is a voluntary giving up of the Orb. It's a combination of withdrawing all funds not
-owed to the beneficiary since last settlement, and foreclosing yourself after. Most useful if the
-creator themselves hold the Orb and want to re-auction it. For any other keeper, setting the price to
-zero would be more practical.
-
-*Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment` and
-`Withdrawal`.*
-
-
-```solidity
-function relinquish() external onlyKeeper onlyKeeperSolvent;
-```
-
-### relinquishWithAuction
-
-Relinquishment with Auction is an alternative to `relinquish()` that starts an auction for the benefit
-of the Keeper. It's a combination of withdrawing all funds not owed to the beneficiary since last
-settlement, transferring the Orb to the contract, and immediately starting an auction for it.
-Once auction is finalized, most of the proceeds (minus the royalty) go to the Keeper.
+owed to the beneficiary since last settlement and transferring the Orb to the contract. Keepers giving
+up the Orb may start an auction for it for their own benefit. Once auction is finalized, most of the
+proceeds (minus the royalty) go to the relinquishing Keeper. Alternatives to relinquisment are setting
+the price to zero or withdrawing all funds. Orb creator cannot start the keeper auction via this
+function, and must call `relinquish(false)` and `startAuction()` separately to run the creator
+auction.
 
 *Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment`,
-`AuctionStart` and `Withdrawal`.*
+`Withdrawal`, and optionally `AuctionStart`.*
 
 
 ```solidity
-function relinquishWithAuction() external onlyKeeper onlyKeeperSolvent;
+function relinquish(bool withAuction) external onlyKeeper onlyKeeperSolvent;
 ```
 
 ### foreclose
