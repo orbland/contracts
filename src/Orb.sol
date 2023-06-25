@@ -366,10 +366,12 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @notice  Allows the Orb creator to set the auction parameters. This function can only be called by the Orb
     ///          creator when the Orb is in their control.
     /// @dev     Emits `AuctionParametersUpdate`.
-    /// @param   newStartingPrice    New starting price for the auction. Can be 0.
-    /// @param   newMinimumBidStep   New minimum bid step for the auction. Will always be set to at least 1.
-    /// @param   newMinimumDuration  New minimum duration for the auction. Must be > 0.
-    /// @param   newBidExtension     New bid extension for the auction. Can be 0.
+    /// @param   newStartingPrice          New starting price for the auction. Can be 0.
+    /// @param   newMinimumBidStep         New minimum bid step for the auction. Will always be set to at least 1.
+    /// @param   newMinimumDuration        New minimum duration for the auction. Must be > 0.
+    /// @param   newKeeperMinimumDuration  New minimum duration for the auction is started by the keeper via
+    ///                                    `relinquishWithAuction()`. Must be > 0.
+    /// @param   newBidExtension           New bid extension for the auction. Can be 0.
     function setAuctionParameters(
         uint256 newStartingPrice,
         uint256 newMinimumBidStep,
