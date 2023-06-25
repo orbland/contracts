@@ -276,9 +276,8 @@ contract SettingAuctionParametersTest is OrbTestBase {
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 1 days, 10 minutes);
     }
 
-    function test_revertIfKeeperAuctionDurationZero() public {
+    function test_allowKeeperAuctionDurationZero() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidAuctionDuration.selector, 0));
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 0, 10 minutes);
     }
 
