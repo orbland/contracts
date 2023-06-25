@@ -898,7 +898,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @notice  Foreclose can be called by anyone after the Orb keeper runs out of funds to cover the Harberger tax.
     ///          It returns the Orb to the contract and starts a auction to find the next keeper. Most of the proceeds
     ///          (minus the royalty) go to the previous keeper.
-    /// @dev     Emits `Foreclosure`.
+    /// @dev     Emits `Foreclosure`, and optionally `AuctionStart`.
     function foreclose() external onlyKeeperHeld {
         if (keeperSolvent()) {
             revert KeeperSolvent();
