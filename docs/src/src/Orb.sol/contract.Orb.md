@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/d276c4f3e5d63b502bfa11f2f239d0e4d5af694a/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/1839d33b7b1eb2cbcb52f508c53bc055edf9bfb2/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -604,8 +604,9 @@ function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) ext
 
 ### setCooldown
 
-Allows the Orb creator to set the new cooldown duration. This function can only be called by the Orb
-creator when the Orb is in their control.
+Allows the Orb creator to set the new cooldown duration and flagging period - duration for how long
+Orb keeper may flag a response. This function can only be called by the Orb creator when the Orb is in
+their control.
 
 *Emits `CooldownUpdate`.*
 
@@ -617,8 +618,8 @@ function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external on
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newCooldown`|`uint256`| New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.|
-|`newFlaggingPeriod`|`uint256`||
+|`newCooldown`|`uint256`|       New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.|
+|`newFlaggingPeriod`|`uint256`| New flagging period in seconds.|
 
 
 ### setCleartextMaximumLength
@@ -1016,7 +1017,8 @@ function relinquish(bool withAuction) external onlyKeeper onlyKeeperSolvent;
 ### foreclose
 
 Foreclose can be called by anyone after the Orb keeper runs out of funds to cover the Harberger tax.
-It returns the Orb to the contract, readying it for re-auction.
+It returns the Orb to the contract and starts a auction to find the next keeper. Most of the proceeds
+(minus the royalty) go to the previous keeper.
 
 *Emits `Foreclosure`.*
 

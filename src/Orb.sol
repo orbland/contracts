@@ -439,10 +439,12 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         );
     }
 
-    /// @notice  Allows the Orb creator to set the new cooldown duration. This function can only be called by the Orb
-    ///          creator when the Orb is in their control.
+    /// @notice  Allows the Orb creator to set the new cooldown duration and flagging period - duration for how long
+    ///          Orb keeper may flag a response. This function can only be called by the Orb creator when the Orb is in
+    ///          their control.
     /// @dev     Emits `CooldownUpdate`.
-    /// @param   newCooldown  New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
+    /// @param   newCooldown        New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
+    /// @param   newFlaggingPeriod  New flagging period in seconds.
     function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external onlyOwner onlyCreatorControlled {
         if (newCooldown > COOLDOWN_MAXIMUM_DURATION) {
             revert CooldownExceedsMaximumDuration(newCooldown, COOLDOWN_MAXIMUM_DURATION);
@@ -894,7 +896,8 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     }
 
     /// @notice  Foreclose can be called by anyone after the Orb keeper runs out of funds to cover the Harberger tax.
-    ///          It returns the Orb to the contract, readying it for re-auction.
+    ///          It returns the Orb to the contract and starts a auction to find the next keeper. Most of the proceeds
+    ///          (minus the royalty) go to the previous keeper.
     /// @dev     Emits `Foreclosure`.
     function foreclose() external onlyKeeperHeld {
         if (keeperSolvent()) {
