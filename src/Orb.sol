@@ -142,7 +142,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// Leading bid: highest current bid. 0 not during the auction and before first bid.
     uint256 public leadingBid;
     /// Auction Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
-    address public auctionBeneficiary = address(0);
+    address public auctionBeneficiary;
 
     // Invocation and Response State Variables
 
