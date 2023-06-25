@@ -508,7 +508,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         }
 
         auctionEndTime = block.timestamp + auctionMinimumDuration;
-        auctionBeneficiary = address(0);
+        auctionBeneficiary = beneficiary;
 
         emit AuctionStart(block.timestamp, auctionEndTime);
     }
