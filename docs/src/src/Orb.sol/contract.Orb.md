@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/cb187170016470708cbd1cff130aa6bcf6c25d76/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/4884960208c025411fb80bb5ca6618bb05dd2627/src/Orb.sol)
 
 **Inherits:**
 Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
@@ -964,8 +964,7 @@ function purchase(
 
 *Assigns proceeds to beneficiary and primary receiver, accounting for royalty. Used by `purchase()` and
 `finalizeAuction()`. Fund deducation should happen before calling this function. Receiver might be
-beneficiary if no split is needed.
-MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
+beneficiary if no split is needed.*
 
 
 ```solidity

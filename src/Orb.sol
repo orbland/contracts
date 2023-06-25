@@ -835,7 +835,6 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @dev    Assigns proceeds to beneficiary and primary receiver, accounting for royalty. Used by `purchase()` and
     ///         `finalizeAuction()`. Fund deducation should happen before calling this function. Receiver might be
     ///         beneficiary if no split is needed.
-    ///         MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
     /// @param  proceeds_  Total proceeds to split between beneficiary and receiver.
     /// @param  receiver_  Address of the receiver of the proceeds minus royalty.
     function _splitProceeds(uint256 proceeds_, address receiver_) internal {
