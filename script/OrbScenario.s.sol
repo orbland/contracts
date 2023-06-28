@@ -3,9 +3,10 @@ pragma solidity ^0.8.20;
 
 /* solhint-disable no-console */
 import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+
 import {Orb} from "src/Orb.sol";
 import {OrbPond} from "src/OrbPond.sol";
-import {console} from "forge-std/console.sol";
 
 contract OrbScenario is Script {
     address private immutable creatorAddress;

@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 
 import {Orb} from "src/Orb.sol";
 import {OrbPond} from "src/OrbPond.sol";
-import {PaymentSplitter} from "@openzeppelin/contracts/finance/PaymentSplitter.sol";
+import {PaymentSplitter} from "openzeppelin-contracts/contracts/finance/PaymentSplitter.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 abstract contract DeployBase is Script {

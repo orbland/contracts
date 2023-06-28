@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Orb} from "./Orb.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title   Orb Pond - the Orb Factory
 /// @author  Jonas Lekevicius

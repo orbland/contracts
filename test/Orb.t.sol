@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// import {console} from "forge-std/console.sol";
+/* solhint-disable no-console */
+import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
+
 import {OrbHarness} from "./harness/OrbHarness.sol";
 import {Orb} from "src/Orb.sol";
 import {IOrb} from "src/IOrb.sol";

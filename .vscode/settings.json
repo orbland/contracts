@@ -1,9 +1,10 @@
 {
     "editor.formatOnSave": true,
     "solidity.remappings": [
-        "@openzeppelin/=lib/openzeppelin-contracts/",
         "forge-std/=lib/forge-std/src/",
         "ds-test/=lib/forge-std/lib/ds-test/src/",
+        "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+        "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/",
         "src/=src/",
         "lib/=lib/"
     ],
@@ -16,5 +17,6 @@
         "cache": true,
         "out": true
     },
-    "solidity.compileUsingRemoteVersion": "v0.8.20+commit.a1b79de6"
+    "solidity.defaultCompiler": "remote",
+    "solidity.compileUsingRemoteVersion": "v0.8.20+commit.a1b79de6",
 }
