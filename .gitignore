@@ -8,10 +8,6 @@ typechain-types
 .DS_Store
 .deps
 
-#Hardhat files
-cache
-artifacts
-
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -21,5 +17,16 @@ artifacts
 !.yarn/versions
 
 # Foundry
+cache/
 out/
 lcov.info
+
+# JS
+node_modules/
+
+#Hardhat files
+cache_hardhat/
+artifacts/
+
+#Hardhat plugin files
+typechain-types/
