@@ -33,7 +33,7 @@
 .                                                                                                                      .
 .                                                                                                                      .
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 import {IOrb} from "src/IOrb.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
