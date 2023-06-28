@@ -31,13 +31,7 @@ contract OrbPond is Ownable {
         address beneficiary,
         string memory baseURI
     ) external onlyOwner {
-        orbs[orbCount] = new Orb(
-            name,
-            symbol,
-            tokenId,
-            beneficiary,
-            baseURI
-        );
+        orbs[orbCount] = new Orb();
 
         emit OrbCreation(orbCount, address(orbs[orbCount]));
 

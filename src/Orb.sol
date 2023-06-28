@@ -35,13 +35,18 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity ^0.8.20;
 
-import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
-import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
-import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
-
-import {IOrb} from "src/IOrb.sol";
+// solhint-disable private-vars-leading-underscore
+import {IOrb} from "./IOrb.sol";
+import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {IERC165Upgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
+import {ERC165Upgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
+// solhint-disable-next-line max-line-length
+import {ERC721Upgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
+import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
 /// @title   Orb - Harberger-taxed NFT with auction and on-chain invocations and responses
 /// @author  Jonas Lekevicius
@@ -56,27 +61,20 @@ import {IOrb} from "src/IOrb.sol";
 ///          and user funds need to be topped up before the foreclosure time to maintain ownership.
 /// @dev     Supports ERC-721 interface but reverts on all transfers. Uses `Ownable`'s `owner()` to identify the
 ///          creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current keeper of the Orb.
-contract Orb is Ownable, ERC165, ERC721, IOrb {
+contract Orb is
+    Initializable,
+    IERC165Upgradeable,
+    IOrb,
+    ERC165Upgradeable,
+    ERC721Upgradeable,
+    OwnableUpgradeable,
+    UUPSUpgradeable
+{
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // CONSTANTS AND IMMUTABLES
-
-    /// Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
-    /// value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
-    /// beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
-    /// - The auction winning bid amount;
-    /// - Royalties from Orb purchase when not purchased from the Orb creator;
-    /// - Full purchase price when purchased from the Orb creator;
-    /// - Harberger tax revenue.
-    address public immutable beneficiary;
-
-    /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
-    /// allow easier lookups of Orb keeper.
-    uint256 public immutable tokenId;
-
-    // Internal Constants
+    // CONSTANTS
 
     /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
     uint256 internal constant FEE_DENOMINATOR = 100_00;
@@ -89,8 +87,22 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     // STATE
 
+    /// Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
+    /// value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
+    /// beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
+    /// - The auction winning bid amount;
+    /// - Royalties from Orb purchase when not purchased from the Orb creator;
+    /// - Full purchase price when purchased from the Orb creator;
+    /// - Harberger tax revenue.
+    address public beneficiary;
+
+    /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
+    /// allow easier lookups of Orb keeper.
+    uint256 public tokenId;
+
     /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
     uint256 public honoredUntil;
+
     /// Response Period: time period in which the keeper promises to respond to an invocation.
     /// There are no penalties for being late within this contract.
     uint256 public responsePeriod;
@@ -189,6 +201,11 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     //  CONSTRUCTOR AND INTERFACE SUPPORT
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @dev    When deployed, contract mints the only token that will ever exist, to itself.
     ///         This token represents the Orb and is called the Orb elsewhere in the contract.
     ///         `Ownable` sets the deployer to be the `owner()`, and also the creator in the Orb context.
@@ -197,13 +214,17 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @param  tokenId_       ERC-721 token id of the Orb.
     /// @param  beneficiary_   Address to receive all Orb proceeds.
     /// @param  baseURI_       Initial baseURI value for tokenURI JSONs.
-    constructor(
+    function initialize(
         string memory name_,
         string memory symbol_,
         uint256 tokenId_,
         address beneficiary_,
         string memory baseURI_
-    ) ERC721(name_, symbol_) {
+    ) public initializer {
+        __ERC721_init(name_, symbol_);
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
         tokenId = tokenId_;
         beneficiary = beneficiary_;
         baseURI = baseURI_;
@@ -213,13 +234,22 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
         _safeMint(address(this), tokenId);
     }
 
+    function _authorizeUpgrade(address newImplementation_) internal view override {
+        if (msg.sender != owner()) {
+            revert TransferringNotSupported();
+        }
+        if (newImplementation_ == address(0)) {
+            revert TransferringNotSupported();
+        }
+    }
+
     /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and IOrb interfaces.
     /// @param   interfaceId           Interface id to check for support.
     /// @return  isInterfaceSupported  If interface with given 4 bytes id is supported.
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC165, IERC165)
+        override(ERC721Upgradeable, ERC165Upgradeable, IERC165Upgradeable)
         returns (bool isInterfaceSupported)
     {
         return interfaceId == type(IOrb).interfaceId || super.supportsInterface(interfaceId);
@@ -235,7 +265,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///       external functions, otherwise does not make sense.
     ///       Contract inherits `onlyOwner` modifier from `Ownable`.
     modifier onlyKeeper() {
-        if (msg.sender != ERC721.ownerOf(tokenId)) {
+        if (msg.sender != ERC721Upgradeable.ownerOf(tokenId)) {
             revert NotKeeper();
         }
         _;
@@ -245,7 +275,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
     /// @dev  Ensures that the Orb belongs to someone, not the contract itself.
     modifier onlyKeeperHeld() {
-        if (address(this) == ERC721.ownerOf(tokenId)) {
+        if (address(this) == ERC721Upgradeable.ownerOf(tokenId)) {
             revert ContractHoldsOrb();
         }
         _;
@@ -255,7 +285,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///       Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
     ///       modified while it is held by the keeper or users can bid on the Orb.
     modifier onlyCreatorControlled() {
-        if (address(this) != ERC721.ownerOf(tokenId) && owner() != ERC721.ownerOf(tokenId)) {
+        if (address(this) != ERC721Upgradeable.ownerOf(tokenId) && owner() != ERC721Upgradeable.ownerOf(tokenId)) {
             revert CreatorDoesNotControlOrb();
         }
         if (auctionEndTime > 0) {
@@ -500,7 +530,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @dev     Prevents repeated starts by checking the `auctionEndTime`. Important to set `auctionEndTime` to 0
     ///          after auction is finalized. Emits `AuctionStart`.
     function startAuction() external onlyOwner notDuringAuction {
-        if (address(this) != ERC721.ownerOf(tokenId)) {
+        if (address(this) != ERC721Upgradeable.ownerOf(tokenId)) {
             revert ContractDoesNotHoldOrb();
         }
 
@@ -602,7 +632,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @dev     Deposits are not allowed for insolvent keepers to prevent cheating via front-running. If the user
     ///          becomes insolvent, the Orb will always be returned to the contract as the next step. Emits `Deposit`.
     function deposit() external payable {
-        if (msg.sender == ERC721.ownerOf(tokenId) && !keeperSolvent()) {
+        if (msg.sender == ERC721Upgradeable.ownerOf(tokenId) && !keeperSolvent()) {
             revert KeeperInsolvent();
         }
 
@@ -628,7 +658,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @notice  Function to withdraw all beneficiary funds on the contract. Settles if possible.
     /// @dev     Allowed for anyone at any time, does not use `msg.sender` in its execution.
     function withdrawAllForBeneficiary() external {
-        if (ERC721.ownerOf(tokenId) != address(this)) {
+        if (ERC721Upgradeable.ownerOf(tokenId) != address(this)) {
             _settle();
         }
         _withdraw(beneficiary, fundsOf[beneficiary]);
@@ -647,7 +677,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///          creator holds the Orb.
     /// @return  isKeeperSolvent  If the current keeper is solvent.
     function keeperSolvent() public view returns (bool isKeeperSolvent) {
-        address keeper = ERC721.ownerOf(tokenId);
+        address keeper = ERC721Upgradeable.ownerOf(tokenId);
         if (owner() == keeper) {
             return true;
         }
@@ -685,7 +715,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
             revert NotPermittedForLeadingBidder();
         }
 
-        if (recipient_ == ERC721.ownerOf(tokenId)) {
+        if (recipient_ == ERC721Upgradeable.ownerOf(tokenId)) {
             _settle();
         }
 
@@ -697,7 +727,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         emit Withdrawal(recipient_, amount_);
 
-        Address.sendValue(payable(recipient_), amount_);
+        AddressUpgradeable.sendValue(payable(recipient_), amount_);
     }
 
     /// @dev  Keeper might owe more than they have funds available: it means that the keeper is foreclosable.
@@ -705,7 +735,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     ///       the creator holds the Orb, but always updates `lastSettlementTime`. Should never be called if Orb is
     ///       owned by the contract. Emits `Settlement`.
     function _settle() internal {
-        address keeper = ERC721.ownerOf(tokenId);
+        address keeper = ERC721Upgradeable.ownerOf(tokenId);
 
         if (owner() == keeper) {
             lastSettlementTime = block.timestamp;
@@ -746,7 +776,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
     /// @dev     Emits `Transfer` and `PriceUpdate`.
     /// @param   listingPrice  The price to buy the Orb from the creator.
     function listWithPrice(uint256 listingPrice) external onlyOwner {
-        if (address(this) != ERC721.ownerOf(tokenId)) {
+        if (address(this) != ERC721Upgradeable.ownerOf(tokenId)) {
             revert ContractDoesNotHoldOrb();
         }
 
@@ -806,7 +836,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         _settle();
 
-        address keeper = ERC721.ownerOf(tokenId);
+        address keeper = ERC721Upgradeable.ownerOf(tokenId);
 
         if (msg.sender == keeper) {
             revert AlreadyKeeper();
@@ -907,7 +937,7 @@ contract Orb is Ownable, ERC165, ERC721, IOrb {
 
         _settle();
 
-        address keeper = ERC721.ownerOf(tokenId);
+        address keeper = ERC721Upgradeable.ownerOf(tokenId);
         price = 0;
 
         emit Foreclosure(keeper);

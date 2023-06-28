@@ -4,15 +4,7 @@ pragma solidity ^0.8.20;
 import {Orb} from "src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
-contract OrbHarness is
-    Orb(
-        "Orb", // name
-        "ORB", // symbol
-        69, // tokenId
-        address(0xC0FFEE), // beneficiary
-        "https://static.orb.land/orb/" // baseURI
-    )
-{
+contract OrbHarness is Orb {
     function workaround_cooldownMaximumDuration() public pure returns (uint256) {
         return COOLDOWN_MAXIMUM_DURATION;
     }
