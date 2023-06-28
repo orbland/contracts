@@ -119,9 +119,9 @@ contract Orb is
     // Fees State Variables
 
     /// Harberger tax for holding. Initial value is 10.00%.
-    uint256 public keeperTaxNumerator = 10_00;
+    uint256 public keeperTaxNumerator;
     /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
-    uint256 public royaltyNumerator = 10_00;
+    uint256 public royaltyNumerator;
     /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
     /// the contract and the auction is not running.
     uint256 public price;
@@ -136,18 +136,18 @@ contract Orb is
     /// Auction minimum bid step: required increase between bids. Each bid has to increase over previous bid by at
     /// least this much. If trying to set as zero, will be set to 1 (wei). Initial value is also 1 wei, to disallow
     /// equal value bids.
-    uint256 public auctionMinimumBidStep = 1;
+    uint256 public auctionMinimumBidStep;
     /// Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
     /// cannot be set to zero, as it would prevent any bids from being made.
-    uint256 public auctionMinimumDuration = 1 days;
+    uint256 public auctionMinimumDuration;
     /// Keeper's Auction minimum duration: auction started by the keeper via `relinquishWithAuction()` will run for at
     /// least this long. Initial value is 1 day, and this value cannot be set to zero, as it would prevent any bids
     /// from being made.
-    uint256 public auctionKeeperMinimumDuration = 1 days;
+    uint256 public auctionKeeperMinimumDuration;
     /// Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
     /// long. Initial value is 5 minutes.
-    uint256 public auctionBidExtension = 5 minutes;
+    uint256 public auctionBidExtension;
     /// Auction end time: timestamp when the auction ends, can be extended by late bids. 0 not during the auction.
     uint256 public auctionEndTime;
     /// Leading bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
@@ -176,11 +176,11 @@ contract Orb is
     }
 
     /// Cooldown: how often the Orb can be invoked.
-    uint256 public cooldown = 7 days;
+    uint256 public cooldown;
     /// Flagging Period: for how long after an invocation the keeper can flag the response.
-    uint256 public flaggingPeriod = 7 days;
+    uint256 public flaggingPeriod;
     /// Maximum length for invocation cleartext content.
-    uint256 public cleartextMaximumLength = 280;
+    uint256 public cleartextMaximumLength;
     /// Keeper receive time: when the Orb was last transferred, except to this contract.
     uint256 public keeperReceiveTime;
     /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
@@ -228,6 +228,16 @@ contract Orb is
         tokenId = tokenId_;
         beneficiary = beneficiary_;
         baseURI = baseURI_;
+
+        keeperTaxNumerator = 10_00;
+        royaltyNumerator = 10_00;
+        auctionMinimumBidStep = 1;
+        auctionMinimumDuration = 1 days;
+        auctionKeeperMinimumDuration = 1 days;
+        auctionBidExtension = 5 minutes;
+        cooldown = 7 days;
+        flaggingPeriod = 7 days;
+        cleartextMaximumLength = 280;
 
         emit Creation();
 
