@@ -13,10 +13,14 @@ verbosity = 3 # The verbosity of tests
 bytecode_hash = "none" # For deterministic code
 block_timestamp = 1_622_400_000 # Timestamp for tests (non-zero)
 
+src = 'src'
+out = 'out'
+libs = ['lib']
+test = 'test'
+
 # silence warnings
 # 2462 - ignored constructor visibility in OZ dependency
 ignored_error_codes = [2462]
-libs = ["node_modules", "lib"]
 
 ffi = false
 
