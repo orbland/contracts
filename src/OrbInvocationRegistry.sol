@@ -32,6 +32,7 @@ contract OrbInvocationRegistry is
         pond = msg.sender;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // Invoking and Responding Events
@@ -149,7 +150,7 @@ contract OrbInvocationRegistry is
         uint256 invocationId = invocationCount; // starts at 1
 
         invocations[invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
-        lastInvocationTime = block.timestamp;
+        IOrb(orb).setLastInvocationTime(block.timestamp);
 
         emit Invocation(invocationId, msg.sender, block.timestamp, contentHash);
     }
