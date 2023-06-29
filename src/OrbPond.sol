@@ -35,16 +35,21 @@ contract OrbPond is Initializable, ERC165Upgradeable, OwnableUpgradeable, UUPSUp
     mapping(uint256 => bytes) public upgradeCalldata;
     uint256 public latestVersion;
 
+    address public registry;
+
     // @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize() public initializer {
+    function initialize(address registry_) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
+
+        registry = registry_;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @notice  Creates a new Orb, and emits an event with the Orb's address.
