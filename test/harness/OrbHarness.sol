@@ -6,15 +6,15 @@ import {Orb} from "src/Orb.sol";
 /* solhint-disable func-name-mixedcase */
 contract OrbHarness is Orb {
     function workaround_cooldownMaximumDuration() public pure returns (uint256) {
-        return COOLDOWN_MAXIMUM_DURATION;
+        return _COOLDOWN_MAXIMUM_DURATION;
     }
 
     function workaround_maximumPrice() public pure returns (uint256) {
-        return MAXIMUM_PRICE;
+        return _MAXIMUM_PRICE;
     }
 
     function workaround_baseURI() public view returns (string memory) {
-        return tokenURI(tokenId);
+        return tokenURI(_tokenId);
     }
 
     function workaround_setPrice(uint256 _price) public {
@@ -26,7 +26,7 @@ contract OrbHarness is Orb {
     }
 
     function workaround_setOrbKeeper(address keeper_) public {
-        _transferOrb(ownerOf(tokenId), keeper_);
+        _transferOrb(keeper, keeper_);
     }
 
     function workaround_owedSinceLastSettlement() public view returns (uint256) {
