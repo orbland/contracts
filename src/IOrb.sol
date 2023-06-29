@@ -67,6 +67,7 @@ interface IOrb is IERC165Upgradeable {
 
     // ERC-721 Errors
     error NotSupported();
+    error NotPermitted();
 
     // Authorization Errors
     error AlreadyKeeper();
@@ -109,17 +110,10 @@ interface IOrb is IERC165Upgradeable {
     //  VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // ERC-721 View Functions
-    function tokenId() external view returns (uint256);
-
-    function keeper() external view returns (address);
-
     // Auction View Functions
     function auctionEndTime() external view returns (uint256);
-    // function auctionRunning() external view returns (bool);
     function leadingBidder() external view returns (address);
     function leadingBid() external view returns (uint256);
-    // function minimumBid() external view returns (uint256);
     function auctionBeneficiary() external view returns (address);
 
     function auctionStartingPrice() external view returns (uint256);
@@ -138,6 +132,7 @@ interface IOrb is IERC165Upgradeable {
     function keeperTaxPeriod() external view returns (uint256);
 
     // Purchasing View Functions
+    function keeper() external view returns (address);
     function price() external view returns (uint256);
     function keeperReceiveTime() external view returns (uint256);
 
@@ -157,6 +152,7 @@ interface IOrb is IERC165Upgradeable {
     function cooldown() external view returns (uint256);
     function flaggingPeriod() external view returns (uint256);
     function lastInvocationTime() external view returns (uint256);
+    function setLastInvocationTime(uint256 timestamp) external;
 
     function cleartextMaximumLength() external view returns (uint256);
 
