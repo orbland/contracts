@@ -30,16 +30,6 @@ interface IOrb is IERC165Upgradeable {
     event Foreclosure(address indexed formerKeeper);
     event Relinquishment(address indexed formerKeeper);
 
-    // Invoking and Responding Events
-    event Invocation(
-        uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash
-    );
-    event Response(
-        uint256 indexed invocationId, address indexed responder, uint256 indexed timestamp, bytes32 contentHash
-    );
-    event CleartextRecording(uint256 indexed invocationId, string cleartext);
-    event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
-
     // Orb Parameter Events
     event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
     event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 indexed newHonoredUntil);
@@ -76,7 +66,7 @@ interface IOrb is IERC165Upgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // ERC-721 Errors
-    error TransferringNotSupported();
+    error NotSupported();
 
     // Authorization Errors
     error AlreadyKeeper();
@@ -104,21 +94,16 @@ interface IOrb is IERC165Upgradeable {
     error PurchasingNotPermitted();
     error InvalidNewPrice(uint256 priceProvided);
 
-    // Invoking and Responding Errors
-    error CooldownIncomplete(uint256 timeRemaining);
-    error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-    error InvocationNotFound(uint256 invocationId);
-    error ResponseNotFound(uint256 invocationId);
-    error ResponseExists(uint256 invocationId);
-    error FlaggingPeriodExpired(uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
-    error ResponseAlreadyFlagged(uint256 invocationId);
-
     // Orb Parameter Errors
     error HonoredUntilNotDecreasable();
     error InvalidAuctionDuration(uint256 auctionDuration);
     error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
     error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDuration);
     error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
+
+    // Upgradding Errors
+    error NoUpgradeRequested();
+    error NoNextVersion();
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  VIEW FUNCTIONS
@@ -127,12 +112,14 @@ interface IOrb is IERC165Upgradeable {
     // ERC-721 View Functions
     function tokenId() external view returns (uint256);
 
+    function keeper() external view returns (address);
+
     // Auction View Functions
     function auctionEndTime() external view returns (uint256);
-    function auctionRunning() external view returns (bool);
+    // function auctionRunning() external view returns (bool);
     function leadingBidder() external view returns (address);
     function leadingBid() external view returns (uint256);
-    function minimumBid() external view returns (uint256);
+    // function minimumBid() external view returns (uint256);
     function auctionBeneficiary() external view returns (address);
 
     function auctionStartingPrice() external view returns (uint256);
@@ -157,15 +144,15 @@ interface IOrb is IERC165Upgradeable {
     function royaltyNumerator() external view returns (uint256);
 
     // Invoking and Responding View Functions
-    function invocations(uint256 invocationId)
-        external
-        view
-        returns (address invoker, bytes32 contentHash, uint256 timestamp);
-    function invocationCount() external view returns (uint256);
+    // function invocations(uint256 invocationId)
+    //     external
+    //     view
+    //     returns (address invoker, bytes32 contentHash, uint256 timestamp);
+    // function invocationCount() external view returns (uint256);
 
-    function responses(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
-    function responseFlagged(uint256 invocationId) external view returns (bool);
-    function flaggedResponsesCount() external view returns (uint256);
+    // function responses(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
+    // function responseFlagged(uint256 invocationId) external view returns (bool);
+    // function flaggedResponsesCount() external view returns (uint256);
 
     function cooldown() external view returns (uint256);
     function flaggingPeriod() external view returns (uint256);
@@ -181,6 +168,14 @@ interface IOrb is IERC165Upgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function initialize(
+        string memory name_,
+        string memory symbol_,
+        uint256 tokenId_,
+        address beneficiary_,
+        string memory tokenURI_
+    ) external;
 
     // Auction Functions
     function startAuction() external;
@@ -211,15 +206,15 @@ interface IOrb is IERC165Upgradeable {
     function foreclose() external;
 
     // Invoking and Responding Functions
-    function invokeWithCleartext(string memory cleartext) external;
-    function invokeWithHash(bytes32 contentHash) external;
-    function respond(uint256 invocationId, bytes32 contentHash) external;
-    function flagResponse(uint256 invocationId) external;
+    // function invokeWithCleartext(string memory cleartext) external;
+    // function invokeWithHash(bytes32 contentHash) external;
+    // function respond(uint256 invocationId, bytes32 contentHash) external;
+    // function flagResponse(uint256 invocationId) external;
 
     // Orb Parameter Functions
     function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod) external;
     function extendHonoredUntil(uint256 newHonoredUntil) external;
-    function setBaseURI(string memory newBaseURI) external;
+    function setTokenURI(string memory newBaseURI) external;
     function setAuctionParameters(
         uint256 newStartingPrice,
         uint256 newMinimumBidStep,

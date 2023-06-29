@@ -1,8 +1,21 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.20;
 
-import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {Orb} from "./Orb.sol";
+import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IOrb} from "./IOrb.sol";
+import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
+import {IERC165Upgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
+import {ERC165Upgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
+import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+interface IOwnershipTransferrable {
+    function transferOwnership(address newOwner) external;
+}
 
 /// @title   Orb Pond - the Orb Factory
 /// @author  Jonas Lekevicius
@@ -10,13 +23,29 @@ import {Orb} from "./Orb.sol";
 ///          by the Orb Land system. The Pond is also used to configure the Orbs and transfer ownership to the Orb
 ///          creator.
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator.
-contract OrbPond is Ownable {
+contract OrbPond is Initializable, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
 
     /// The mapping of Orb ids to Orbs. Increases monotonically.
-    mapping(uint256 => Orb) public orbs;
+    mapping(uint256 => address) public orbs;
     /// The number of Orbs created so far, used to find the next Orb id.
     uint256 public orbCount;
+
+    mapping(uint256 => address) public versions;
+    mapping(uint256 => bytes) public upgradeCalldata;
+    uint256 public latestVersion;
+
+    // @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize() public initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @notice  Creates a new Orb, and emits an event with the Orb's address.
     /// @param   name          Name of the Orb, used for display purposes. Suggestion: "NameOrb".
@@ -31,7 +60,10 @@ contract OrbPond is Ownable {
         address beneficiary,
         string memory baseURI
     ) external onlyOwner {
-        orbs[orbCount] = new Orb();
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(IOrb.initialize.selector, name, symbol, tokenId, beneficiary, baseURI);
+        ERC1967Proxy proxy = new ERC1967Proxy(versions[1], initializeCalldata);
+        orbs[orbCount] = address(proxy);
 
         emit OrbCreation(orbCount, address(orbs[orbCount]));
 
@@ -62,16 +94,16 @@ contract OrbPond is Ownable {
         uint256 flaggingPeriod,
         uint256 cleartextMaximumLength
     ) external onlyOwner {
-        orbs[orbId].setAuctionParameters(
+        IOrb(orbs[orbId]).setAuctionParameters(
             auctionStartingPrice,
             auctionMinimumBidStep,
             auctionMinimumDuration,
             auctionKeeperMinimumDuration,
             auctionBidExtension
         );
-        orbs[orbId].setFees(keeperTaxNumerator, royaltyNumerator);
-        orbs[orbId].setCooldown(cooldown, flaggingPeriod);
-        orbs[orbId].setCleartextMaximumLength(cleartextMaximumLength);
+        IOrb(orbs[orbId]).setFees(keeperTaxNumerator, royaltyNumerator);
+        IOrb(orbs[orbId]).setCooldown(cooldown, flaggingPeriod);
+        IOrb(orbs[orbId]).setCleartextMaximumLength(cleartextMaximumLength);
     }
 
     /// @notice  Transfers the ownership of an Orb to its creator. This contract will no longer be able to configure
@@ -79,6 +111,6 @@ contract OrbPond is Ownable {
     /// @param   orbId           Id of the Orb to transfer.
     /// @param   creatorAddress  Address of the Orb's creator, they will have full control over the Orb.
     function transferOrbOwnership(uint256 orbId, address creatorAddress) external onlyOwner {
-        orbs[orbId].transferOwnership(creatorAddress);
+        IOwnershipTransferrable(orbs[orbId]).transferOwnership(creatorAddress);
     }
 }
