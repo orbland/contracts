@@ -35,7 +35,6 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity ^0.8.20;
 
-// solhint-disable private-vars-leading-underscore
 import {IOrb} from "./IOrb.sol";
 import {OrbPond} from "./OrbPond.sol";
 import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
@@ -44,7 +43,6 @@ import {IERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
 import {ERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
-// solhint-disable-next-line max-line-length
 import {IERC721Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/IERC721Upgradeable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
@@ -78,16 +76,17 @@ contract Orb is
 
     // CONSTANTS
 
+    /// Orb Contract Version
+    uint256 public constant VERSION = 1;
+
     /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
-    uint256 internal constant FEE_DENOMINATOR = 100_00;
+    uint256 internal constant _FEE_DENOMINATOR = 100_00;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
-    uint256 internal constant KEEPER_TAX_PERIOD = 365 days;
+    uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
     /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
-    uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
+    uint256 internal constant _COOLDOWN_MAXIMUM_DURATION = 3650 days;
     /// Maximum Orb price, limited to prevent potential overflows.
-    uint256 internal constant MAXIMUM_PRICE = 2 ** 128;
-    /// Version
-    uint256 internal constant VERSION = 1;
+    uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
 
     // STATE
 
@@ -108,9 +107,6 @@ contract Orb is
 
     string public name;
     string public symbol;
-    /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
-    /// allow easier lookups of Orb keeper.
-    uint256 public tokenId;
 
     /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
     uint256 public honoredUntil;
@@ -119,8 +115,11 @@ contract Orb is
     /// There are no penalties for being late within this contract.
     uint256 public responsePeriod;
 
+    /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
+    /// allow easier lookups of Orb keeper.
+    uint256 internal _tokenId;
     /// Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
-    string internal orbTokenURI;
+    string internal _baseURI;
 
     /// Funds tracker, per address. Modified by deposits, withdrawals and settlements. The value is without settlement.
     /// It means effective user funds (withdrawable) would be different for keeper (subtracting
@@ -196,22 +195,22 @@ contract Orb is
     /// @param  symbol_        Orb symbol or ticker, used in ERC-721 metadata.
     /// @param  tokenId_       ERC-721 token id of the Orb.
     /// @param  beneficiary_   Address to receive all Orb proceeds.
-    /// @param  tokenURI_      Initial baseURI value for tokenURI JSONs.
+    /// @param  baseURI_      Initial baseURI value for tokenURI JSONs.
     function initialize(
         string memory name_,
         string memory symbol_,
         uint256 tokenId_,
         address beneficiary_,
-        string memory tokenURI_
+        string memory baseURI_
     ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         name = name_;
         symbol = symbol_;
-        tokenId = tokenId_;
+        _tokenId = tokenId_;
         beneficiary = beneficiary_;
-        orbTokenURI = tokenURI_;
+        _baseURI = baseURI_;
 
         keeperTaxNumerator = 10_00;
         royaltyNumerator = 10_00;
@@ -290,7 +289,7 @@ contract Orb is
     /// @dev  Ensures that an auction is currently not running. Can be multiple states: auction not started, auction
     ///       over but not finalized, or auction finalized.
     modifier notDuringAuction() {
-        if (auctionRunning()) {
+        if (_auctionRunning()) {
             revert AuctionRunning();
         }
         _;
@@ -315,11 +314,11 @@ contract Orb is
     }
 
     function ownerOf(uint256 tokenId_) public view returns (address owner) {
-        return tokenId_ == tokenId ? keeper : address(0);
+        return tokenId_ == _tokenId ? keeper : address(0);
     }
 
     function tokenURI(uint256) public view returns (string memory) {
-        return orbTokenURI;
+        return _baseURI;
     }
 
     function approve(address, uint256) external pure {
@@ -355,7 +354,7 @@ contract Orb is
     /// @param  from_  Address to transfer the Orb from.
     /// @param  to_    Address to transfer the Orb to.
     function _transferOrb(address from_, address to_) internal {
-        emit Transfer(from_, to_, tokenId);
+        emit Transfer(from_, to_, _tokenId);
         keeper = to_;
         if (to_ != address(this)) {
             keeperReceiveTime = block.timestamp;
@@ -421,7 +420,7 @@ contract Orb is
     ///          anytime and is meant for when the current `baseURI` has to be updated.
     /// @param   newTokenURI  New `baseURI`, will be concatenated with the token id in `tokenURI()`.
     function setTokenURI(string memory newTokenURI) external onlyOwner {
-        orbTokenURI = newTokenURI;
+        _baseURI = newTokenURI;
     }
 
     /// @notice  Allows the Orb creator to set the auction parameters. This function can only be called by the Orb
@@ -485,8 +484,8 @@ contract Orb is
         onlyOwner
         onlyCreatorControlled
     {
-        if (newRoyaltyNumerator > FEE_DENOMINATOR) {
-            revert RoyaltyNumeratorExceedsDenominator(newRoyaltyNumerator, FEE_DENOMINATOR);
+        if (newRoyaltyNumerator > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(newRoyaltyNumerator, _FEE_DENOMINATOR);
         }
 
         uint256 previousKeeperTaxNumerator = keeperTaxNumerator;
@@ -507,8 +506,8 @@ contract Orb is
     /// @param   newCooldown        New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
     /// @param   newFlaggingPeriod  New flagging period in seconds.
     function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external onlyOwner onlyCreatorControlled {
-        if (newCooldown > COOLDOWN_MAXIMUM_DURATION) {
-            revert CooldownExceedsMaximumDuration(newCooldown, COOLDOWN_MAXIMUM_DURATION);
+        if (newCooldown > _COOLDOWN_MAXIMUM_DURATION) {
+            revert CooldownExceedsMaximumDuration(newCooldown, _COOLDOWN_MAXIMUM_DURATION);
         }
 
         uint256 previousCooldown = cooldown;
@@ -538,7 +537,7 @@ contract Orb is
 
     /// @notice  Returns if the auction is currently running. Use `auctionEndTime()` to check when it ends.
     /// @return  isAuctionRunning  If the auction is running.
-    function auctionRunning() internal view returns (bool isAuctionRunning) {
+    function _auctionRunning() internal view returns (bool isAuctionRunning) {
         return auctionEndTime > block.timestamp;
     }
 
@@ -546,7 +545,7 @@ contract Orb is
     /// @dev     `auctionStartingPrice` if no bids were made, otherwise the leading bid increased by
     ///          `auctionMinimumBidStep`.
     /// @return  auctionMinimumBid  Minimum bid required for `bid()`.
-    function minimumBid() internal view returns (uint256 auctionMinimumBid) {
+    function _minimumBid() internal view returns (uint256 auctionMinimumBid) {
         if (leadingBid == 0) {
             return auctionStartingPrice;
         } else {
@@ -581,7 +580,7 @@ contract Orb is
     /// @param   amount      The value to bid.
     /// @param   priceIfWon  Price if the bid wins. Must be less than `MAXIMUM_PRICE`.
     function bid(uint256 amount, uint256 priceIfWon) external payable {
-        if (!auctionRunning()) {
+        if (!_auctionRunning()) {
             revert AuctionNotRunning();
         }
 
@@ -591,15 +590,15 @@ contract Orb is
 
         uint256 totalFunds = fundsOf[msg.sender] + msg.value;
 
-        if (amount < minimumBid()) {
-            revert InsufficientBid(amount, minimumBid());
+        if (amount < _minimumBid()) {
+            revert InsufficientBid(amount, _minimumBid());
         }
 
         if (totalFunds < amount) {
             revert InsufficientFunds(totalFunds, amount);
         }
 
-        if (priceIfWon > MAXIMUM_PRICE) {
+        if (priceIfWon > _MAXIMUM_PRICE) {
             revert InvalidNewPrice(priceIfWon);
         }
 
@@ -632,7 +631,7 @@ contract Orb is
         if (leadingBidder != address(0)) {
             fundsOf[leadingBidder] -= leadingBid;
             uint256 auctionMinimumRoyaltyNumerator =
-                (keeperTaxNumerator * auctionKeeperMinimumDuration) / KEEPER_TAX_PERIOD;
+                (keeperTaxNumerator * auctionKeeperMinimumDuration) / _KEEPER_TAX_PERIOD;
             uint256 auctionRoyalty =
                 auctionMinimumRoyaltyNumerator > royaltyNumerator ? auctionMinimumRoyaltyNumerator : royaltyNumerator;
             _splitProceeds(leadingBid, auctionBeneficiary, auctionRoyalty);
@@ -716,13 +715,13 @@ contract Orb is
     /// @dev     Returns the accounting base for Orb fees (Harberger tax rate and royalty).
     /// @return  feeDenominatorValue  The accounting base for Orb fees.
     function feeDenominator() external pure returns (uint256 feeDenominatorValue) {
-        return FEE_DENOMINATOR;
+        return _FEE_DENOMINATOR;
     }
 
     /// @dev     Returns the Harberger tax period base. Keeper tax is for each of this period.
     /// @return  keeperTaxPeriodSeconds  How long is the Harberger tax period, in seconds.
     function keeperTaxPeriod() external pure returns (uint256 keeperTaxPeriodSeconds) {
-        return KEEPER_TAX_PERIOD;
+        return _KEEPER_TAX_PERIOD;
     }
 
     /// @dev     Calculates how much money Orb keeper owes Orb beneficiary. This amount would be transferred between
@@ -731,7 +730,7 @@ contract Orb is
     /// @return  owedValue  Wei Orb keeper owes Orb beneficiary since the last settlement time.
     function _owedSinceLastSettlement() internal view returns (uint256 owedValue) {
         uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime;
-        return (price * keeperTaxNumerator * secondsSinceLastSettlement) / (KEEPER_TAX_PERIOD * FEE_DENOMINATOR);
+        return (price * keeperTaxNumerator * secondsSinceLastSettlement) / (_KEEPER_TAX_PERIOD * _FEE_DENOMINATOR);
     }
 
     /// @dev    Executes the withdrawal for a given amount, does the actual value transfer from the contract to user's
@@ -903,7 +902,7 @@ contract Orb is
     /// @param  receiver_  Address of the receiver of the proceeds minus royalty.
     /// @param  royalty_   Beneficiary royalty numerator to use for the split.
     function _splitProceeds(uint256 proceeds_, address receiver_, uint256 royalty_) internal {
-        uint256 beneficiaryRoyalty = (proceeds_ * royalty_) / FEE_DENOMINATOR;
+        uint256 beneficiaryRoyalty = (proceeds_ * royalty_) / _FEE_DENOMINATOR;
         uint256 receiverShare = proceeds_ - beneficiaryRoyalty;
         fundsOf[beneficiary] += beneficiaryRoyalty;
         fundsOf[receiver_] += receiverShare;
@@ -913,7 +912,7 @@ contract Orb is
     ///         MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
     /// @param  newPrice_  New price for the Orb.
     function _setPrice(uint256 newPrice_) internal {
-        if (newPrice_ > MAXIMUM_PRICE) {
+        if (newPrice_ > _MAXIMUM_PRICE) {
             revert InvalidNewPrice(newPrice_);
         }
 
@@ -978,5 +977,16 @@ contract Orb is
         }
 
         _transferOrb(_keeper, address(this));
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: INVOKING AND RESPONDING
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function setLastInvocationTime(uint256 timestamp) external {
+        if (msg.sender != OrbPond(pond).registry()) {
+            revert NotPermitted();
+        }
+        lastInvocationTime = timestamp;
     }
 }
