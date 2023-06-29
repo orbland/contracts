@@ -14,7 +14,7 @@ contract OrbHarness is Orb {
     }
 
     function workaround_baseURI() public view returns (string memory) {
-        return _baseURI();
+        return tokenURI(tokenId);
     }
 
     function workaround_setPrice(uint256 _price) public {
@@ -25,8 +25,8 @@ contract OrbHarness is Orb {
         lastSettlementTime = time;
     }
 
-    function workaround_setOrbKeeper(address keeper) public {
-        _transferOrb(ownerOf(tokenId), keeper);
+    function workaround_setOrbKeeper(address keeper_) public {
+        _transferOrb(ownerOf(tokenId), keeper_);
     }
 
     function workaround_owedSinceLastSettlement() public view returns (uint256) {

@@ -82,38 +82,38 @@ abstract contract DeployBase is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        vm.startBroadcast(deployerKey);
+        // vm.startBroadcast(deployerKey);
 
-        orbPond = new OrbPond();
+        // orbPond = new OrbPond();
 
-        orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
-        address splitterAddress = address(orbBeneficiary);
+        // orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
+        // address splitterAddress = address(orbBeneficiary);
 
-        orbPond.createOrb(
-            orbName,
-            orbSymbol,
-            tokenId, // tokenId
-            splitterAddress, // beneficiary
-            "https://static.orb.land/orb/" // baseURI
-        );
-        orb = Orb(orbPond.orbs(0));
+        // orbPond.createOrb(
+        //     orbName,
+        //     orbSymbol,
+        //     tokenId, // tokenId
+        //     splitterAddress, // beneficiary
+        //     "https://static.orb.land/orb/" // baseURI
+        // );
+        // orb = Orb(orbPond.orbs(0));
 
-        orbPond.configureOrb(
-            0,
-            auctionStartingPrice,
-            auctionMinimumBidStep,
-            auctionMinimumDuration,
-            auctionKeeperMinimumDuration,
-            auctionBidExtension,
-            keeperTaxNumerator,
-            royaltyNumerator,
-            cooldown,
-            flaggingPeriod,
-            cleartextMaximumLength
-        );
+        // orbPond.configureOrb(
+        //     0,
+        //     auctionStartingPrice,
+        //     auctionMinimumBidStep,
+        //     auctionMinimumDuration,
+        //     auctionKeeperMinimumDuration,
+        //     auctionBidExtension,
+        //     keeperTaxNumerator,
+        //     royaltyNumerator,
+        //     cooldown,
+        //     flaggingPeriod,
+        //     cleartextMaximumLength
+        // );
 
-        orbPond.transferOrbOwnership(0, creatorAddress);
+        // orbPond.transferOrbOwnership(0, creatorAddress);
 
-        vm.stopBroadcast();
+        // vm.stopBroadcast();
     }
 }
