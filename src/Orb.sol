@@ -91,12 +91,12 @@ contract Orb is
 
     // STATE
 
-    /// Address of the `OrbPond` that deployed this Orb.
+    // Address Variables
+
+    /// Address of the `OrbPond` that deployed this Orb. Pond manages permitted upgrades and provides Orb Invocation
+    /// Registry address.
     address public pond;
-
-    bool public creatorRequestsUpgrade;
-
-    /// Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
+    /// Beneficiary is another address that receives all Orb proceeds. It is set in the `initializer` as an immutable
     /// value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
     /// beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
     /// - The auction winning bid amount;
@@ -104,15 +104,15 @@ contract Orb is
     /// - Full purchase price when purchased from the Orb creator;
     /// - Harberger tax revenue.
     address public beneficiary;
-
+    /// Address of the Orb keeper. The keeper is the address that owns the Orb and has the right to invoke the Orb and
+    /// receive a response. The keeper is also the address that pays the Harberger tax. Keeper address is tracked
+    /// directly, and ERC-721 compatibility uses this value for `ownerOf()` and `balanceOf()` calls.
     address public keeper;
 
-    string public name;
-    string public symbol;
+    // Orb Oath Variables
 
     /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
     uint256 public honoredUntil;
-
     /// Response Period: time period in which the keeper promises to respond to an invocation.
     /// There are no penalties for being late within this contract.
     uint256 public responsePeriod;
@@ -175,6 +175,8 @@ contract Orb is
     /// Auction Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
     address public auctionBeneficiary;
 
+    // Invocation Variables
+
     /// Cooldown: how often the Orb can be invoked.
     uint256 public cooldown;
     /// Flagging Period: for how long after an invocation the keeper can flag the response.
@@ -223,10 +225,12 @@ contract Orb is
 
         keeperTaxNumerator = 10_00;
         royaltyNumerator = 10_00;
+
         auctionMinimumBidStep = 1;
         auctionMinimumDuration = 1 days;
         auctionKeeperMinimumDuration = 1 days;
         auctionBidExtension = 5 minutes;
+
         cooldown = 7 days;
         flaggingPeriod = 7 days;
         cleartextMaximumLength = 280;
@@ -545,15 +549,14 @@ contract Orb is
     //  FUNCTIONS: AUCTION
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Returns if the auction is currently running. Use `auctionEndTime()` to check when it ends.
+    /// @dev     Returns if the auction is currently running. Use `auctionEndTime()` to check when it ends.
     /// @return  isAuctionRunning  If the auction is running.
     function _auctionRunning() internal view virtual returns (bool isAuctionRunning) {
         return auctionEndTime > block.timestamp;
     }
 
-    /// @notice  Minimum bid that would currently be accepted by `bid()`.
-    /// @dev     `auctionStartingPrice` if no bids were made, otherwise the leading bid increased by
-    ///          `auctionMinimumBidStep`.
+    /// @dev     Minimum bid that would currently be accepted by `bid()`. `auctionStartingPrice` if no bids were made,
+    ///          otherwise the leading bid increased by `auctionMinimumBidStep`.
     /// @return  auctionMinimumBid  Minimum bid required for `bid()`.
     function _minimumBid() internal view virtual returns (uint256 auctionMinimumBid) {
         if (leadingBid == 0) {
