@@ -45,6 +45,8 @@ import {ERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
 import {IERC721Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/IERC721Upgradeable.sol";
+import {IERC721MetadataUpgradeable} from
+    "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
@@ -65,6 +67,7 @@ contract Orb is
     Initializable,
     IERC165Upgradeable,
     IERC721Upgradeable,
+    IERC721MetadataUpgradeable,
     IOrb,
     ERC165Upgradeable,
     OwnableUpgradeable,
@@ -252,7 +255,7 @@ contract Orb is
         returns (bool isInterfaceSupported)
     {
         return interfaceId == type(IOrb).interfaceId || interfaceId == type(IERC721Upgradeable).interfaceId
-            || super.supportsInterface(interfaceId);
+            || interfaceId == type(IERC721MetadataUpgradeable).interfaceId || super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
