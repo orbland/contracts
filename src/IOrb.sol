@@ -153,6 +153,9 @@ interface IOrb is IERC165Upgradeable {
     function responsePeriod() external view returns (uint256);
     function beneficiary() external view returns (address);
 
+    // Upgrading View Functions
+    function version() external returns (uint256);
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,4 +210,8 @@ interface IOrb is IERC165Upgradeable {
     function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external;
     function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external;
     function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
+
+    // Upgrading Functions
+    function requestUpgrade() external;
+    function upgradeToNextVersion() external;
 }
