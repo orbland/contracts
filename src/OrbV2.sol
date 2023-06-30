@@ -38,9 +38,18 @@ pragma solidity ^0.8.20;
 import {Orb} from "./Orb.sol";
 
 contract OrbV2 is Orb {
+    /// Orb version. Value: 2.
+    uint256 private constant _VERSION = 2;
+
+    /// Testing new storage variable in upgrade. It's a number!
+    uint256 public number;
+
     function initializeV2(string memory newName_, string memory newSymbol_) public reinitializer(2) {
         name = newName_;
         symbol = newSymbol_;
+
+        // Set the new number to 69!
+        number = 69;
     }
 
     /// @notice  Allows the Orb creator to set the new cleartext maximum length. This function can only be called by
@@ -58,7 +67,9 @@ contract OrbV2 is Orb {
         emit CleartextMaximumLengthUpdate(previousCleartextMaximumLength, newCleartextMaximumLength);
     }
 
-    function version() public virtual override returns (uint256) {
-        return 2;
+    /// @notice  Allows anyone to record a number!
+    /// @param   newNumber  New number value!
+    function setNumber(uint256 newNumber) external {
+        number = newNumber;
     }
 }
