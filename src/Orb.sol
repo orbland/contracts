@@ -331,7 +331,8 @@ contract Orb is
         return tokenId_ == _TOKEN_ID ? keeper : address(0);
     }
 
-    /// @notice  TODO
+    /// @notice  Returns a fixed URL for the Orb ERC-721 metadata. `tokenId` argument is accepted for compatibility
+    ///          with the ERC-721 standard but does not affect the returned URL.
     function tokenURI(uint256) external view virtual returns (string memory) {
         return _tokenURI;
     }
