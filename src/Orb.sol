@@ -315,43 +315,55 @@ contract Orb is
     //  FUNCTIONS: ERC-721 OVERRIDES
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function balanceOf(address owner_) public view virtual returns (uint256 balance) {
+    /// @notice  Since there is only one token (Orb), this function only returns one for the Keeper address.
+    /// @param   owner_  Address to check balance for.
+    function balanceOf(address owner_) external view virtual returns (uint256 balance) {
         return owner_ == keeper ? 1 : 0;
     }
 
-    function ownerOf(uint256 tokenId_) public view virtual returns (address owner) {
-        return tokenId_ == _tokenId ? keeper : address(0);
+    /// @notice  Since there is only one token (Orb), this function only returns the Keeper address if the minted
+    ///          token id is provided.
+    function ownerOf(uint256 tokenId_) external view virtual returns (address owner) {
+        return tokenId_ == _TOKEN_ID ? keeper : address(0);
     }
 
-    function tokenURI(uint256) public view virtual returns (string memory) {
-        return _baseURI;
+    /// @notice  TODO
+    function tokenURI(uint256) external view virtual returns (string memory) {
+        return _tokenURI;
     }
 
+    /// @notice  ERC-721 `approve()` is not supported.
     function approve(address, uint256) external virtual {
         revert NotSupported();
     }
 
+    /// @notice  ERC-721 `setApprovalForAll()` is not supported.
     function setApprovalForAll(address, bool) external virtual {
         revert NotSupported();
     }
 
+    /// @notice  ERC-721 `getApproved()` is not supported.
     function getApproved(uint256) external view virtual returns (address) {
         revert NotSupported();
     }
 
+    /// @notice  ERC-721 `isApprovedForAll()` is not supported.
     function isApprovedForAll(address, address) external view virtual returns (bool) {
         revert NotSupported();
     }
 
-    function transferFrom(address, address, uint256) public virtual {
+    /// @notice  ERC-721 `transferFrom()` is not supported.
+    function transferFrom(address, address, uint256) external virtual {
         revert NotSupported();
     }
 
-    function safeTransferFrom(address, address, uint256) public virtual {
+    /// @notice  ERC-721 `safeTransferFrom()` is not supported.
+    function safeTransferFrom(address, address, uint256) external virtual {
         revert NotSupported();
     }
 
-    function safeTransferFrom(address, address, uint256, bytes memory) public virtual {
+    /// @notice  ERC-721 `safeTransferFrom()` is not supported.
+    function safeTransferFrom(address, address, uint256, bytes memory) external virtual {
         revert NotSupported();
     }
 
@@ -360,7 +372,7 @@ contract Orb is
     /// @param  from_  Address to transfer the Orb from.
     /// @param  to_    Address to transfer the Orb to.
     function _transferOrb(address from_, address to_) internal virtual {
-        emit Transfer(from_, to_, _tokenId);
+        emit Transfer(from_, to_, _TOKEN_ID);
         keeper = to_;
         if (to_ != address(this)) {
             keeperReceiveTime = block.timestamp;
