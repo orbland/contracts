@@ -86,6 +86,8 @@ contract Orb is
     uint256 internal constant _COOLDOWN_MAXIMUM_DURATION = 3650 days;
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
+    /// Token ID of the Orb. Value: 1.
+    uint256 internal constant _TOKEN_ID = 1;
 
     // STATE
 
@@ -115,11 +117,16 @@ contract Orb is
     /// There are no penalties for being late within this contract.
     uint256 public responsePeriod;
 
-    /// Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
-    /// allow easier lookups of Orb keeper.
-    uint256 internal _tokenId;
-    /// Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
-    string internal _baseURI;
+    // ERC-721 Variables
+
+    /// ERC-721 token name. Just for display purposes on blockchain explorers.
+    string public name;
+    /// ERC-721 token symbol. Just for display purposes on blockchain explorers.
+    string public symbol;
+    /// Token URI for tokenURI JSONs. Initially set in the `initializer` and setable with `setTokenURI()`.
+    string internal _tokenURI;
+
+    // Funds Variables
 
     /// Funds tracker, per address. Modified by deposits, withdrawals and settlements. The value is without settlement.
     /// It means effective user funds (withdrawable) would be different for keeper (subtracting
@@ -210,7 +217,9 @@ contract Orb is
         name = name_;
         symbol = symbol_;
         beneficiary = beneficiary_;
-        _baseURI = baseURI_;
+        _tokenURI = tokenURI_;
+
+        // Initial values. Can be changed by creator before selling the Orb.
 
         keeperTaxNumerator = 10_00;
         royaltyNumerator = 10_00;
@@ -356,39 +365,6 @@ contract Orb is
         if (to_ != address(this)) {
             keeperReceiveTime = block.timestamp;
         }
-    }
-
-    function requestUpgrade() external virtual onlyOwner {
-        if (OrbPond(pond).versions(version() + 1) == address(0)) {
-            revert NoNextVersion();
-        }
-        creatorRequestsUpgrade = true;
-    }
-
-    function upgradeToNextVersion() external virtual onlyProxy {
-        if (!creatorRequestsUpgrade) {
-            revert NoUpgradeRequested();
-        }
-        if (
-            (msg.sender == keeper && keeperSolvent())
-                || (msg.sender == owner() && (address(this) == keeper || owner() == keeper) && auctionEndTime == 0)
-        ) {
-            _upgradeToNextVersion();
-        }
-    }
-
-    function _upgradeToNextVersion() internal virtual {
-        address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
-        if (nextVersionImplementation == address(0)) {
-            revert NoNextVersion();
-        }
-        bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
-        _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
-        creatorRequestsUpgrade = false;
-    }
-
-    function version() public virtual returns (uint256) {
-        return 1;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

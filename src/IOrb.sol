@@ -194,7 +194,7 @@ interface IOrb is IERC165Upgradeable {
     // Orb Parameter Functions
     function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod) external;
     function extendHonoredUntil(uint256 newHonoredUntil) external;
-    function setTokenURI(string memory newBaseURI) external;
+    function setTokenURI(string memory newTokenURI) external;
     function setAuctionParameters(
         uint256 newStartingPrice,
         uint256 newMinimumBidStep,
