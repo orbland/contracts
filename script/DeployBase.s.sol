@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script} from "forge-std/Script.sol";
+/* solhint-disable no-console */
+// import {console} from "../lib/forge-std/src/console.sol";
+import {Script} from "../lib/forge-std/src/Script.sol";
+import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Orb} from "src/Orb.sol";
-import {OrbPond} from "src/OrbPond.sol";
-import {PaymentSplitter} from "openzeppelin-contracts/contracts/finance/PaymentSplitter.sol";
+import {OrbPond} from "../src/OrbPond.sol";
+import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
+import {PaymentSplitter} from "../lib/openzeppelin-contracts/contracts/finance/PaymentSplitter.sol";
+import {Orb} from "../src/Orb.sol";
+import {IOrb} from "../src/IOrb.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 abstract contract DeployBase is Script {
@@ -35,8 +40,15 @@ abstract contract DeployBase is Script {
 
     // Deploy addresses.
     PaymentSplitter public orbBeneficiary;
-    Orb public orb;
+
+    OrbInvocationRegistry public orbInvocationRegistryImplementation;
+    OrbInvocationRegistry public orbInvocationRegistry;
+
+    OrbPond public orbPondImplementation;
     OrbPond public orbPond;
+
+    Orb public orbImplementation;
+    Orb public orb;
 
     constructor(
         address[] memory _beneficiaryAddresses,
@@ -81,39 +93,48 @@ abstract contract DeployBase is Script {
 
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        // address deployerAddress = vm.addr(deployerKey);
 
-        // vm.startBroadcast(deployerKey);
+        vm.startBroadcast(deployerKey);
 
-        // orbPond = new OrbPond();
+        orbInvocationRegistryImplementation = new OrbInvocationRegistry();
+        orbPondImplementation = new OrbPond();
+        orbImplementation = new Orb();
 
-        // orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
-        // address splitterAddress = address(orbBeneficiary);
+        ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
+            address(orbInvocationRegistryImplementation),
+            abi.encodeWithSelector(OrbInvocationRegistry.initialize.selector)
+        );
+        orbInvocationRegistry = OrbInvocationRegistry(address(orbInvocationRegistryProxy));
 
-        // orbPond.createOrb(
-        //     orbName,
-        //     orbSymbol,
-        //     tokenId, // tokenId
-        //     splitterAddress, // beneficiary
-        //     "https://static.orb.land/orb/" // baseURI
-        // );
-        // orb = Orb(orbPond.orbs(0));
+        ERC1967Proxy orbPondProxy = new ERC1967Proxy(
+            address(orbPondImplementation),
+            abi.encodeWithSelector(OrbPond.initialize.selector, address(orbInvocationRegistry))
+        );
+        orbPond = OrbPond(address(orbPondProxy));
+        bytes memory orbPondV1InitializeCalldata =
+            abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
+        orbPond.registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
 
-        // orbPond.configureOrb(
-        //     0,
-        //     auctionStartingPrice,
-        //     auctionMinimumBidStep,
-        //     auctionMinimumDuration,
-        //     auctionKeeperMinimumDuration,
-        //     auctionBidExtension,
-        //     keeperTaxNumerator,
-        //     royaltyNumerator,
-        //     cooldown,
-        //     flaggingPeriod,
-        //     cleartextMaximumLength
-        // );
+        orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
+        address splitterAddress = address(orbBeneficiary);
 
-        // orbPond.transferOrbOwnership(0, creatorAddress);
+        orbPond.createOrb(splitterAddress, orbName, orbSymbol, "https://static.orb.land/orb/");
+        orb = Orb(orbPond.orbs(0));
 
-        // vm.stopBroadcast();
+        orb.setAuctionParameters(
+            auctionStartingPrice,
+            auctionMinimumBidStep,
+            auctionMinimumDuration,
+            auctionKeeperMinimumDuration,
+            auctionBidExtension
+        );
+        orb.setFees(keeperTaxNumerator, royaltyNumerator);
+        orb.setCooldown(cooldown, flaggingPeriod);
+        orb.setCleartextMaximumLength(cleartextMaximumLength);
+
+        orb.transferOwnership(creatorAddress);
+
+        vm.stopBroadcast();
     }
 }
