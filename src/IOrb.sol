@@ -160,13 +160,8 @@ interface IOrb is IERC165Upgradeable {
     //  FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function initialize(
-        string memory name_,
-        string memory symbol_,
-        uint256 tokenId_,
-        address beneficiary_,
-        string memory tokenURI_
-    ) external;
+    function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
+        external;
 
     // Auction Functions
     function startAuction() external;

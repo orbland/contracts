@@ -185,7 +185,7 @@ contract Orb is
     bool public creatorRequestsUpgrade;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  CONSTRUCTOR AND INTERFACE SUPPORT
+    //  INITIALIZER AND INTERFACE SUPPORT
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -196,24 +196,19 @@ contract Orb is
     /// @dev    When deployed, contract mints the only token that will ever exist, to itself.
     ///         This token represents the Orb and is called the Orb elsewhere in the contract.
     ///         `Ownable` sets the deployer to be the `owner()`, and also the creator in the Orb context.
+    /// @param  beneficiary_   Address to receive all Orb proceeds.
     /// @param  name_          Orb name, used in ERC-721 metadata.
     /// @param  symbol_        Orb symbol or ticker, used in ERC-721 metadata.
-    /// @param  tokenId_       ERC-721 token id of the Orb.
-    /// @param  beneficiary_   Address to receive all Orb proceeds.
-    /// @param  baseURI_      Initial baseURI value for tokenURI JSONs.
-    function initialize(
-        string memory name_,
-        string memory symbol_,
-        uint256 tokenId_,
-        address beneficiary_,
-        string memory baseURI_
-    ) public initializer {
+    /// @param  tokenURI_      Initial value for tokenURI JSONs.
+    function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
+        public
+        initializer
+    {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         name = name_;
         symbol = symbol_;
-        _tokenId = tokenId_;
         beneficiary = beneficiary_;
         _baseURI = baseURI_;
 
