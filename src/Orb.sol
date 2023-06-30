@@ -407,7 +407,7 @@ contract Orb is
     ///          anytime and is meant for when the current `baseURI` has to be updated.
     /// @param   newTokenURI  New `baseURI`, will be concatenated with the token id in `tokenURI()`.
     function setTokenURI(string memory newTokenURI) external virtual onlyOwner {
-        _baseURI = newTokenURI;
+        _tokenURI = newTokenURI;
     }
 
     /// @notice  Allows the Orb creator to set the auction parameters. This function can only be called by the Orb
