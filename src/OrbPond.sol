@@ -81,63 +81,16 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             abi.encodeWithSelector(IOrb.initialize.selector, beneficiary, name, symbol, tokenURI);
         ERC1967Proxy proxy = new ERC1967Proxy(versions[1], initializeCalldata);
         orbs[orbCount] = address(proxy);
+        IOwnershipTransferrable(orbs[orbCount]).transferOwnership(msg.sender);
 
         emit OrbCreation(orbCount, address(proxy));
 
         orbCount++;
     }
 
-    /// @notice  Configures most Orb's parameters in one transaction. Used to initially set up the Orb.
-    /// @param   orbId                         Id of the Orb to configure.
-    /// @param   auctionStartingPrice          Starting price of the Orb's auction.
-    /// @param   auctionMinimumBidStep         Minimum difference between bids in the Orb's auction.
-    /// @param   auctionMinimumDuration        Minimum duration of the Orb's auction.
-    /// @param   auctionKeeperMinimumDuration  Minimum duration of the Orb's auction.
-    /// @param   auctionBidExtension           Auction duration extension for late bids during the Orb auction.
-    /// @param   keeperTaxNumerator            Harberger tax numerator of the Orb, in basis points.
-    /// @param   royaltyNumerator              Royalty numerator of the Orb, in basis points.
-    /// @param   cooldown                      Cooldown of the Orb in seconds.
-    /// @param   cleartextMaximumLength        Invocation cleartext maximum length for the Orb.
-    function configureOrb(
-        uint256 orbId,
-        uint256 auctionStartingPrice,
-        uint256 auctionMinimumBidStep,
-        uint256 auctionMinimumDuration,
-        uint256 auctionKeeperMinimumDuration,
-        uint256 auctionBidExtension,
-        uint256 keeperTaxNumerator,
-        uint256 royaltyNumerator,
-        uint256 cooldown,
-        uint256 flaggingPeriod,
-        uint256 cleartextMaximumLength
-    ) external onlyOwner {
-        IOrb(orbs[orbId]).setAuctionParameters(
-            auctionStartingPrice,
-            auctionMinimumBidStep,
-            auctionMinimumDuration,
-            auctionKeeperMinimumDuration,
-            auctionBidExtension
-        );
-        IOrb(orbs[orbId]).setFees(keeperTaxNumerator, royaltyNumerator);
-        IOrb(orbs[orbId]).setCooldown(cooldown, flaggingPeriod);
-        IOrb(orbs[orbId]).setCleartextMaximumLength(cleartextMaximumLength);
-    }
-
-    /// @notice  Transfers the ownership of an Orb to its creator. This contract will no longer be able to configure
-    ///          the Orb afterwards.
-    /// @param   orbId           Id of the Orb to transfer.
-    /// @param   creatorAddress  Address of the Orb's creator, they will have full control over the Orb.
-    function transferOrbOwnership(uint256 orbId, address creatorAddress) external onlyOwner {
-        IOwnershipTransferrable(orbs[orbId]).transferOwnership(creatorAddress);
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: UPGRADING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // solhint-disable no-empty-blocks
-    /// @dev  Authorizes `owner()` to upgrade this OrbPond contract.
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @notice  Registers a new version of the Orb implementation contract.
     /// @param   version_          Version number of the new implementation contract.
@@ -153,4 +106,8 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
             latestVersion = version_;
         }
     }
+
+    // solhint-disable no-empty-blocks
+    /// @dev  Authorizes `owner()` to upgrade this OrbPond contract.
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
