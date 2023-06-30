@@ -13,8 +13,16 @@ contract OrbHarness is Orb {
         return _MAXIMUM_PRICE;
     }
 
-    function workaround_baseURI() public view returns (string memory) {
+    function workaround_tokenURI() public view returns (string memory) {
         return _tokenURI;
+    }
+
+    function workaround_auctionRunning() public view returns (bool) {
+        return _auctionRunning();
+    }
+
+    function workaround_minimumBid() public view returns (uint256) {
+        return _minimumBid();
     }
 
     function workaround_setPrice(uint256 _price) public {
