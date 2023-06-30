@@ -4,11 +4,6 @@ pragma solidity ^0.8.20;
 
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IOrb} from "./IOrb.sol";
-import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
-import {IERC165Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
-import {ERC165Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
@@ -22,26 +17,46 @@ interface IOwnershipTransferrable {
 /// @notice  Orbs come from a Pond. The Pond is used to efficiently create new Orbs, and track "official" Orbs, honered
 ///          by the Orb Land system. The Pond is also used to configure the Orbs and transfer ownership to the Orb
 ///          creator.
-/// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator.
-contract OrbPond is Initializable, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+/// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.
+contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  STORAGE
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// The mapping of Orb ids to Orbs. Increases monotonically.
     mapping(uint256 => address) public orbs;
     /// The number of Orbs created so far, used to find the next Orb id.
     uint256 public orbCount;
 
-    mapping(uint256 => address) public versions;
-    mapping(uint256 => bytes) public upgradeCalldata;
+    /// The mapping of version numbers to implementation contract addresses. Looked up by Orbs to find implementation
+    /// contracts for upgrades.
+    mapping(uint256 versionNumber => address implementation) public versions;
+    /// The mapping of version numbers to upgrade calldata. Looked up by Orbs to find initialization calldata for
+    /// upgrades.
+    mapping(uint256 versionNumber => bytes upgradeCalldata) public upgradeCalldata;
+    /// The highest version number so far. Could be used for new Orb creation.
     uint256 public latestVersion;
 
+    /// The address of the Orb Invocation Registry, used to register Orb invocations and responses.
     address public registry;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  INITIALIZER
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
+    /// @notice  Initializes the contract, setting the `owner` and `registry` variables.
+    /// @param   registry_   The address of the Orb Invocation Registry.
     function initialize(address registry_) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
@@ -49,28 +64,25 @@ contract OrbPond is Initializable, ERC165Upgradeable, OwnableUpgradeable, UUPSUp
         registry = registry_;
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: ORB CREATION
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  Creates a new Orb, and emits an event with the Orb's address.
+    /// @param   beneficiary   Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.
     /// @param   name          Name of the Orb, used for display purposes. Suggestion: "NameOrb".
     /// @param   symbol        Symbol of the Orb, used for display purposes. Suggestion: "ORB".
-    /// @param   tokenId       TokenId of the Orb. Only one ERC-721 token will be minted, with this id.
-    /// @param   beneficiary   Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.
-    /// @param   baseURI       Initial baseURI of the Orb, used as part of ERC-721 tokenURI.
-    function createOrb(
-        string memory name,
-        string memory symbol,
-        uint256 tokenId,
-        address beneficiary,
-        string memory baseURI
-    ) external onlyOwner {
+    /// @param   tokenURI      Initial tokenURI of the Orb, used as part of ERC-721 tokenURI.
+    function createOrb(address beneficiary, string memory name, string memory symbol, string memory tokenURI)
+        external
+        onlyOwner
+    {
         bytes memory initializeCalldata =
-            abi.encodeWithSelector(IOrb.initialize.selector, name, symbol, tokenId, beneficiary, baseURI);
+            abi.encodeWithSelector(IOrb.initialize.selector, beneficiary, name, symbol, tokenURI);
         ERC1967Proxy proxy = new ERC1967Proxy(versions[1], initializeCalldata);
         orbs[orbCount] = address(proxy);
 
-        emit OrbCreation(orbCount, address(orbs[orbCount]));
+        emit OrbCreation(orbCount, address(proxy));
 
         orbCount++;
     }
@@ -117,5 +129,28 @@ contract OrbPond is Initializable, ERC165Upgradeable, OwnableUpgradeable, UUPSUp
     /// @param   creatorAddress  Address of the Orb's creator, they will have full control over the Orb.
     function transferOrbOwnership(uint256 orbId, address creatorAddress) external onlyOwner {
         IOwnershipTransferrable(orbs[orbId]).transferOwnership(creatorAddress);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: UPGRADING
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // solhint-disable no-empty-blocks
+    /// @dev  Authorizes `owner()` to upgrade this OrbPond contract.
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /// @notice  Registers a new version of the Orb implementation contract.
+    /// @param   version_          Version number of the new implementation contract.
+    /// @param   implementation_   Address of the new implementation contract.
+    /// @param   upgradeCalldata_  Initialization calldata to be used for upgrading to the new implementation contract.
+    function registerVersion(uint256 version_, address implementation_, bytes calldata upgradeCalldata_)
+        external
+        onlyOwner
+    {
+        versions[version_] = implementation_;
+        upgradeCalldata[version_] = upgradeCalldata_;
+        if (version_ > latestVersion) {
+            latestVersion = version_;
+        }
     }
 }
