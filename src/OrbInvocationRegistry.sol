@@ -30,7 +30,8 @@ struct ResponseData {
 
 /// @title   Orb Invocation Registry
 /// @author  Jonas Lekevicius
-/// @notice  TODO
+/// @notice  Registry to track invocations and responses of all Orbs. Can be used by any Orb. Each OrbPond has a
+///          reference to an OrbInvocationRegistry respected by Orbs produced by that OrbPond
 /// @dev     Uses `Ownable`'s `owner()` for upgrades.
 contract OrbInvocationRegistry is
     Initializable,
