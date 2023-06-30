@@ -139,16 +139,6 @@ interface IOrb is IERC165Upgradeable {
     function royaltyNumerator() external view returns (uint256);
 
     // Invoking and Responding View Functions
-    // function invocations(uint256 invocationId)
-    //     external
-    //     view
-    //     returns (address invoker, bytes32 contentHash, uint256 timestamp);
-    // function invocationCount() external view returns (uint256);
-
-    // function responses(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
-    // function responseFlagged(uint256 invocationId) external view returns (bool);
-    // function flaggedResponsesCount() external view returns (uint256);
-
     function cooldown() external view returns (uint256);
     function flaggingPeriod() external view returns (uint256);
     function lastInvocationTime() external view returns (uint256);
@@ -200,12 +190,6 @@ interface IOrb is IERC165Upgradeable {
     // Orb Ownership Functions
     function relinquish(bool withAuction) external;
     function foreclose() external;
-
-    // Invoking and Responding Functions
-    // function invokeWithCleartext(string memory cleartext) external;
-    // function invokeWithHash(bytes32 contentHash) external;
-    // function respond(uint256 invocationId, bytes32 contentHash) external;
-    // function flagResponse(uint256 invocationId) external;
 
     // Orb Parameter Functions
     function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod) external;
