@@ -5,6 +5,10 @@ import {IERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
 
 interface IOrbInvocationRegistry is IERC165Upgradeable {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     event Invocation(
         uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash
     );
@@ -14,9 +18,16 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     event CleartextRecording(uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ERRORS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Authorization Errors
     error NotKeeper();
+    error NotCreator();
     error ContractHoldsOrb();
     error KeeperInsolvent();
+
     // Invoking and Responding Errors
     error CooldownIncomplete(uint256 timeRemaining);
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
@@ -25,4 +36,30 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     error ResponseExists(uint256 invocationId);
     error FlaggingPeriodExpired(uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
     error ResponseAlreadyFlagged(uint256 invocationId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function invocations(address orb, uint256 invocationId)
+        external
+        view
+        returns (address invoker, bytes32 contentHash, uint256 timestamp);
+    function invocationCount(address orb) external view returns (uint256);
+
+    function responses(address orb, uint256 invocationId)
+        external
+        view
+        returns (bytes32 contentHash, uint256 timestamp);
+    function responseFlagged(address orb, uint256 invocationId) external view returns (bool);
+    function flaggedResponsesCount(address orb) external view returns (uint256);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function invokeWithCleartext(address orb, string memory cleartext) external;
+    function invokeWithHash(address orb, bytes32 contentHash) external;
+    function respond(address orb, uint256 invocationId, bytes32 contentHash) external;
+    function flagResponse(address orb, uint256 invocationId) external;
 }
