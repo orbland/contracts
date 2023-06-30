@@ -76,6 +76,8 @@ contract Orb is
 
     // CONSTANTS
 
+    /// Orb version. Value: 1.
+    uint256 private constant _VERSION = 1;
     /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
     uint256 internal constant _FEE_DENOMINATOR = 100_00;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
@@ -176,6 +178,11 @@ contract Orb is
     uint256 public keeperReceiveTime;
     /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
     uint256 public lastInvocationTime;
+
+    // Upgradeability Variables
+
+    /// Upgrade requested
+    bool public creatorRequestsUpgrade;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  CONSTRUCTOR AND INTERFACE SUPPORT
@@ -1008,5 +1015,42 @@ contract Orb is
             revert NotPermitted();
         }
         lastInvocationTime = timestamp;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: UPGRADING
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function version() public virtual returns (uint256) {
+        return _VERSION;
+    }
+
+    function requestUpgrade() external virtual onlyOwner {
+        if (OrbPond(pond).versions(version() + 1) == address(0)) {
+            revert NoNextVersion();
+        }
+        creatorRequestsUpgrade = true;
+    }
+
+    function upgradeToNextVersion() external virtual onlyProxy {
+        if (!creatorRequestsUpgrade) {
+            revert NoUpgradeRequested();
+        }
+        if (
+            (msg.sender == keeper && keeperSolvent())
+                || (msg.sender == owner() && (address(this) == keeper || owner() == keeper) && auctionEndTime == 0)
+        ) {
+            _upgradeToNextVersion();
+        }
+    }
+
+    function _upgradeToNextVersion() internal virtual {
+        address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
+        if (nextVersionImplementation == address(0)) {
+            revert NoNextVersion();
+        }
+        bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
+        _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
+        creatorRequestsUpgrade = false;
     }
 }
