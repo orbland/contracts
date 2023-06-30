@@ -12,7 +12,9 @@ interface IOrb is IERC165Upgradeable {
     event Creation();
 
     // Auction Events
-    event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
+    event AuctionStart(
+        uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, address indexed auctionBeneficiary
+    );
     event AuctionBid(address indexed bidder, uint256 indexed bid);
     event AuctionExtension(uint256 indexed newAuctionEndTime);
     event AuctionFinalization(address indexed winner, uint256 indexed winningBid);

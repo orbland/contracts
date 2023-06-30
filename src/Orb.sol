@@ -590,7 +590,7 @@ contract Orb is
         auctionEndTime = block.timestamp + auctionMinimumDuration;
         auctionBeneficiary = beneficiary;
 
-        emit AuctionStart(block.timestamp, auctionEndTime);
+        emit AuctionStart(block.timestamp, auctionEndTime, auctionBeneficiary);
     }
 
     /// @notice  Bids the provided amount, if there's enough funds across funds on contract and transaction value.
@@ -967,7 +967,7 @@ contract Orb is
             }
             auctionBeneficiary = msg.sender;
             auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
-            emit AuctionStart(block.timestamp, auctionEndTime);
+            emit AuctionStart(block.timestamp, auctionEndTime, auctionBeneficiary);
         }
 
         _transferOrb(msg.sender, address(this));
@@ -993,7 +993,7 @@ contract Orb is
         if (auctionKeeperMinimumDuration > 0) {
             auctionBeneficiary = _keeper;
             auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;
-            emit AuctionStart(block.timestamp, auctionEndTime);
+            emit AuctionStart(block.timestamp, auctionEndTime, auctionBeneficiary);
         }
 
         _transferOrb(_keeper, address(this));
