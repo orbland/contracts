@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.20;
 
-import {IOrb} from "./IOrb.sol";
 import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
+import {Orb} from "./Orb.sol";
 import {IERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
 import {ERC165Upgradeable} from
@@ -12,6 +12,26 @@ import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
+/// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
+/// InvocationData is used to determine if the response can be flagged by the keeper.
+/// Invocation timestamp is tracked for the benefit of other contracts.
+struct InvocationData {
+    address invoker;
+    // keccak256 hash of the cleartext
+    bytes32 contentHash;
+    uint256 timestamp;
+}
+
+struct ResponseData {
+    // keccak256 hash of the cleartext
+    bytes32 contentHash;
+    uint256 timestamp;
+}
+
+/// @title   Orb Invocation Registry
+/// @author  Jonas Lekevicius
+/// @notice  TODO
+/// @dev     Uses `Ownable`'s `owner()` for upgrades.
 contract OrbInvocationRegistry is
     Initializable,
     IOrbInvocationRegistry,
@@ -19,84 +39,36 @@ contract OrbInvocationRegistry is
     OwnableUpgradeable,
     UUPSUpgradeable
 {
-    address public pond;
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  STORAGE
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
+    mapping(address orb => mapping(uint256 invocationId => InvocationData invocationData)) public invocations;
+    /// Count of invocations made: used to calculate invocationId of the next invocation.
+    mapping(address orb => uint256 count) public invocationCount;
+
+    /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
+    mapping(address orb => mapping(uint256 invocationId => ResponseData responseData)) public responses;
+    /// Mapping for flagged (reported) responses. Used by the keeper not satisfied with a response.
+    mapping(address orb => mapping(uint256 invocationId => bool isFlagged)) public responseFlagged;
+    /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
+    mapping(address orb => uint256 count) public flaggedResponsesCount;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  INITIALIZER AND INTERFACE SUPPORT
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
+    /// @dev  Initializes the contract.
     function initialize() public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        pond = msg.sender;
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-
-    // Invoking and Responding Events
-
-    /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
-    ///       external functions, otherwise does not make sense.
-    ///       Contract inherits `onlyOwner` modifier from `Ownable`.
-    modifier onlyKeeper(address orb) {
-        if (msg.sender != IOrb(orb).keeper()) {
-            revert NotKeeper();
-        }
-        _;
-    }
-
-    // ORB STATE MODIFIERS
-
-    /// @dev  Ensures that the Orb belongs to someone, not the contract itself.
-    modifier onlyKeeperHeld(address orb) {
-        if (address(this) == IOrb(orb).keeper()) {
-            revert ContractHoldsOrb();
-        }
-        _;
-    }
-
-    /// @dev  Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
-    modifier onlyKeeperSolvent(address orb) {
-        if (!IOrb(orb).keeperSolvent()) {
-            revert KeeperInsolvent();
-        }
-        _;
-    }
-
-    modifier onlyCreator() {
-        _;
-    }
-
-    // Invocation and Response State Variables
-
-    /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
-    /// InvocationData is used to determine if the response can be flagged by the keeper.
-    /// Invocation timestamp is tracked for the benefit of other contracts.
-    struct InvocationData {
-        address invoker;
-        // keccak256 hash of the cleartext
-        bytes32 contentHash;
-        uint256 timestamp;
-    }
-
-    struct ResponseData {
-        // keccak256 hash of the cleartext
-        bytes32 contentHash;
-        uint256 timestamp;
-    }
-
-    /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
-    mapping(uint256 => InvocationData) public invocations;
-    /// Count of invocations made: used to calculate invocationId of the next invocation.
-    uint256 public invocationCount;
-    /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
-    mapping(uint256 => ResponseData) public responses;
-    /// Mapping for flagged (reported) responses. Used by the keeper not satisfied with a response.
-    mapping(uint256 => bool) public responseFlagged;
-    /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
-    uint256 public flaggedResponsesCount;
 
     /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and IOrb interfaces.
     /// @param   interfaceId           Interface id to check for support.
@@ -111,21 +83,58 @@ contract OrbInvocationRegistry is
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  FUNCTIONS: INVOKING AND RESPONDING
+    //  MODIFIERS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
+    ///       external functions, otherwise does not make sense.
+    modifier onlyKeeper(address orb) {
+        if (msg.sender != Orb(orb).keeper()) {
+            revert NotKeeper();
+        }
+        _;
+    }
+
+    /// @dev  Ensures that the Orb belongs to someone, not the contract itself.
+    modifier onlyKeeperHeld(address orb) {
+        if (orb == Orb(orb).keeper()) {
+            revert ContractHoldsOrb();
+        }
+        _;
+    }
+
+    /// @dev  Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
+    modifier onlyKeeperSolvent(address orb) {
+        if (!Orb(orb).keeperSolvent()) {
+            revert KeeperInsolvent();
+        }
+        _;
+    }
+
+    /// @dev  Ensures that the caller is the creator of the Orb.
+    modifier onlyCreator(address orb) {
+        if (msg.sender != Orb(orb).owner()) {
+            revert NotCreator();
+        }
+        _;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: INVOKING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  Invokes the Orb. Allows the keeper to submit cleartext.
     /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
     /// @param   cleartext  Invocation cleartext.
     function invokeWithCleartext(address orb, string memory cleartext) external {
-        uint256 cleartextMaximumLength = IOrb(orb).cleartextMaximumLength();
+        uint256 cleartextMaximumLength = Orb(orb).cleartextMaximumLength();
 
         uint256 length = bytes(cleartext).length;
         if (length > cleartextMaximumLength) {
             revert CleartextTooLong(length, cleartextMaximumLength);
         }
         invokeWithHash(orb, keccak256(abi.encodePacked(cleartext)));
-        emit CleartextRecording(invocationCount, cleartext);
+        emit CleartextRecording(invocationCount[orb], cleartext);
     }
 
     /// @notice  Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
@@ -139,21 +148,25 @@ contract OrbInvocationRegistry is
         onlyKeeperHeld(orb)
         onlyKeeperSolvent(orb)
     {
-        uint256 lastInvocationTime = IOrb(orb).lastInvocationTime();
-        uint256 cooldown = IOrb(orb).cooldown();
+        uint256 lastInvocationTime = Orb(orb).lastInvocationTime();
+        uint256 cooldown = Orb(orb).cooldown();
 
         if (block.timestamp < lastInvocationTime + cooldown) {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
         }
 
-        invocationCount += 1;
-        uint256 invocationId = invocationCount; // starts at 1
+        invocationCount[orb] += 1;
+        uint256 invocationId = invocationCount[orb]; // starts at 1
 
-        invocations[invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
-        IOrb(orb).setLastInvocationTime(block.timestamp);
+        invocations[orb][invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
+        Orb(orb).setLastInvocationTime(block.timestamp);
 
         emit Invocation(invocationId, msg.sender, block.timestamp, contentHash);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: RESPONDING AND FLAGGING
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
     ///          it was made. A response to an invocation can only be written once. There is no way to record response
@@ -161,16 +174,15 @@ contract OrbInvocationRegistry is
     /// @dev     Emits `Response`.
     /// @param   invocationId  Id of an invocation to which the response is being made.
     /// @param   contentHash   keccak256 hash of the response text.
-    function respond(uint256 invocationId, bytes32 contentHash) external onlyCreator {
-        if (invocationId > invocationCount || invocationId == 0) {
+    function respond(address orb, uint256 invocationId, bytes32 contentHash) external onlyCreator(orb) {
+        if (invocationId > invocationCount[orb] || invocationId == 0) {
             revert InvocationNotFound(invocationId);
         }
-
-        if (_responseExists(invocationId)) {
+        if (_responseExists(orb, invocationId)) {
             revert ResponseExists(invocationId);
         }
 
-        responses[invocationId] = ResponseData(contentHash, block.timestamp);
+        responses[orb][invocationId] = ResponseData(contentHash, block.timestamp);
 
         emit Response(invocationId, msg.sender, block.timestamp, contentHash);
     }
@@ -185,27 +197,27 @@ contract OrbInvocationRegistry is
     ///          flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.
     /// @param   invocationId  Id of an invocation to which the response is being flagged.
     function flagResponse(address orb, uint256 invocationId) external onlyKeeper(orb) onlyKeeperSolvent(orb) {
-        uint256 keeperReceiveTime = IOrb(orb).keeperReceiveTime();
-        uint256 flaggingPeriod = IOrb(orb).flaggingPeriod();
+        uint256 keeperReceiveTime = Orb(orb).keeperReceiveTime();
+        uint256 flaggingPeriod = Orb(orb).flaggingPeriod();
 
-        if (!_responseExists(invocationId)) {
+        if (!_responseExists(orb, invocationId)) {
             revert ResponseNotFound(invocationId);
         }
 
         // Response Flagging Period starts counting from when the response is made.
-        uint256 responseTime = responses[invocationId].timestamp;
+        uint256 responseTime = responses[orb][invocationId].timestamp;
         if (block.timestamp - responseTime > flaggingPeriod) {
             revert FlaggingPeriodExpired(invocationId, block.timestamp - responseTime, flaggingPeriod);
         }
         if (keeperReceiveTime >= responseTime) {
             revert FlaggingPeriodExpired(invocationId, keeperReceiveTime, responseTime);
         }
-        if (responseFlagged[invocationId]) {
+        if (responseFlagged[orb][invocationId]) {
             revert ResponseAlreadyFlagged(invocationId);
         }
 
-        responseFlagged[invocationId] = true;
-        flaggedResponsesCount += 1;
+        responseFlagged[orb][invocationId] = true;
+        flaggedResponsesCount[orb] += 1;
 
         emit ResponseFlagging(invocationId, msg.sender);
     }
@@ -213,10 +225,18 @@ contract OrbInvocationRegistry is
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
     /// @param   invocationId_  Id of an invocation to which to check the existance of a response of.
     /// @return  isResponseFound  If a response to an invocation exists or not.
-    function _responseExists(uint256 invocationId_) internal view returns (bool isResponseFound) {
-        if (responses[invocationId_].timestamp != 0) {
+    function _responseExists(address orb, uint256 invocationId_) internal view returns (bool isResponseFound) {
+        if (responses[orb][invocationId_].timestamp != 0) {
             return true;
         }
         return false;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: UPGRADING
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // solhint-disable no-empty-blocks
+    /// @dev  Authorizes owner address to upgrade the contract.
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
