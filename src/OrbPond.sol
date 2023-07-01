@@ -29,6 +29,9 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// Orb Pond version. Value: 1.
+    uint256 private constant _VERSION = 1;
+
     /// The mapping of Orb ids to Orbs. Increases monotonically.
     mapping(uint256 => address) public orbs;
     /// The number of Orbs created so far, used to find the next Orb id.
@@ -75,6 +78,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// @param   tokenURI      Initial tokenURI of the Orb, used as part of ERC-721 tokenURI.
     function createOrb(address beneficiary, string memory name, string memory symbol, string memory tokenURI)
         external
+        virtual
         onlyOwner
     {
         bytes memory initializeCalldata =
@@ -98,6 +102,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// @param   upgradeCalldata_  Initialization calldata to be used for upgrading to the new implementation contract.
     function registerVersion(uint256 version_, address implementation_, bytes calldata upgradeCalldata_)
         external
+        virtual
         onlyOwner
     {
         versions[version_] = implementation_;
@@ -105,6 +110,10 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         if (version_ > latestVersion) {
             latestVersion = version_;
         }
+    }
+
+    function version() public virtual returns (uint256) {
+        return _VERSION;
     }
 
     // solhint-disable no-empty-blocks
