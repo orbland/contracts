@@ -136,7 +136,7 @@ contract OrbInvocationRegistry is
             revert CleartextTooLong(length, cleartextMaximumLength);
         }
         invokeWithHash(orb, keccak256(abi.encodePacked(cleartext)));
-        emit CleartextRecording(invocationCount[orb], cleartext);
+        emit CleartextRecording(orb, invocationCount[orb], cleartext);
     }
 
     /// @notice  Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
@@ -164,7 +164,7 @@ contract OrbInvocationRegistry is
         invocations[orb][invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
         Orb(orb).setLastInvocationTime(block.timestamp);
 
-        emit Invocation(invocationId, msg.sender, block.timestamp, contentHash);
+        emit Invocation(orb, invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -179,15 +179,15 @@ contract OrbInvocationRegistry is
     /// @param   contentHash   keccak256 hash of the response text.
     function respond(address orb, uint256 invocationId, bytes32 contentHash) external virtual onlyCreator(orb) {
         if (invocationId > invocationCount[orb] || invocationId == 0) {
-            revert InvocationNotFound(invocationId);
+            revert InvocationNotFound(orb, invocationId);
         }
         if (_responseExists(orb, invocationId)) {
-            revert ResponseExists(invocationId);
+            revert ResponseExists(orb, invocationId);
         }
 
         responses[orb][invocationId] = ResponseData(contentHash, block.timestamp);
 
-        emit Response(invocationId, msg.sender, block.timestamp, contentHash);
+        emit Response(orb, invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     /// @notice  Orb keeper can flag a response during Response Flagging Period, counting from when the response is
@@ -204,25 +204,25 @@ contract OrbInvocationRegistry is
         uint256 flaggingPeriod = Orb(orb).flaggingPeriod();
 
         if (!_responseExists(orb, invocationId)) {
-            revert ResponseNotFound(invocationId);
+            revert ResponseNotFound(orb, invocationId);
         }
 
         // Response Flagging Period starts counting from when the response is made.
         uint256 responseTime = responses[orb][invocationId].timestamp;
         if (block.timestamp - responseTime > flaggingPeriod) {
-            revert FlaggingPeriodExpired(invocationId, block.timestamp - responseTime, flaggingPeriod);
+            revert FlaggingPeriodExpired(orb, invocationId, block.timestamp - responseTime, flaggingPeriod);
         }
         if (keeperReceiveTime >= responseTime) {
-            revert FlaggingPeriodExpired(invocationId, keeperReceiveTime, responseTime);
+            revert FlaggingPeriodExpired(orb, invocationId, keeperReceiveTime, responseTime);
         }
         if (responseFlagged[orb][invocationId]) {
-            revert ResponseAlreadyFlagged(invocationId);
+            revert ResponseAlreadyFlagged(orb, invocationId);
         }
 
         responseFlagged[orb][invocationId] = true;
         flaggedResponsesCount[orb] += 1;
 
-        emit ResponseFlagging(invocationId, msg.sender);
+        emit ResponseFlagging(orb, invocationId, msg.sender);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
