@@ -10,13 +10,21 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     event Invocation(
-        uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed invoker,
+        uint256 timestamp,
+        bytes32 contentHash
     );
     event Response(
-        uint256 indexed invocationId, address indexed responder, uint256 indexed timestamp, bytes32 contentHash
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed responder,
+        uint256 timestamp,
+        bytes32 contentHash
     );
-    event CleartextRecording(uint256 indexed invocationId, string cleartext);
-    event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
+    event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
+    event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -31,11 +39,11 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     // Invoking and Responding Errors
     error CooldownIncomplete(uint256 timeRemaining);
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-    error InvocationNotFound(uint256 invocationId);
-    error ResponseNotFound(uint256 invocationId);
-    error ResponseExists(uint256 invocationId);
-    error FlaggingPeriodExpired(uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
-    error ResponseAlreadyFlagged(uint256 invocationId);
+    error InvocationNotFound(address orb, uint256 invocationId);
+    error ResponseNotFound(address orb, uint256 invocationId);
+    error ResponseExists(address orb, uint256 invocationId);
+    error FlaggingPeriodExpired(address orb, uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
+    error ResponseAlreadyFlagged(address orb, uint256 invocationId);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  VIEW FUNCTIONS
