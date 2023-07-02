@@ -224,6 +224,9 @@ contract Orb is
         beneficiary = beneficiary_;
         _tokenURI = tokenURI_;
 
+        keeper = address(this);
+        pond = msg.sender;
+
         // Initial values. Can be changed by creator before selling the Orb.
 
         keeperTaxNumerator = 10_00;
@@ -239,9 +242,6 @@ contract Orb is
         cleartextMaximumLength = 280;
 
         emit Creation();
-
-        keeper = address(this);
-        pond = msg.sender;
     }
 
     /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and IOrb interfaces.
