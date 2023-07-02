@@ -4,18 +4,20 @@ pragma solidity ^0.8.20;
 import {Orb} from "./Orb.sol";
 import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
 
-struct LateResponseReceipt {
-    uint256 lateDuration;
-    uint256 price;
-    uint256 keeperTaxNumerator;
-}
-
-/// @title   Orb Invocation Registry
+/// @title   Orb Invocation Registry v2 - Record-keeping contract for Orb invocations and responses
 /// @author  Jonas Lekevicius
-/// @notice  Registry to track invocations and responses of all Orbs. Can be used by any Orb. Each OrbPond has a
-///          reference to an OrbInvocationRegistry respected by Orbs produced by that OrbPond
-/// @dev     Uses `Ownable`'s `owner()` for upgrades.
+/// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
+/// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `IOrb` interface. Uses `Ownable`'s `owner()` to
+///          guard upgrading.
+///          V2 records Late Response Receipts if the response is made after the response period. Together with the
+///          `LateResponseDeposit` contract, it can allow Creators to compensate Keepers for late responses.
 contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
+    struct LateResponseReceipt {
+        uint256 lateDuration;
+        uint256 price;
+        uint256 keeperTaxNumerator;
+    }
+
     error Unauthorized();
     error LateResponseReceiptClaimed(uint256 invocationId);
 

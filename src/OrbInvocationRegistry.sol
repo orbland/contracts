@@ -12,27 +12,11 @@ import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contrac
 import {Orb} from "./Orb.sol";
 import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
 
-/// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
-/// InvocationData is used to determine if the response can be flagged by the keeper.
-/// Invocation timestamp is tracked for the benefit of other contracts.
-struct InvocationData {
-    address invoker;
-    // keccak256 hash of the cleartext
-    bytes32 contentHash;
-    uint256 timestamp;
-}
-
-struct ResponseData {
-    // keccak256 hash of the cleartext
-    bytes32 contentHash;
-    uint256 timestamp;
-}
-
-/// @title   Orb Invocation Registry
+/// @title   Orb Invocation Registry - Record-keeping contract for Orb invocations and responses
 /// @author  Jonas Lekevicius
-/// @notice  Registry to track invocations and responses of all Orbs. Can be used by any Orb. Each OrbPond has a
-///          reference to an OrbInvocationRegistry respected by Orbs produced by that OrbPond
-/// @dev     Uses `Ownable`'s `owner()` for upgrades.
+/// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
+/// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `IOrb` interface. Uses `Ownable`'s `owner()` to
+///          guard upgrading.
 contract OrbInvocationRegistry is
     Initializable,
     IOrbInvocationRegistry,
@@ -40,6 +24,22 @@ contract OrbInvocationRegistry is
     OwnableUpgradeable,
     UUPSUpgradeable
 {
+    /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
+    /// InvocationData is used to determine if the response can be flagged by the keeper.
+    /// Invocation timestamp and invoker address is tracked for the benefit of other contracts.
+    struct InvocationData {
+        address invoker;
+        // keccak256 hash of the cleartext
+        bytes32 contentHash;
+        uint256 timestamp;
+    }
+
+    struct ResponseData {
+        // keccak256 hash of the cleartext
+        bytes32 contentHash;
+        uint256 timestamp;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +242,13 @@ contract OrbInvocationRegistry is
     //  FUNCTIONS: UPGRADING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // solhint-disable no-empty-blocks
+    /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+    /// @return  orbInvocationRegistryVersion  Version of the Orb Invocation Registry contract.
+    function version() public virtual returns (uint256 orbInvocationRegistryVersion) {
+        return _VERSION;
+    }
+
     /// @dev  Authorizes owner address to upgrade the contract.
+    // solhint-disable no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

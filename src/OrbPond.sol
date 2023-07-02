@@ -9,11 +9,12 @@ import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contrac
 import {IOwnershipTransferrable} from "./IOwnershipTransferrable.sol";
 import {IOrb} from "./IOrb.sol";
 
-/// @title   Orb Pond - the Orb Factory
+/// @title   Orb Pond - The Orb Factory
 /// @author  Jonas Lekevicius
-/// @notice  Orbs come from a Pond. The Pond is used to efficiently create new Orbs, and track "official" Orbs, honered
-///          by the Orb Land system. The Pond is also used to configure the Orbs and transfer ownership to the Orb
-///          creator.
+/// @notice  Orbs come from a Pond. The Orb Pond is used to efficiently create new Orbs, and track “official” Orbs,
+///          supported by the Orb Land system. The Orb Pond is also used to register allowed Orb upgrade
+///          implementations, and keeps a reference to an Orb Invocation Registry used by all Orbs created with this
+///          Orb Pond.
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.
 contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,11 +110,13 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function version() public virtual returns (uint256) {
+    /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+    /// @return  orbPondVersion  Version of the Orb Pond contract.
+    function version() public virtual returns (uint256 orbPondVersion) {
         return _VERSION;
     }
 
-    // solhint-disable no-empty-blocks
     /// @dev  Authorizes `owner()` to upgrade this OrbPond contract.
+    // solhint-disable no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
