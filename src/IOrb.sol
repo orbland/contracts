@@ -63,6 +63,10 @@ interface IOrb is IERC165Upgradeable {
         uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength
     );
 
+    // Upgrading Events
+    event UpgradeRequest(address indexed requestedImplementation);
+    event UpgradeCompletion(address indexed newImplementation);
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +110,7 @@ interface IOrb is IERC165Upgradeable {
 
     // Upgradding Errors
     error NoUpgradeRequested();
-    error NoNextVersion();
+    error NotNextVersion();
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  VIEW FUNCTIONS
@@ -151,10 +155,10 @@ interface IOrb is IERC165Upgradeable {
     // Orb Parameter View Functions
     function honoredUntil() external view returns (uint256);
     function responsePeriod() external view returns (uint256);
-    function beneficiary() external view returns (address);
 
     // Upgrading View Functions
     function version() external returns (uint256);
+    function requestedUpgradeImplementation() external returns (address);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS
@@ -207,6 +211,6 @@ interface IOrb is IERC165Upgradeable {
     function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 
     // Upgrading Functions
-    function requestUpgrade() external;
+    function requestUpgrade(address requestedImplementation) external;
     function upgradeToNextVersion() external;
 }

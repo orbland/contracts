@@ -193,8 +193,8 @@ contract Orb is
 
     // Upgradeability Variables
 
-    /// Upgrade requested
-    bool public creatorRequestsUpgrade;
+    /// Requested upgrade implementation address
+    address public requestedUpgradeImplementation;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
@@ -1015,32 +1015,43 @@ contract Orb is
         return _VERSION;
     }
 
-    function requestUpgrade() external virtual onlyOwner {
-        if (OrbPond(pond).versions(version() + 1) == address(0)) {
-            revert NoNextVersion();
+    /// @notice  Allows the creator to request an upgrade to the next version of the Orb. Requires that the new version
+    ///          is registered with the Orb Pond. The upgrade will be performed with `upgradeToNextVersion()` by the
+    ///          keeper (if there is one), or the creator if the Orb is in their control. The upgrade can be cancelled
+    ///          by calling this function with `address(0)` as the argument.
+    /// @dev     Emits `UpgradeRequest`.
+    /// @param   requestedImplementation  Address of the new version of the Orb, or `address(0)` to cancel.
+    function requestUpgrade(address requestedImplementation) external virtual onlyOwner {
+        if (OrbPond(pond).versions(version() + 1) != requestedImplementation && requestedImplementation != address(0)) {
+            revert NotNextVersion();
         }
-        creatorRequestsUpgrade = true;
+        requestedUpgradeImplementation = requestedImplementation;
+
+        emit UpgradeRequest(requestedImplementation);
     }
 
+    /// @notice  Allows the keeper (if exists) or the creator (if in their control) to upgrade the Orb to the next
+    ///          version, if the creator requested an upgrade (by calling `requestUpgrade()`) and it still matches with
+    ///          the next version stored on the Orb Pond contract. Also calls the next version initializer using fixed
+    ///          calldata stored on the Orb Pond contract.
+    /// @dev     Emits `UpgradeCompletion`. Can only be called via an active proxy.
     function upgradeToNextVersion() external virtual onlyProxy {
-        if (!creatorRequestsUpgrade) {
+        if (requestedUpgradeImplementation == address(0)) {
             revert NoUpgradeRequested();
         }
         if (
             (msg.sender == keeper && keeperSolvent())
                 || (msg.sender == owner() && (address(this) == keeper || owner() == keeper) && auctionEndTime == 0)
         ) {
-            _upgradeToNextVersion();
-        }
-    }
-
-    function _upgradeToNextVersion() internal virtual {
         address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
-        if (nextVersionImplementation == address(0)) {
-            revert NoNextVersion();
+            if (nextVersionImplementation != requestedUpgradeImplementation) {
+                revert NotNextVersion();
         }
         bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
         _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
-        creatorRequestsUpgrade = false;
+            requestedUpgradeImplementation = address(0);
+
+            emit UpgradeCompletion(nextVersionImplementation);
+        }
     }
 }
