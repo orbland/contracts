@@ -19,6 +19,9 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
     error Unauthorized();
     error LateResponseReceiptClaimed(uint256 invocationId);
 
+    event LateResponse(
+        address indexed orb, uint256 indexed invocationId, address indexed responder, uint256 lateDuration
+    );
 
     /// Orb Invocation Registry version. Value: 2.
     uint256 private constant _VERSION = 2;
@@ -48,7 +51,7 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
     /// @notice  The Orb creator can use this function to respond to any existing invocation, no matter how long ago
     ///          it was made. A response to an invocation can only be written once. There is no way to record response
     ///          cleartext on-chain.
-    /// @dev     Emits `Response`.
+    /// @dev     Emits `Response`, and sometimes `LateResponse` if the response was made after the response period.
     /// @param   invocationId  Id of an invocation to which the response is being made.
     /// @param   contentHash   keccak256 hash of the response text.
     function respond(address orb, uint256 invocationId, bytes32 contentHash)
@@ -58,10 +61,10 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
         onlyCreator(orb)
     {
         if (invocationId > invocationCount[orb] || invocationId == 0) {
-            revert InvocationNotFound(invocationId);
+            revert InvocationNotFound(orb, invocationId);
         }
         if (_responseExists(orb, invocationId)) {
-            revert ResponseExists(invocationId);
+            revert ResponseExists(orb, invocationId);
         }
 
         responses[orb][invocationId] = ResponseData(contentHash, block.timestamp);
@@ -69,12 +72,13 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
         uint256 invocationTime = invocations[orb][invocationId].timestamp;
         uint256 responseDuration = block.timestamp - invocationTime;
         if (responseDuration > Orb(orb).responsePeriod()) {
-            lateResponseReceipts[orb][invocationId] = LateResponseReceipt(
-                responseDuration - Orb(orb).responsePeriod(), Orb(orb).price(), Orb(orb).keeperTaxNumerator()
-            );
+            uint256 lateDuration = responseDuration - Orb(orb).responsePeriod();
+            lateResponseReceipts[orb][invocationId] =
+                LateResponseReceipt(lateDuration, Orb(orb).price(), Orb(orb).keeperTaxNumerator());
+            emit LateResponse(orb, invocationId, msg.sender, lateDuration);
         }
 
-        emit Response(invocationId, msg.sender, block.timestamp, contentHash);
+        emit Response(orb, invocationId, msg.sender, block.timestamp, contentHash);
     }
 
     function setLateResponseReceiptClaimed(address orb, uint256 invocationId) external {
@@ -82,7 +86,7 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
             revert Unauthorized();
         }
         if (lateResponseReceipts[orb][invocationId].lateDuration == 0) {
-            revert ResponseNotFound(invocationId);
+            revert ResponseNotFound(orb, invocationId);
         }
         if (!lateResponseReceiptClaimed[orb][invocationId]) {
             revert LateResponseReceiptClaimed(invocationId);
