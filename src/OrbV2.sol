@@ -72,4 +72,10 @@ contract OrbV2 is Orb {
     function setNumber(uint256 newNumber) external {
         number = newNumber;
     }
+
+    /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+    /// @return  orbVersion  Version of the Orb.
+    function version() public virtual override returns (uint256 orbVersion) {
+        return _VERSION;
+    }
 }
