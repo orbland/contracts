@@ -35,9 +35,6 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity ^0.8.20;
 
-import {IOrb} from "./IOrb.sol";
-import {OrbPond} from "./OrbPond.sol";
-import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {IERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
@@ -50,7 +47,10 @@ import {IERC721MetadataUpgradeable} from
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
-/// @title   Orb - Harberger-taxed NFT with auction and on-chain invocations and responses
+import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
+import {OrbPond} from "./OrbPond.sol";
+import {IOrb} from "./IOrb.sol";
+
 /// @author  Jonas Lekevicius
 /// @author  Eric Wall
 /// @notice  This is a basic Q&A-type Orb. The keeper has the right to submit a text-based question to the creator and
