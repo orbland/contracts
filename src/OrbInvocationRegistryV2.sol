@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.20;
 
 import {Orb} from "./Orb.sol";
-import {OrbInvocationRegistry, ResponseData} from "./OrbInvocationRegistry.sol";
+import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
 
 struct LateResponseReceipt {
     uint256 lateDuration;

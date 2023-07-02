@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.20;
 
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IOrb} from "./IOrb.sol";
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-interface IOwnershipTransferrable {
-    function transferOwnership(address newOwner) external;
-}
+import {IOwnershipTransferrable} from "./IOwnershipTransferrable.sol";
+import {IOrb} from "./IOrb.sol";
 
 /// @title   Orb Pond - the Orb Factory
 /// @author  Jonas Lekevicius
