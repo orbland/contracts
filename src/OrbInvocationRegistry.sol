@@ -44,6 +44,9 @@ contract OrbInvocationRegistry is
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// Orb Invocation Registry version. Value: 1.
+    uint256 private constant _VERSION = 1;
+
     /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
     mapping(address orb => mapping(uint256 invocationId => InvocationData invocationData)) public invocations;
     /// Count of invocations made: used to calculate invocationId of the next invocation.
