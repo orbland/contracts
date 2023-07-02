@@ -19,6 +19,10 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
     error Unauthorized();
     error LateResponseReceiptClaimed(uint256 invocationId);
 
+
+    /// Orb Invocation Registry version. Value: 2.
+    uint256 private constant _VERSION = 2;
+
     /// The address of the Late Response Deposit contract.
     address public lateResponseDepositAddress;
     /// Mapping for late response receipts. Used to track late response receipts for invocations that have not been
