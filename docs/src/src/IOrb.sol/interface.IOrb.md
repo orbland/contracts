@@ -1,30 +1,16 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/1444163b9922788790de284c6d2d30eca3e6316e/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/IOrb.sol)
 
 **Inherits:**
-IERC165
+IERC165Upgradeable
 
 
 ## Functions
-### tokenId
-
-
-```solidity
-function tokenId() external view returns (uint256);
-```
-
 ### auctionEndTime
 
 
 ```solidity
 function auctionEndTime() external view returns (uint256);
-```
-
-### auctionRunning
-
-
-```solidity
-function auctionRunning() external view returns (bool);
 ```
 
 ### leadingBidder
@@ -39,13 +25,6 @@ function leadingBidder() external view returns (address);
 
 ```solidity
 function leadingBid() external view returns (uint256);
-```
-
-### minimumBid
-
-
-```solidity
-function minimumBid() external view returns (uint256);
 ```
 
 ### auctionBeneficiary
@@ -132,11 +111,11 @@ function feeDenominator() external view returns (uint256);
 function keeperTaxPeriod() external view returns (uint256);
 ```
 
-### price
+### keeper
 
 
 ```solidity
-function price() external view returns (uint256);
+function keeper() external view returns (address);
 ```
 
 ### keeperReceiveTime
@@ -146,49 +125,18 @@ function price() external view returns (uint256);
 function keeperReceiveTime() external view returns (uint256);
 ```
 
+### price
+
+
+```solidity
+function price() external view returns (uint256);
+```
+
 ### royaltyNumerator
 
 
 ```solidity
 function royaltyNumerator() external view returns (uint256);
-```
-
-### invocations
-
-
-```solidity
-function invocations(uint256 invocationId)
-    external
-    view
-    returns (address invoker, bytes32 contentHash, uint256 timestamp);
-```
-
-### invocationCount
-
-
-```solidity
-function invocationCount() external view returns (uint256);
-```
-
-### responses
-
-
-```solidity
-function responses(uint256 invocationId) external view returns (bytes32 contentHash, uint256 timestamp);
-```
-
-### responseFlagged
-
-
-```solidity
-function responseFlagged(uint256 invocationId) external view returns (bool);
-```
-
-### flaggedResponsesCount
-
-
-```solidity
-function flaggedResponsesCount() external view returns (uint256);
 ```
 
 ### cooldown
@@ -219,6 +167,20 @@ function lastInvocationTime() external view returns (uint256);
 function cleartextMaximumLength() external view returns (uint256);
 ```
 
+### pond
+
+
+```solidity
+function pond() external view returns (address);
+```
+
+### beneficiary
+
+
+```solidity
+function beneficiary() external view returns (address);
+```
+
 ### honoredUntil
 
 
@@ -233,11 +195,26 @@ function honoredUntil() external view returns (uint256);
 function responsePeriod() external view returns (uint256);
 ```
 
-### beneficiary
+### version
 
 
 ```solidity
-function beneficiary() external view returns (address);
+function version() external returns (uint256);
+```
+
+### requestedUpgradeImplementation
+
+
+```solidity
+function requestedUpgradeImplementation() external returns (address);
+```
+
+### initialize
+
+
+```solidity
+function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
+    external;
 ```
 
 ### startAuction
@@ -338,32 +315,11 @@ function relinquish(bool withAuction) external;
 function foreclose() external;
 ```
 
-### invokeWithCleartext
+### setLastInvocationTime
 
 
 ```solidity
-function invokeWithCleartext(string memory cleartext) external;
-```
-
-### invokeWithHash
-
-
-```solidity
-function invokeWithHash(bytes32 contentHash) external;
-```
-
-### respond
-
-
-```solidity
-function respond(uint256 invocationId, bytes32 contentHash) external;
-```
-
-### flagResponse
-
-
-```solidity
-function flagResponse(uint256 invocationId) external;
+function setLastInvocationTime(uint256 timestamp) external;
 ```
 
 ### swearOath
@@ -380,11 +336,11 @@ function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newRespons
 function extendHonoredUntil(uint256 newHonoredUntil) external;
 ```
 
-### setBaseURI
+### setTokenURI
 
 
 ```solidity
-function setBaseURI(string memory newBaseURI) external;
+function setTokenURI(string memory newTokenURI) external;
 ```
 
 ### setAuctionParameters
@@ -421,6 +377,20 @@ function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external;
 function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external;
 ```
 
+### requestUpgrade
+
+
+```solidity
+function requestUpgrade(address requestedImplementation) external;
+```
+
+### upgradeToNextVersion
+
+
+```solidity
+function upgradeToNextVersion() external;
+```
+
 ## Events
 ### Creation
 
@@ -431,7 +401,9 @@ event Creation();
 ### AuctionStart
 
 ```solidity
-event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime);
+event AuctionStart(
+    uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, address indexed auctionBeneficiary
+);
 ```
 
 ### AuctionBid
@@ -494,30 +466,6 @@ event Foreclosure(address indexed formerKeeper);
 event Relinquishment(address indexed formerKeeper);
 ```
 
-### Invocation
-
-```solidity
-event Invocation(uint256 indexed invocationId, address indexed invoker, uint256 indexed timestamp, bytes32 contentHash);
-```
-
-### Response
-
-```solidity
-event Response(uint256 indexed invocationId, address indexed responder, uint256 indexed timestamp, bytes32 contentHash);
-```
-
-### CleartextRecording
-
-```solidity
-event CleartextRecording(uint256 indexed invocationId, string cleartext);
-```
-
-### ResponseFlagging
-
-```solidity
-event ResponseFlagging(uint256 indexed invocationId, address indexed flagger);
-```
-
 ### OathSwearing
 
 ```solidity
@@ -575,11 +523,29 @@ event CooldownUpdate(
 event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength);
 ```
 
-## Errors
-### TransferringNotSupported
+### UpgradeRequest
 
 ```solidity
-error TransferringNotSupported();
+event UpgradeRequest(address indexed requestedImplementation);
+```
+
+### UpgradeCompletion
+
+```solidity
+event UpgradeCompletion(address indexed newImplementation);
+```
+
+## Errors
+### NotSupported
+
+```solidity
+error NotSupported();
+```
+
+### NotPermitted
+
+```solidity
+error NotPermitted();
 ```
 
 ### AlreadyKeeper
@@ -690,48 +656,6 @@ error PurchasingNotPermitted();
 error InvalidNewPrice(uint256 priceProvided);
 ```
 
-### CooldownIncomplete
-
-```solidity
-error CooldownIncomplete(uint256 timeRemaining);
-```
-
-### CleartextTooLong
-
-```solidity
-error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-```
-
-### InvocationNotFound
-
-```solidity
-error InvocationNotFound(uint256 invocationId);
-```
-
-### ResponseNotFound
-
-```solidity
-error ResponseNotFound(uint256 invocationId);
-```
-
-### ResponseExists
-
-```solidity
-error ResponseExists(uint256 invocationId);
-```
-
-### FlaggingPeriodExpired
-
-```solidity
-error FlaggingPeriodExpired(uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
-```
-
-### ResponseAlreadyFlagged
-
-```solidity
-error ResponseAlreadyFlagged(uint256 invocationId);
-```
-
 ### HonoredUntilNotDecreasable
 
 ```solidity
@@ -760,5 +684,17 @@ error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDu
 
 ```solidity
 error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
+```
+
+### NoUpgradeRequested
+
+```solidity
+error NoUpgradeRequested();
+```
+
+### NotNextVersion
+
+```solidity
+error NotNextVersion();
 ```
 
