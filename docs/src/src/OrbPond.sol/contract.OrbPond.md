@@ -1,26 +1,36 @@
 # OrbPond
-[Git Source](https://github.com/orbland/orb/blob/1444163b9922788790de284c6d2d30eca3e6316e/src/OrbPond.sol)
+[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/OrbPond.sol)
 
 **Inherits:**
-Ownable
+Initializable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Author:**
 Jonas Lekevicius
 
-Orbs come from a Pond. The Pond is used to efficiently create new Orbs, and track "official" Orbs, honered
-by the Orb Land system. The Pond is also used to configure the Orbs and transfer ownership to the Orb
-creator.
+Orbs come from a Pond. The Orb Pond is used to efficiently create new Orbs, and track “official” Orbs,
+supported by the Orb Land system. The Orb Pond is also used to register allowed Orb upgrade
+implementations, and keeps a reference to an Orb Invocation Registry used by all Orbs created with this
+Orb Pond.
 
-*Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator.*
+*Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.*
 
 
 ## State Variables
+### _VERSION
+Orb Pond version. Value: 1.
+
+
+```solidity
+uint256 private constant _VERSION = 1;
+```
+
+
 ### orbs
 The mapping of Orb ids to Orbs. Increases monotonically.
 
 
 ```solidity
-mapping(uint256 => Orb) public orbs;
+mapping(uint256 => address) public orbs;
 ```
 
 
@@ -33,85 +43,131 @@ uint256 public orbCount;
 ```
 
 
+### versions
+The mapping of version numbers to implementation contract addresses. Looked up by Orbs to find implementation
+contracts for upgrades.
+
+
+```solidity
+mapping(uint256 versionNumber => address implementation) public versions;
+```
+
+
+### upgradeCalldata
+The mapping of version numbers to upgrade calldata. Looked up by Orbs to find initialization calldata for
+upgrades.
+
+
+```solidity
+mapping(uint256 versionNumber => bytes upgradeCalldata) public upgradeCalldata;
+```
+
+
+### latestVersion
+The highest version number so far. Could be used for new Orb creation.
+
+
+```solidity
+uint256 public latestVersion;
+```
+
+
+### registry
+The address of the Orb Invocation Registry, used to register Orb invocations and responses.
+
+
+```solidity
+address public registry;
+```
+
+
 ## Functions
+### constructor
+
+
+```solidity
+constructor();
+```
+
+### initialize
+
+Initializes the contract, setting the `owner` and `registry` variables.
+
+
+```solidity
+function initialize(address registry_) public initializer;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`registry_`|`address`|  The address of the Orb Invocation Registry.|
+
+
 ### createOrb
 
 Creates a new Orb, and emits an event with the Orb's address.
 
 
 ```solidity
-function createOrb(
-    string memory name,
-    string memory symbol,
-    uint256 tokenId,
-    address beneficiary,
-    string memory baseURI
-) external onlyOwner;
+function createOrb(address beneficiary, string memory name, string memory symbol, string memory tokenURI)
+    external
+    virtual
+    onlyOwner;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`beneficiary`|`address`|  Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.|
 |`name`|`string`|         Name of the Orb, used for display purposes. Suggestion: "NameOrb".|
 |`symbol`|`string`|       Symbol of the Orb, used for display purposes. Suggestion: "ORB".|
-|`tokenId`|`uint256`|      TokenId of the Orb. Only one ERC-721 token will be minted, with this id.|
-|`beneficiary`|`address`|  Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.|
-|`baseURI`|`string`|      Initial baseURI of the Orb, used as part of ERC-721 tokenURI.|
+|`tokenURI`|`string`|     Initial tokenURI of the Orb, used as part of ERC-721 tokenURI.|
 
 
-### configureOrb
+### registerVersion
 
-Configures most Orb's parameters in one transaction. Used to initially set up the Orb.
+Registers a new version of the Orb implementation contract.
 
 
 ```solidity
-function configureOrb(
-    uint256 orbId,
-    uint256 auctionStartingPrice,
-    uint256 auctionMinimumBidStep,
-    uint256 auctionMinimumDuration,
-    uint256 auctionKeeperMinimumDuration,
-    uint256 auctionBidExtension,
-    uint256 keeperTaxNumerator,
-    uint256 royaltyNumerator,
-    uint256 cooldown,
-    uint256 flaggingPeriod,
-    uint256 cleartextMaximumLength
-) external onlyOwner;
+function registerVersion(uint256 version_, address implementation_, bytes calldata upgradeCalldata_)
+    external
+    virtual
+    onlyOwner;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orbId`|`uint256`|                        Id of the Orb to configure.|
-|`auctionStartingPrice`|`uint256`|         Starting price of the Orb's auction.|
-|`auctionMinimumBidStep`|`uint256`|        Minimum difference between bids in the Orb's auction.|
-|`auctionMinimumDuration`|`uint256`|       Minimum duration of the Orb's auction.|
-|`auctionKeeperMinimumDuration`|`uint256`| Minimum duration of the Orb's auction.|
-|`auctionBidExtension`|`uint256`|          Auction duration extension for late bids during the Orb auction.|
-|`keeperTaxNumerator`|`uint256`|           Harberger tax numerator of the Orb, in basis points.|
-|`royaltyNumerator`|`uint256`|             Royalty numerator of the Orb, in basis points.|
-|`cooldown`|`uint256`|                     Cooldown of the Orb in seconds.|
-|`flaggingPeriod`|`uint256`||
-|`cleartextMaximumLength`|`uint256`|       Invocation cleartext maximum length for the Orb.|
+|`version_`|`uint256`|         Version number of the new implementation contract.|
+|`implementation_`|`address`|  Address of the new implementation contract.|
+|`upgradeCalldata_`|`bytes`| Initialization calldata to be used for upgrading to the new implementation contract.|
 
 
-### transferOrbOwnership
+### version
 
-Transfers the ownership of an Orb to its creator. This contract will no longer be able to configure
-the Orb afterwards.
+Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
 
 
 ```solidity
-function transferOrbOwnership(uint256 orbId, address creatorAddress) external onlyOwner;
+function version() public virtual returns (uint256 orbPondVersion);
 ```
-**Parameters**
+**Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orbId`|`uint256`|          Id of the Orb to transfer.|
-|`creatorAddress`|`address`| Address of the Orb's creator, they will have full control over the Orb.|
+|`orbPondVersion`|`uint256`| Version of the Orb Pond contract.|
 
+
+### _authorizeUpgrade
+
+*Authorizes `owner()` to upgrade this OrbPond contract.*
+
+
+```solidity
+function _authorizeUpgrade(address newImplementation) internal override onlyOwner;
+```
 
 ## Events
 ### OrbCreation

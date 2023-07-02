@@ -1,28 +1,96 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/1444163b9922788790de284c6d2d30eca3e6316e/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/Orb.sol)
 
 **Inherits:**
-Ownable, ERC165, ERC721, [IOrb](/src/IOrb.sol/interface.IOrb.md)
+Initializable, IERC165Upgradeable, IERC721Upgradeable, IERC721MetadataUpgradeable, [IOrb](/src/IOrb.sol/interface.IOrb.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Authors:**
 Jonas Lekevicius, Eric Wall
 
-This is a basic Q&A-type Orb. The keeper has the right to submit a text-based question to the creator and
-the right to receive a text-based response. The question is limited in length but responses may come in
-any length. Questions and answers are hash-committed to the blockchain so that the track record cannot be
-changed. The Orb has a cooldown.
-The Orb uses Harberger tax and is always on sale. This means that when you purchase the Orb, you must also
-set a price which you’re willing to sell the Orb at. However, you must pay an amount based on tax rate to
-the Orb contract per year in order to maintain the Orb ownership. This amount is accounted for per second,
-and user funds need to be topped up before the foreclosure time to maintain ownership.
+The Orb is issued by a Creator: the user who swore an Orb Oath together with a date until which the Oath
+will be honored. The Creator can list the Orb for sale at a fixed price, or run an auction for it. The user
+acquiring the Orb is known as the Keeper. The Keeper always has an Orb sale price set and is paying
+Harberger tax based on their set price and a tax rate set by the Creator. This tax is accounted for per
+second, and the Keeper must have enough funds on this contract to cover their ownership; otherwise the Orb
+is re-auctioned, delivering most of the auction proceeds to the previous Keeper. The Orb also has a
+cooldown that allows the Keeper to invoke the Orb — ask the Creator a question and receive their response,
+based on conditions set in the Orb Oath. Invocation and response hashes and timestamps are tracked in an
+Orb Invocation Registry.
 
-*Supports ERC-721 interface but reverts on all transfers. Uses `Ownable`'s `owner()` to identify the
-creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current keeper of the Orb.*
+*Supports ERC-721 interface, including metadata, but reverts on all transfers and approvals. Uses
+`Ownable`'s `owner()` to identify the Creator of the Orb. Uses a custom `UUPSUpgradeable` implementation to
+allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
+ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
+Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.*
 
 
 ## State Variables
+### _VERSION
+Orb version. Value: 1.
+
+
+```solidity
+uint256 private constant _VERSION = 1;
+```
+
+
+### _FEE_DENOMINATOR
+Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
+
+
+```solidity
+uint256 internal constant _FEE_DENOMINATOR = 100_00;
+```
+
+
+### _KEEPER_TAX_PERIOD
+Harberger tax period: for how long the tax rate applies. Value: 1 year.
+
+
+```solidity
+uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
+```
+
+
+### _COOLDOWN_MAXIMUM_DURATION
+Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
+
+
+```solidity
+uint256 internal constant _COOLDOWN_MAXIMUM_DURATION = 3650 days;
+```
+
+
+### _MAXIMUM_PRICE
+Maximum Orb price, limited to prevent potential overflows.
+
+
+```solidity
+uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
+```
+
+
+### _TOKEN_ID
+Token ID of the Orb. Value: 1.
+
+
+```solidity
+uint256 internal constant _TOKEN_ID = 1;
+```
+
+
+### pond
+Address of the `OrbPond` that deployed this Orb. Pond manages permitted upgrades and provides Orb Invocation
+Registry address.
+
+
+```solidity
+address public pond;
+```
+
+
 ### beneficiary
-Beneficiary is another address that receives all Orb proceeds. It is set in the `constructor` as an immutable
+Beneficiary is another address that receives all Orb proceeds. It is set in the `initializer` as an immutable
 value. Beneficiary is not allowed to bid in the auction or purchase the Orb. The intended use case for the
 beneficiary is to set it to a revenue splitting contract. Proceeds that go to the beneficiary are:
 - The auction winning bid amount;
@@ -32,53 +100,18 @@ beneficiary is to set it to a revenue splitting contract. Proceeds that go to th
 
 
 ```solidity
-address public immutable beneficiary;
+address public beneficiary;
 ```
 
 
-### tokenId
-Orb ERC-721 token number. Can be whatever arbitrary number, only one token will ever exist. Made public to
-allow easier lookups of Orb keeper.
+### keeper
+Address of the Orb keeper. The keeper is the address that owns the Orb and has the right to invoke the Orb and
+receive a response. The keeper is also the address that pays the Harberger tax. Keeper address is tracked
+directly, and ERC-721 compatibility uses this value for `ownerOf()` and `balanceOf()` calls.
 
 
 ```solidity
-uint256 public immutable tokenId;
-```
-
-
-### FEE_DENOMINATOR
-Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
-
-
-```solidity
-uint256 internal constant FEE_DENOMINATOR = 100_00;
-```
-
-
-### KEEPER_TAX_PERIOD
-Harberger tax period: for how long the tax rate applies. Value: 1 year.
-
-
-```solidity
-uint256 internal constant KEEPER_TAX_PERIOD = 365 days;
-```
-
-
-### COOLDOWN_MAXIMUM_DURATION
-Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
-
-
-```solidity
-uint256 internal constant COOLDOWN_MAXIMUM_DURATION = 3650 days;
-```
-
-
-### MAXIMUM_PRICE
-Maximum Orb price, limited to prevent potential overflows.
-
-
-```solidity
-uint256 internal constant MAXIMUM_PRICE = 2 ** 128;
+address public keeper;
 ```
 
 
@@ -101,12 +134,30 @@ uint256 public responsePeriod;
 ```
 
 
-### baseURI
-Base URI for tokenURI JSONs. Initially set in the `constructor` and setable with `setBaseURI()`.
+### name
+ERC-721 token name. Just for display purposes on blockchain explorers.
 
 
 ```solidity
-string internal baseURI;
+string public name;
+```
+
+
+### symbol
+ERC-721 token symbol. Just for display purposes on blockchain explorers.
+
+
+```solidity
+string public symbol;
+```
+
+
+### _tokenURI
+Token URI for tokenURI JSONs. Initially set in the `initializer` and setable with `setTokenURI()`.
+
+
+```solidity
+string internal _tokenURI;
 ```
 
 
@@ -127,7 +178,7 @@ Harberger tax for holding. Initial value is 10.00%.
 
 
 ```solidity
-uint256 public keeperTaxNumerator = 10_00;
+uint256 public keeperTaxNumerator;
 ```
 
 
@@ -136,7 +187,7 @@ Secondary sale royalty paid to beneficiary, based on sale price. Initial value i
 
 
 ```solidity
-uint256 public royaltyNumerator = 10_00;
+uint256 public royaltyNumerator;
 ```
 
 
@@ -176,7 +227,7 @@ equal value bids.
 
 
 ```solidity
-uint256 public auctionMinimumBidStep = 1;
+uint256 public auctionMinimumBidStep;
 ```
 
 
@@ -186,7 +237,7 @@ cannot be set to zero, as it would prevent any bids from being made.
 
 
 ```solidity
-uint256 public auctionMinimumDuration = 1 days;
+uint256 public auctionMinimumDuration;
 ```
 
 
@@ -197,7 +248,7 @@ from being made.
 
 
 ```solidity
-uint256 public auctionKeeperMinimumDuration = 1 days;
+uint256 public auctionKeeperMinimumDuration;
 ```
 
 
@@ -208,7 +259,7 @@ long. Initial value is 5 minutes.
 
 
 ```solidity
-uint256 public auctionBidExtension = 5 minutes;
+uint256 public auctionBidExtension;
 ```
 
 
@@ -253,7 +304,7 @@ Cooldown: how often the Orb can be invoked.
 
 
 ```solidity
-uint256 public cooldown = 7 days;
+uint256 public cooldown;
 ```
 
 
@@ -262,7 +313,7 @@ Flagging Period: for how long after an invocation the keeper can flag the respon
 
 
 ```solidity
-uint256 public flaggingPeriod = 7 days;
+uint256 public flaggingPeriod;
 ```
 
 
@@ -271,7 +322,7 @@ Maximum length for invocation cleartext content.
 
 
 ```solidity
-uint256 public cleartextMaximumLength = 280;
+uint256 public cleartextMaximumLength;
 ```
 
 
@@ -293,53 +344,24 @@ uint256 public lastInvocationTime;
 ```
 
 
-### invocations
-Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
+### requestedUpgradeImplementation
+Requested upgrade implementation address
 
 
 ```solidity
-mapping(uint256 => InvocationData) public invocations;
-```
-
-
-### invocationCount
-Count of invocations made: used to calculate invocationId of the next invocation.
-
-
-```solidity
-uint256 public invocationCount;
-```
-
-
-### responses
-Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
-
-
-```solidity
-mapping(uint256 => ResponseData) public responses;
-```
-
-
-### responseFlagged
-Mapping for flagged (reported) responses. Used by the keeper not satisfied with a response.
-
-
-```solidity
-mapping(uint256 => bool) public responseFlagged;
-```
-
-
-### flaggedResponsesCount
-Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
-
-
-```solidity
-uint256 public flaggedResponsesCount;
+address public requestedUpgradeImplementation;
 ```
 
 
 ## Functions
 ### constructor
+
+
+```solidity
+constructor();
+```
+
+### initialize
 
 *When deployed, contract mints the only token that will ever exist, to itself.
 This token represents the Orb and is called the Orb elsewhere in the contract.
@@ -347,18 +369,18 @@ This token represents the Orb and is called the Orb elsewhere in the contract.
 
 
 ```solidity
-constructor(string memory name_, string memory symbol_, uint256 tokenId_, address beneficiary_, string memory baseURI_)
-    ERC721(name_, symbol_);
+function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
+    public
+    initializer;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`beneficiary_`|`address`|  Address to receive all Orb proceeds.|
 |`name_`|`string`|         Orb name, used in ERC-721 metadata.|
 |`symbol_`|`string`|       Orb symbol or ticker, used in ERC-721 metadata.|
-|`tokenId_`|`uint256`|      ERC-721 token id of the Orb.|
-|`beneficiary_`|`address`|  Address to receive all Orb proceeds.|
-|`baseURI_`|`string`|      Initial baseURI value for tokenURI JSONs.|
+|`tokenURI_`|`string`|     Initial value for tokenURI JSONs.|
 
 
 ### supportsInterface
@@ -370,7 +392,8 @@ constructor(string memory name_, string memory symbol_, uint256 tokenId_, addres
 function supportsInterface(bytes4 interfaceId)
     public
     view
-    override(ERC721, ERC165, IERC165)
+    virtual
+    override(ERC165Upgradeable, IERC165Upgradeable)
     returns (bool isInterfaceSupported);
 ```
 **Parameters**
@@ -394,7 +417,7 @@ Contract inherits `onlyOwner` modifier from `Ownable`.*
 
 
 ```solidity
-modifier onlyKeeper();
+modifier onlyKeeper() virtual;
 ```
 
 ### onlyKeeperHeld
@@ -403,7 +426,7 @@ modifier onlyKeeper();
 
 
 ```solidity
-modifier onlyKeeperHeld();
+modifier onlyKeeperHeld() virtual;
 ```
 
 ### onlyCreatorControlled
@@ -414,7 +437,7 @@ modified while it is held by the keeper or users can bid on the Orb.*
 
 
 ```solidity
-modifier onlyCreatorControlled();
+modifier onlyCreatorControlled() virtual;
 ```
 
 ### notDuringAuction
@@ -424,7 +447,7 @@ over but not finalized, or auction finalized.*
 
 
 ```solidity
-modifier notDuringAuction();
+modifier notDuringAuction() virtual;
 ```
 
 ### onlyKeeperSolvent
@@ -433,51 +456,105 @@ modifier notDuringAuction();
 
 
 ```solidity
-modifier onlyKeeperSolvent();
+modifier onlyKeeperSolvent() virtual;
 ```
 
-### _baseURI
+### balanceOf
 
-*Override to provide ERC-721 contract's `tokenURI()` with the baseURI.*
+Since there is only one token (Orb), this function only returns one for the Keeper address.
 
 
 ```solidity
-function _baseURI() internal view override returns (string memory baseURIValue);
+function balanceOf(address owner_) external view virtual returns (uint256 balance);
 ```
-**Returns**
+**Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`baseURIValue`|`string`| Current baseURI value.|
+|`owner_`|`address`| Address to check balance for.|
 
+
+### ownerOf
+
+Since there is only one token (Orb), this function only returns the Keeper address if the minted
+token id is provided.
+
+
+```solidity
+function ownerOf(uint256 tokenId_) external view virtual returns (address owner);
+```
+
+### tokenURI
+
+Returns a fixed URL for the Orb ERC-721 metadata. `tokenId` argument is accepted for compatibility
+with the ERC-721 standard but does not affect the returned URL.
+
+
+```solidity
+function tokenURI(uint256) external view virtual returns (string memory);
+```
+
+### approve
+
+ERC-721 `approve()` is not supported.
+
+
+```solidity
+function approve(address, uint256) external virtual;
+```
+
+### setApprovalForAll
+
+ERC-721 `setApprovalForAll()` is not supported.
+
+
+```solidity
+function setApprovalForAll(address, bool) external virtual;
+```
+
+### getApproved
+
+ERC-721 `getApproved()` is not supported.
+
+
+```solidity
+function getApproved(uint256) external view virtual returns (address);
+```
+
+### isApprovedForAll
+
+ERC-721 `isApprovedForAll()` is not supported.
+
+
+```solidity
+function isApprovedForAll(address, address) external view virtual returns (bool);
+```
 
 ### transferFrom
 
-Transfers the Orb to another address. Not allowed, always reverts.
-
-*Always reverts.*
+ERC-721 `transferFrom()` is not supported.
 
 
 ```solidity
-function transferFrom(address, address, uint256) public pure override;
+function transferFrom(address, address, uint256) external virtual;
 ```
 
 ### safeTransferFrom
 
-*See `transferFrom()`.*
+ERC-721 `safeTransferFrom()` is not supported.
 
 
 ```solidity
-function safeTransferFrom(address, address, uint256) public pure override;
+function safeTransferFrom(address, address, uint256) external virtual;
 ```
 
 ### safeTransferFrom
 
-*See `transferFrom()`.*
+ERC-721 `safeTransferFrom()` is not supported.
 
 
 ```solidity
-function safeTransferFrom(address, address, uint256, bytes memory) public pure override;
+function safeTransferFrom(address, address, uint256, bytes memory) external virtual;
 ```
 
 ### _transferOrb
@@ -487,7 +564,7 @@ updates `keeperReceiveTime`. `keeperReceiveTime` is used to limit response flagg
 
 
 ```solidity
-function _transferOrb(address from_, address to_) internal;
+function _transferOrb(address from_, address to_) internal virtual;
 ```
 **Parameters**
 
@@ -509,6 +586,7 @@ decreased, unlike with the `extendHonoredUntil()` function.
 ```solidity
 function swearOath(bytes32 oathHash, uint256 newHonoredUntil, uint256 newResponsePeriod)
     external
+    virtual
     onlyOwner
     onlyCreatorControlled;
 ```
@@ -530,7 +608,7 @@ creator anytime and only allows extending the `honoredUntil` date.
 
 
 ```solidity
-function extendHonoredUntil(uint256 newHonoredUntil) external onlyOwner;
+function extendHonoredUntil(uint256 newHonoredUntil) external virtual onlyOwner;
 ```
 **Parameters**
 
@@ -539,20 +617,20 @@ function extendHonoredUntil(uint256 newHonoredUntil) external onlyOwner;
 |`newHonoredUntil`|`uint256`| Date until which the Orb creator will honor the Oath for the Orb keeper. Must be greater than the current `honoredUntil` date.|
 
 
-### setBaseURI
+### setTokenURI
 
 Allows the Orb creator to replace the `baseURI`. This function can be called by the Orb creator
 anytime and is meant for when the current `baseURI` has to be updated.
 
 
 ```solidity
-function setBaseURI(string memory newBaseURI) external onlyOwner;
+function setTokenURI(string memory newTokenURI) external virtual onlyOwner;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newBaseURI`|`string`| New `baseURI`, will be concatenated with the token id in `tokenURI()`.|
+|`newTokenURI`|`string`| New `baseURI`, will be concatenated with the token id in `tokenURI()`.|
 
 
 ### setAuctionParameters
@@ -570,7 +648,7 @@ function setAuctionParameters(
     uint256 newMinimumDuration,
     uint256 newKeeperMinimumDuration,
     uint256 newBidExtension
-) external onlyOwner onlyCreatorControlled;
+) external virtual onlyOwner onlyCreatorControlled;
 ```
 **Parameters**
 
@@ -592,7 +670,11 @@ Orb creator when the Orb is in their control.
 
 
 ```solidity
-function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator) external onlyOwner onlyCreatorControlled;
+function setFees(uint256 newKeeperTaxNumerator, uint256 newRoyaltyNumerator)
+    external
+    virtual
+    onlyOwner
+    onlyCreatorControlled;
 ```
 **Parameters**
 
@@ -612,7 +694,7 @@ their control.
 
 
 ```solidity
-function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external onlyOwner onlyCreatorControlled;
+function setCooldown(uint256 newCooldown, uint256 newFlaggingPeriod) external virtual onlyOwner onlyCreatorControlled;
 ```
 **Parameters**
 
@@ -631,7 +713,11 @@ the Orb creator when the Orb is in their control.
 
 
 ```solidity
-function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external onlyOwner onlyCreatorControlled;
+function setCleartextMaximumLength(uint256 newCleartextMaximumLength)
+    external
+    virtual
+    onlyOwner
+    onlyCreatorControlled;
 ```
 **Parameters**
 
@@ -640,13 +726,13 @@ function setCleartextMaximumLength(uint256 newCleartextMaximumLength) external o
 |`newCleartextMaximumLength`|`uint256`| New cleartext maximum length. Cannot be 0.|
 
 
-### auctionRunning
+### _auctionRunning
 
-Returns if the auction is currently running. Use `auctionEndTime()` to check when it ends.
+*Returns if the auction is currently running. Use `auctionEndTime()` to check when it ends.*
 
 
 ```solidity
-function auctionRunning() public view returns (bool isAuctionRunning);
+function _auctionRunning() internal view virtual returns (bool isAuctionRunning);
 ```
 **Returns**
 
@@ -655,16 +741,14 @@ function auctionRunning() public view returns (bool isAuctionRunning);
 |`isAuctionRunning`|`bool`| If the auction is running.|
 
 
-### minimumBid
+### _minimumBid
 
-Minimum bid that would currently be accepted by `bid()`.
-
-*`auctionStartingPrice` if no bids were made, otherwise the leading bid increased by
-`auctionMinimumBidStep`.*
+*Minimum bid that would currently be accepted by `bid()`. `auctionStartingPrice` if no bids were made,
+otherwise the leading bid increased by `auctionMinimumBidStep`.*
 
 
 ```solidity
-function minimumBid() public view returns (uint256 auctionMinimumBid);
+function _minimumBid() internal view virtual returns (uint256 auctionMinimumBid);
 ```
 **Returns**
 
@@ -682,7 +766,7 @@ after auction is finalized. Emits `AuctionStart`.*
 
 
 ```solidity
-function startAuction() external onlyOwner notDuringAuction;
+function startAuction() external virtual onlyOwner notDuringAuction;
 ```
 
 ### bid
@@ -695,7 +779,7 @@ able to withdraw any funds until someone outbids them or the auction is finalize
 
 
 ```solidity
-function bid(uint256 amount, uint256 priceIfWon) external payable;
+function bid(uint256 amount, uint256 priceIfWon) external payable virtual;
 ```
 **Parameters**
 
@@ -719,7 +803,7 @@ and `AuctionFinalization`.*
 
 
 ```solidity
-function finalizeAuction() external notDuringAuction;
+function finalizeAuction() external virtual notDuringAuction;
 ```
 
 ### deposit
@@ -731,7 +815,7 @@ becomes insolvent, the Orb will always be returned to the contract as the next s
 
 
 ```solidity
-function deposit() external payable;
+function deposit() external payable virtual;
 ```
 
 ### withdrawAll
@@ -743,7 +827,7 @@ is not zero, as they will become immediately foreclosable. To give up the Orb, c
 
 
 ```solidity
-function withdrawAll() external;
+function withdrawAll() external virtual;
 ```
 
 ### withdraw
@@ -755,7 +839,7 @@ foreclosure.
 
 
 ```solidity
-function withdraw(uint256 amount) external;
+function withdraw(uint256 amount) external virtual;
 ```
 **Parameters**
 
@@ -772,7 +856,7 @@ Function to withdraw all beneficiary funds on the contract. Settles if possible.
 
 
 ```solidity
-function withdrawAllForBeneficiary() external;
+function withdrawAllForBeneficiary() external virtual;
 ```
 
 ### settle
@@ -786,7 +870,7 @@ transfers funds owed since the last settlement, and a new period of virtual acco
 
 
 ```solidity
-function settle() external onlyKeeperHeld;
+function settle() external virtual onlyKeeperHeld;
 ```
 
 ### keeperSolvent
@@ -796,7 +880,7 @@ creator holds the Orb.*
 
 
 ```solidity
-function keeperSolvent() public view returns (bool isKeeperSolvent);
+function keeperSolvent() public view virtual returns (bool isKeeperSolvent);
 ```
 **Returns**
 
@@ -811,7 +895,7 @@ function keeperSolvent() public view returns (bool isKeeperSolvent);
 
 
 ```solidity
-function feeDenominator() external pure returns (uint256 feeDenominatorValue);
+function feeDenominator() external pure virtual returns (uint256 feeDenominatorValue);
 ```
 **Returns**
 
@@ -826,7 +910,7 @@ function feeDenominator() external pure returns (uint256 feeDenominatorValue);
 
 
 ```solidity
-function keeperTaxPeriod() external pure returns (uint256 keeperTaxPeriodSeconds);
+function keeperTaxPeriod() external pure virtual returns (uint256 keeperTaxPeriodSeconds);
 ```
 **Returns**
 
@@ -843,7 +927,7 @@ if keeper has enough funds before transferring.*
 
 
 ```solidity
-function _owedSinceLastSettlement() internal view returns (uint256 owedValue);
+function _owedSinceLastSettlement() internal view virtual returns (uint256 owedValue);
 ```
 **Returns**
 
@@ -860,7 +944,7 @@ the address is payable, as the Address library reverts if it is not. Emits `With
 
 
 ```solidity
-function _withdraw(address recipient_, uint256 amount_) internal;
+function _withdraw(address recipient_, uint256 amount_) internal virtual;
 ```
 **Parameters**
 
@@ -879,7 +963,7 @@ owned by the contract. Emits `Settlement`.*
 
 
 ```solidity
-function _settle() internal;
+function _settle() internal virtual;
 ```
 
 ### setPrice
@@ -892,7 +976,7 @@ Settles before adjusting the price, as the new price will change foreclosure tim
 
 
 ```solidity
-function setPrice(uint256 newPrice) external onlyKeeper onlyKeeperSolvent;
+function setPrice(uint256 newPrice) external virtual onlyKeeper onlyKeeperSolvent;
 ```
 **Parameters**
 
@@ -913,7 +997,7 @@ comes fully charged, with no cooldown.
 
 
 ```solidity
-function listWithPrice(uint256 listingPrice) external onlyOwner;
+function listWithPrice(uint256 listingPrice) external virtual onlyOwner;
 ```
 **Parameters**
 
@@ -947,7 +1031,7 @@ function purchase(
     uint256 currentRoyaltyNumerator,
     uint256 currentCooldown,
     uint256 currentCleartextMaximumLength
-) external payable onlyKeeperHeld onlyKeeperSolvent;
+) external payable virtual onlyKeeperHeld onlyKeeperSolvent;
 ```
 **Parameters**
 
@@ -969,7 +1053,7 @@ beneficiary if no split is needed.*
 
 
 ```solidity
-function _splitProceeds(uint256 proceeds_, address receiver_, uint256 royalty_) internal;
+function _splitProceeds(uint256 proceeds_, address receiver_, uint256 royalty_) internal virtual;
 ```
 **Parameters**
 
@@ -987,7 +1071,7 @@ MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.*
 
 
 ```solidity
-function _setPrice(uint256 newPrice_) internal;
+function _setPrice(uint256 newPrice_) internal virtual;
 ```
 **Parameters**
 
@@ -1011,7 +1095,7 @@ auction.
 
 
 ```solidity
-function relinquish(bool withAuction) external onlyKeeper onlyKeeperSolvent;
+function relinquish(bool withAuction) external virtual onlyKeeper onlyKeeperSolvent;
 ```
 
 ### foreclose
@@ -1024,130 +1108,72 @@ It returns the Orb to the contract and starts a auction to find the next keeper.
 
 
 ```solidity
-function foreclose() external onlyKeeperHeld;
+function foreclose() external virtual onlyKeeperHeld;
 ```
 
-### invokeWithCleartext
+### setLastInvocationTime
 
-Invokes the Orb. Allows the keeper to submit cleartext.
-
-*Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.*
+*Allows Orb Invocation Registry to update lastInvocationTime of the Orb. It is the only Orb state
+variable that can needs to be written by the Orb Invocation Registry. The Only Orb Invocation Registry
+that can update this variable is the one specified in the Orb Pond that created this Orb.*
 
 
 ```solidity
-function invokeWithCleartext(string memory cleartext) external;
+function setLastInvocationTime(uint256 timestamp) external virtual;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`cleartext`|`string`| Invocation cleartext.|
+|`timestamp`|`uint256`| New value for lastInvocationTime.|
 
 
-### invokeWithHash
+### version
 
-Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
-creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent keepers.
-
-*Content hash is keccak256 of the cleartext. `invocationCount` is used to track the id of the next
-invocation. Invocation ids start from 1. Emits `Invocation`.*
+Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
 
 
 ```solidity
-function invokeWithHash(bytes32 contentHash) public onlyKeeper onlyKeeperHeld onlyKeeperSolvent;
+function version() public virtual returns (uint256 orbVersion);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`contentHash`|`bytes32`| Required keccak256 hash of the cleartext.|
-
-
-### respond
-
-The Orb creator can use this function to respond to any existing invocation, no matter how long ago
-it was made. A response to an invocation can only be written once. There is no way to record response
-cleartext on-chain.
-
-*Emits `Response`.*
-
-
-```solidity
-function respond(uint256 invocationId, bytes32 contentHash) external onlyOwner;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`invocationId`|`uint256`| Id of an invocation to which the response is being made.|
-|`contentHash`|`bytes32`|  keccak256 hash of the response text.|
-
-
-### flagResponse
-
-Orb keeper can flag a response during Response Flagging Period, counting from when the response is
-made. Flag indicates a "report", that the Orb keeper was not satisfied with the response provided.
-This is meant to act as a social signal to future Orb keepers. It also increments
-`flaggedResponsesCount`, allowing anyone to quickly look up how many responses were flagged.
-
-*Only existing responses (with non-zero timestamps) can be flagged. Responses can only be flagged by
-solvent keepers to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
-keeper must have received the Orb after the response was made; this is to prevent keepers from
-flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.*
-
-
-```solidity
-function flagResponse(uint256 invocationId) external onlyKeeper onlyKeeperSolvent;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`invocationId`|`uint256`| Id of an invocation to which the response is being flagged.|
-
-
-### _responseExists
-
-*Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.*
-
-
-```solidity
-function _responseExists(uint256 invocationId_) internal view returns (bool isResponseFound);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`invocationId_`|`uint256`| Id of an invocation to which to check the existance of a response of.|
-
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`isResponseFound`|`bool`| If a response to an invocation exists or not.|
+|`orbVersion`|`uint256`| Version of the Orb.|
 
 
-## Structs
-### InvocationData
-Structs used to track invocation and response information: keccak256 content hash and block timestamp.
-InvocationData is used to determine if the response can be flagged by the keeper.
-Invocation timestamp is tracked for the benefit of other contracts.
+### requestUpgrade
+
+Allows the creator to request an upgrade to the next version of the Orb. Requires that the new version
+is registered with the Orb Pond. The upgrade will be performed with `upgradeToNextVersion()` by the
+keeper (if there is one), or the creator if the Orb is in their control. The upgrade can be cancelled
+by calling this function with `address(0)` as the argument.
+
+*Emits `UpgradeRequest`.*
 
 
 ```solidity
-struct InvocationData {
-    address invoker;
-    bytes32 contentHash;
-    uint256 timestamp;
-}
+function requestUpgrade(address requestedImplementation) external virtual onlyOwner;
 ```
+**Parameters**
 
-### ResponseData
+|Name|Type|Description|
+|----|----|-----------|
+|`requestedImplementation`|`address`| Address of the new version of the Orb, or `address(0)` to cancel.|
+
+
+### upgradeToNextVersion
+
+Allows the keeper (if exists) or the creator (if in their control) to upgrade the Orb to the next
+version, if the creator requested an upgrade (by calling `requestUpgrade()`) and it still matches with
+the next version stored on the Orb Pond contract. Also calls the next version initializer using fixed
+calldata stored on the Orb Pond contract.
+
+*Emits `UpgradeCompletion`. Can only be called via an active proxy.*
+
 
 ```solidity
-struct ResponseData {
-    bytes32 contentHash;
-    uint256 timestamp;
-}
+function upgradeToNextVersion() external virtual onlyProxy;
 ```
 
