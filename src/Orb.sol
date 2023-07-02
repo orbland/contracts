@@ -51,18 +51,23 @@ import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
 import {OrbPond} from "./OrbPond.sol";
 import {IOrb} from "./IOrb.sol";
 
+/// @title   Orb - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
 /// @author  Eric Wall
-/// @notice  This is a basic Q&A-type Orb. The keeper has the right to submit a text-based question to the creator and
-///          the right to receive a text-based response. The question is limited in length but responses may come in
-///          any length. Questions and answers are hash-committed to the blockchain so that the track record cannot be
-///          changed. The Orb has a cooldown.
-///          The Orb uses Harberger tax and is always on sale. This means that when you purchase the Orb, you must also
-///          set a price which you’re willing to sell the Orb at. However, you must pay an amount based on tax rate to
-///          the Orb contract per year in order to maintain the Orb ownership. This amount is accounted for per second,
-///          and user funds need to be topped up before the foreclosure time to maintain ownership.
-/// @dev     Supports ERC-721 interface but reverts on all transfers. Uses `Ownable`'s `owner()` to identify the
-///          creator of the Orb. Uses `ERC721`'s `ownerOf(tokenId)` to identify the current keeper of the Orb.
+/// @notice  The Orb is issued by a Creator: the user who swore an Orb Oath together with a date until which the Oath
+///          will be honored. The Creator can list the Orb for sale at a fixed price, or run an auction for it. The user
+///          acquiring the Orb is known as the Keeper. The Keeper always has an Orb sale price set and is paying
+///          Harberger tax based on their set price and a tax rate set by the Creator. This tax is accounted for per
+///          second, and the Keeper must have enough funds on this contract to cover their ownership; otherwise the Orb
+///          is re-auctioned, delivering most of the auction proceeds to the previous Keeper. The Orb also has a
+///          cooldown that allows the Keeper to invoke the Orb — ask the Creator a question and receive their response,
+///          based on conditions set in the Orb Oath. Invocation and response hashes and timestamps are tracked in an
+///          Orb Invocation Registry.
+/// @dev     Supports ERC-721 interface, including metadata, but reverts on all transfers and approvals. Uses
+///          `Ownable`'s `owner()` to identify the Creator of the Orb. Uses a custom `UUPSUpgradeable` implementation to
+///          allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
+///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
+///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
 contract Orb is
     Initializable,
     IERC165Upgradeable,
@@ -1000,6 +1005,10 @@ contract Orb is
     //  FUNCTIONS: INVOKING AND RESPONDING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// @dev    Allows Orb Invocation Registry to update lastInvocationTime of the Orb. It is the only Orb state
+    ///         variable that can needs to be written by the Orb Invocation Registry. The Only Orb Invocation Registry
+    ///         that can update this variable is the one specified in the Orb Pond that created this Orb.
+    /// @param  timestamp  New value for lastInvocationTime.
     function setLastInvocationTime(uint256 timestamp) external virtual {
         if (msg.sender != OrbPond(pond).registry()) {
             revert NotPermitted();
@@ -1011,7 +1020,9 @@ contract Orb is
     //  FUNCTIONS: UPGRADING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function version() public virtual returns (uint256) {
+    /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+    /// @return  orbVersion  Version of the Orb.
+    function version() public virtual returns (uint256 orbVersion) {
         return _VERSION;
     }
 
@@ -1043,12 +1054,12 @@ contract Orb is
             (msg.sender == keeper && keeperSolvent())
                 || (msg.sender == owner() && (address(this) == keeper || owner() == keeper) && auctionEndTime == 0)
         ) {
-        address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
+            address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
             if (nextVersionImplementation != requestedUpgradeImplementation) {
                 revert NotNextVersion();
-        }
-        bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
-        _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
+            }
+            bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
+            _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
             requestedUpgradeImplementation = address(0);
 
             emit UpgradeCompletion(nextVersionImplementation);
