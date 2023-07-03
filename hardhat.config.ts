@@ -8,17 +8,20 @@ import "hardhat-contract-sizer"
 import "hardhat-gas-reporter"
 import "hardhat-preprocessor"
 import "solidity-coverage"
+import "hardhat-deploy"
 
 import * as dotenv from "dotenv"
 dotenv.config()
+const { INFURA_API_KEY, ETHERSCAN_API_KEY } = process.env
+// SAFE_SERVICE_URL, DEPLOYER_SAFE
 
-function getRemappings() {
-    return fs
-        .readFileSync("remappings.txt", "utf8")
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => line.trim().split("="))
-}
+// function getRemappings() {
+//     return fs
+//         .readFileSync("remappings.txt", "utf8")
+//         .split("\n")
+//         .filter(Boolean)
+//         .map((line) => line.trim().split("="))
+// }
 
 const coinmarketcapKey: string | undefined = process.env.CMC_API_KEY
 
@@ -45,12 +48,12 @@ const config: HardhatUserConfig = {
             },
         },
         goerli: {
-            url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+            url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
             accounts: [process.env.DEPLOYER_PRIVATE_KEY as string],
         },
     },
     etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY,
+        apiKey: ETHERSCAN_API_KEY,
     },
     gasReporter: {
         enabled: true,
@@ -58,20 +61,20 @@ const config: HardhatUserConfig = {
         coinmarketcap: coinmarketcapKey,
     },
     // This fully resolves paths for imports in the ./lib directory for Hardhat
-    preprocess: {
-        eachLine: (hre) => ({
-            transform: (line: string) => {
-                if (line.match(/^\s*import /i)) {
-                    getRemappings().forEach(([find, replace]) => {
-                        if (line.match(find)) {
-                            line = line.replace(find, replace)
-                        }
-                    })
-                }
-                return line
-            },
-        }),
-    },
+    // preprocess: {
+    //     eachLine: (hre) => ({
+    //         transform: (line: string) => {
+    //             if (line.match(/^\s*import /i)) {
+    //                 getRemappings().forEach(([find, replace]) => {
+    //                     if (line.match(find)) {
+    //                         line = line.replace(find, replace)
+    //                     }
+    //                 })
+    //             }
+    //             return line
+    //         },
+    //     }),
+    // },
 }
 
 export default config
