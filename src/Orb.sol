@@ -607,7 +607,7 @@ contract Orb is
         }
 
         if (msg.sender == beneficiary) {
-            revert BeneficiaryDisallowed();
+            revert NotPermitted();
         }
 
         uint256 totalFunds = fundsOf[msg.sender] + msg.value;
@@ -892,7 +892,7 @@ contract Orb is
             revert AlreadyKeeper();
         }
         if (msg.sender == beneficiary) {
-            revert BeneficiaryDisallowed();
+            revert NotPermitted();
         }
 
         fundsOf[msg.sender] += msg.value;
@@ -965,7 +965,7 @@ contract Orb is
 
         if (withAuction && auctionKeeperMinimumDuration > 0) {
             if (owner() == msg.sender) {
-                revert NotPermittedForCreator();
+                revert NotPermitted();
             }
             auctionBeneficiary = msg.sender;
             auctionEndTime = block.timestamp + auctionKeeperMinimumDuration;

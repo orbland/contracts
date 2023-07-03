@@ -87,7 +87,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.workaround_minimumBid();
         vm.deal(beneficiary, amount);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.BeneficiaryDisallowed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.NotPermitted.selector));
         vm.prank(beneficiary);
         orb.bid{value: amount}(amount, amount);
 
