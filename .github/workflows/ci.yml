@@ -57,10 +57,7 @@ jobs:
               uses: pnpm/action-setup@v2
               with:
                   version: 8.6.5
-                  run_install: |
-                      - recursive: true
-                        args: [--frozen-lockfile, --strict-peer-dependencies]
-                      - args: [--global, gulp, prettier, typescript]
+                  run_install: true
 
             - name: Run Hardhat tests
               run: |
