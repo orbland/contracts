@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 /* solhint-disable no-console */
-import {console} from "forge-std/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
+import {Test} from "../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Test} from "forge-std/Test.sol";
 
 import {OrbPond} from "src/OrbPond.sol";
 import {OrbPondV2} from "src/OrbPondV2.sol";
@@ -199,5 +199,8 @@ contract UpgradeTest is OrbPondTestBase {
         // solhint-disable-next-line avoid-low-level-calls
         (bool successAfter,) = address(orbPond).call(abi.encodeWithSelector(orbLandWalletSelector));
         assertEq(successAfter, true);
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        OrbPondV2(address(orbPond)).initializeV2(address(0xCAFEBABE));
     }
 }

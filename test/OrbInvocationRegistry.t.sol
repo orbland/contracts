@@ -471,5 +471,8 @@ contract UpgradeTest is OrbInvocationRegistryTestBase {
         // solhint-disable-next-line avoid-low-level-calls
         (bool successAfter,) = address(orbInvocationRegistry).call(abi.encodeWithSelector(lateResponseFundSelector));
         assertEq(successAfter, true);
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        OrbInvocationRegistryV2(address(orbInvocationRegistry)).initializeV2(address(0xCAFEBABE));
     }
 }
