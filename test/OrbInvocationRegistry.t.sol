@@ -8,6 +8,7 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 
 import {OrbPond} from "src/OrbPond.sol";
 import {OrbInvocationRegistry} from "src/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistryV2} from "src/OrbInvocationRegistryV2.sol";
 import {Orb} from "src/Orb.sol";
 import {IOrb} from "src/IOrb.sol";
 import {IOrbInvocationRegistry} from "src/IOrbInvocationRegistry.sol";
@@ -437,5 +438,38 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         orbInvocationRegistry.flagResponse(address(orb), 1);
         assertEq(orbInvocationRegistry.responseFlagged(address(orb), 1), true);
         assertEq(orbInvocationRegistry.flaggedResponsesCount(address(orb)), 1);
+    }
+}
+
+contract UpgradeTest is OrbInvocationRegistryTestBase {
+    function test_upgrade_revertOnlyOwner() public {
+        OrbInvocationRegistryV2 orbInvocationRegistryV2Implementation = new OrbInvocationRegistryV2();
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user);
+        orbInvocationRegistry.upgradeToAndCall(
+            address(orbInvocationRegistryV2Implementation),
+            abi.encodeWithSelector(OrbInvocationRegistryV2.initializeV2.selector, address(0xBABEFACE))
+        );
+    }
+
+    function test_upgradeSucceeds() public {
+        OrbInvocationRegistryV2 orbInvocationRegistryV2Implementation = new OrbInvocationRegistryV2();
+        bytes4 lateResponseFundSelector = bytes4(keccak256("lateResponseFund()"));
+
+        assertEq(orbInvocationRegistry.version(), 1);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool successBefore,) = address(orbInvocationRegistry).call(abi.encodeWithSelector(lateResponseFundSelector));
+        assertEq(successBefore, false);
+
+        orbInvocationRegistry.upgradeToAndCall(
+            address(orbInvocationRegistryV2Implementation),
+            abi.encodeWithSelector(OrbInvocationRegistryV2.initializeV2.selector, address(0xBABEFACE))
+        );
+
+        assertEq(OrbInvocationRegistryV2(address(orbInvocationRegistry)).lateResponseFund(), address(0xBABEFACE));
+        assertEq(orbInvocationRegistry.version(), 2);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool successAfter,) = address(orbInvocationRegistry).call(abi.encodeWithSelector(lateResponseFundSelector));
+        assertEq(successAfter, true);
     }
 }
