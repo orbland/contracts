@@ -165,12 +165,27 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.workaround_maximumPrice(), 2 ** 128);
         assertEq(orb.workaround_cooldownMaximumDuration(), 3650 days);
     }
+
+    function test_revertsInitializer() public {
+        vm.expectRevert("Initializable: contract is already initialized");
+        orb.initialize(address(0), "", "", "");
+    }
+
+    function test_initializerSuccess() public {
+        ERC1967Proxy orbProxy = new ERC1967Proxy(
+            address(orbImplementation), ""
+        );
+        Orb _orb = Orb(address(orbProxy));
+        assertEq(_orb.owner(), address(0));
+        _orb.initialize(address(0xC0FFEE), "name", "symbol", "tokenURI");
+        assertEq(_orb.owner(), address(this));
+    }
 }
 
 contract SupportsInterfaceTest is OrbTestBase {
     // Test that the initial state is correct
     function test_supportsInterface() public view {
-        console.logBytes4(type(IOrb).interfaceId);
+        // console.logBytes4(type(IOrb).interfaceId);
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
