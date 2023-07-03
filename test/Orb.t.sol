@@ -122,8 +122,10 @@ contract OrbTestBase is Test {
 contract InitialStateTest is OrbTestBase {
     // Test that the initial state is correct
     function test_initialState() public {
+        assertEq(orbPond.version(), 1);
         assertEq(address(orb), orb.keeper());
         assertFalse(orb.workaround_auctionRunning());
+        assertEq(orb.pond(), address(orbPond));
         assertEq(orb.owner(), address(this));
         assertEq(orb.beneficiary(), address(0xC0FFEE));
         assertEq(orb.honoredUntil(), 100); // 1_700_000_000
@@ -154,6 +156,7 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.lastSettlementTime(), 0);
         assertEq(orb.keeperReceiveTime(), 0);
+        assertEq(orb.requestedUpgradeImplementation(), address(0));
     }
 
     function test_constants() public {
@@ -168,11 +171,11 @@ contract InitialStateTest is OrbTestBase {
 contract SupportsInterfaceTest is OrbTestBase {
     // Test that the initial state is correct
     function test_supportsInterface() public view {
-        // console.logBytes4(type(IOrb).interfaceId);
+        console.logBytes4(type(IOrb).interfaceId);
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
-        assert(orb.supportsInterface(0xfa7ffdd1)); // ERC165 Interface ID for Orb
+        assert(orb.supportsInterface(0x4495bd50)); // ERC165 Interface ID for Orb
     }
 }
 
