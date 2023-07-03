@@ -237,3 +237,16 @@ contract ERC721Test is OrbTestBase {
         orb.safeTransferFrom(address(this), newOwner, tokenId, bytes(""));
     }
 }
+
+contract OrbInvocationRegistrySupportTest is OrbTestBase {
+    function test_setLastInvocationTime() public {
+        assertEq(orb.lastInvocationTime(), 0);
+        vm.expectRevert(IOrb.NotPermitted.selector);
+        orb.setLastInvocationTime(42);
+        assertEq(orb.lastInvocationTime(), 0);
+
+        vm.prank(address(orbInvocationRegistry));
+        orb.setLastInvocationTime(42);
+        assertEq(orb.lastInvocationTime(), 42);
+    }
+}
