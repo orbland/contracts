@@ -87,7 +87,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
 
     function test_revertsIfCreator() public {
         orb.listWithPrice(1 ether);
-        vm.expectRevert(IOrb.NotPermittedForCreator.selector);
+        vm.expectRevert(IOrb.NotPermitted.selector);
         orb.relinquish(true);
     }
 

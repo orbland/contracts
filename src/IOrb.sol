@@ -81,8 +81,6 @@ interface IOrb is IERC165Upgradeable {
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
     error CreatorDoesNotControlOrb();
-    error NotPermittedForCreator();
-    error BeneficiaryDisallowed();
 
     // Auction Errors
     error AuctionNotRunning();

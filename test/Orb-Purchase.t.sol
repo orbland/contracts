@@ -89,7 +89,7 @@ contract PurchaseTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.deal(beneficiary, 1.1 ether);
         vm.prank(beneficiary);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.BeneficiaryDisallowed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IOrb.NotPermitted.selector));
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
 
         // does not revert
