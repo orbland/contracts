@@ -7,11 +7,11 @@ import {Test} from "../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {OrbHarness} from "./harness/OrbHarness.sol";
-import {OrbPond} from "src/OrbPond.sol";
-import {OrbInvocationRegistry} from "src/OrbInvocationRegistry.sol";
-import {Orb} from "src/Orb.sol";
-import {OrbV2} from "src/OrbV2.sol";
-import {IOrb} from "src/IOrb.sol";
+import {OrbPond} from "../src/OrbPond.sol";
+import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
+import {Orb} from "../src/Orb.sol";
+import {OrbV2} from "../src/OrbV2.sol";
+import {IOrb} from "../src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbTestBase is Test {

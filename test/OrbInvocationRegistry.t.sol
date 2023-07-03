@@ -6,12 +6,12 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Test} from "../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {OrbPond} from "src/OrbPond.sol";
-import {OrbInvocationRegistry} from "src/OrbInvocationRegistry.sol";
-import {OrbInvocationRegistryV2} from "src/OrbInvocationRegistryV2.sol";
-import {Orb} from "src/Orb.sol";
-import {IOrb} from "src/IOrb.sol";
-import {IOrbInvocationRegistry} from "src/IOrbInvocationRegistry.sol";
+import {OrbPond} from "../src/OrbPond.sol";
+import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistryV2} from "../src/OrbInvocationRegistryV2.sol";
+import {Orb} from "../src/Orb.sol";
+import {IOrb} from "../src/IOrb.sol";
+import {IOrbInvocationRegistry} from "../src/IOrbInvocationRegistry.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbInvocationRegistryTestBase is Test {
