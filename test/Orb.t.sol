@@ -10,6 +10,7 @@ import {OrbHarness} from "./harness/OrbHarness.sol";
 import {OrbPond} from "src/OrbPond.sol";
 import {OrbInvocationRegistry} from "src/OrbInvocationRegistry.sol";
 import {Orb} from "src/Orb.sol";
+import {OrbV2} from "src/OrbV2.sol";
 import {IOrb} from "src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
@@ -21,6 +22,7 @@ contract OrbTestBase is Test {
     OrbPond internal orbPond;
 
     OrbHarness internal orbImplementation;
+    OrbV2 internal orbV2Implementation;
     OrbHarness internal orb;
 
     address internal user;
@@ -43,6 +45,7 @@ contract OrbTestBase is Test {
         orbInvocationRegistryImplementation = new OrbInvocationRegistry();
         orbPondImplementation = new OrbPond();
         orbImplementation = new OrbHarness();
+        orbV2Implementation = new OrbV2();
 
         ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
             address(orbInvocationRegistryImplementation),
