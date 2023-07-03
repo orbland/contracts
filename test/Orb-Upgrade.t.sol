@@ -221,5 +221,8 @@ contract CompleteUpgradeTest is OrbTestBase {
         assertEq(OrbV2(address(orb)).version(), 2);
 
         assertEq(orb.requestedUpgradeImplementation(), address(0));
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        OrbV2(address(orb)).initializeV2("Error", "ERROR");
     }
 }
