@@ -13,11 +13,11 @@
     "license": "MIT",
     "devDependencies": {
         "@nomicfoundation/hardhat-chai-matchers": "^2.0.1",
+        "@nomicfoundation/hardhat-ethers": "^3.0.3",
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+        "@nomicfoundation/hardhat-toolbox": "^3.0.0",
         "@nomicfoundation/hardhat-verify": "^1.0.3",
         "@nomiclabs/hardhat-solhint": "^3.0.1",
-        "@nomicfoundation/hardhat-ethers": "^3.0.3",
-        "@nomicfoundation/hardhat-toolbox": "^3.0.0",
         "@openzeppelin/hardhat-upgrades": "2.0.0-alpha.0",
         "@typechain/ethers-v6": "^0.4.0",
         "@typechain/hardhat": "^8.0.0",
@@ -25,8 +25,8 @@
         "@types/mocha": "^10.0.1",
         "@types/node": "^20.3.2",
         "chai": "^4.3.7",
-        "eth-gas-reporter": "^0.2.25",
         "dotenv": "^16.3.1",
+        "eth-gas-reporter": "^0.2.25",
         "ethers": "^6.6.2",
         "hardhat": "^2.16.1",
         "hardhat-contract-sizer": "^2.6.1",
@@ -36,5 +36,8 @@
         "ts-node": "^10.9.1",
         "typechain": "^8.2.0",
         "typescript": "^5.1.5"
+    },
+    "dependencies": {
+        "hardhat-deploy": "^0.11.34"
     }
 }
