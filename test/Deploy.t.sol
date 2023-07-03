@@ -6,7 +6,8 @@ import {Test} from "../lib/forge-std/src/Test.sol";
 import {DeployLocal} from "../script/DeployLocal.s.sol";
 import {Orb} from "../src/Orb.sol";
 
-contract DeployMainnetTest is Test {
+/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
+contract DeployLocalTest is Test {
     DeployLocal internal deployScript;
 
     function setUp() public {
@@ -18,11 +19,11 @@ contract DeployMainnetTest is Test {
         deployScript.run();
     }
 
-    function testOrbOwnership() public {
+    function test_orbOwnership() public {
         assertEq(deployScript.orb().owner(), deployScript.creatorAddress());
     }
 
-    function testBeneficiary() public {
+    function test_beneficiary() public {
         assertEq(deployScript.orb().beneficiary(), address(deployScript.orbBeneficiary()));
     }
 }
