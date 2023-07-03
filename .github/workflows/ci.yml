@@ -48,17 +48,21 @@ jobs:
               with:
                   submodules: recursive
 
-            - name: Setup Node 16
+            - name: Setup Node 20
               uses: actions/setup-node@v3
               with:
-                  node-version: "16.x"
-                  cache: "npm"
+                  node-version: "20.x"
 
-            - name: Install Node dependencies
-              run: |
-                  npm ci
+            - name: Install pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: 8.6.5
+                  run_install: |
+                      - recursive: true
+                        args: [--frozen-lockfile, --strict-peer-dependencies]
+                      - args: [--global, gulp, prettier, typescript]
 
             - name: Run Hardhat tests
               run: |
-                  npm run test
+                  pnpm run test
                   id: hardhat-test
