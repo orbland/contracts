@@ -1050,19 +1050,33 @@ contract Orb is
         if (requestedUpgradeImplementation == address(0)) {
             revert NoUpgradeRequested();
         }
-        if (
-            (msg.sender == keeper && keeperSolvent())
-                || (msg.sender == owner() && (address(this) == keeper || owner() == keeper) && auctionEndTime == 0)
-        ) {
-            address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
-            if (nextVersionImplementation != requestedUpgradeImplementation) {
-                revert NotNextVersion();
-            }
-            bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
-            _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
-            requestedUpgradeImplementation = address(0);
 
-            emit UpgradeCompletion(nextVersionImplementation);
+        // auction cannot be running, mostly applies if contract is keeper
+        if (auctionEndTime > 0) {
+            revert NotPermitted();
         }
+
+        if (
+            // if sender is not keeper or owner
+            (msg.sender != keeper && msg.sender != owner())
+            // if sender is keeper, keeper has to be solvent
+            // if sender is owner, they will always be solvent
+            || (msg.sender == keeper && !keeperSolvent())
+            // if sender is owner, but not keeper, keeper has to be this contract
+            || (msg.sender != keeper && msg.sender == owner() && address(this) != keeper)
+        ) {
+            revert NotPermitted();
+        }
+
+        address nextVersionImplementation = OrbPond(pond).versions(version() + 1);
+        if (nextVersionImplementation != requestedUpgradeImplementation) {
+            revert NotNextVersion();
+        }
+
+        bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
+        _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
+        requestedUpgradeImplementation = address(0);
+
+        emit UpgradeCompletion(nextVersionImplementation);
     }
 }
