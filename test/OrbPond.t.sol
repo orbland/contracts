@@ -62,6 +62,8 @@ contract OrbPondTestBase is Test {
 contract InitialStateTest is OrbPondTestBase {
     // Test that the initial state is correct
     function test_initialState() public {
+        assertEq(orbPond.version(), 1);
+        assertEq(orbPond.registry(), address(orbInvocationRegistry));
         assertEq(orbPond.orbCount(), 0);
     }
 }
