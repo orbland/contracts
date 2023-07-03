@@ -96,6 +96,30 @@ contract InitialStateTest is OrbInvocationRegistryTestBase {
         assertEq(orbInvocationRegistry.invocationCount(address(orb)), 0);
         assertEq(orbInvocationRegistry.flaggedResponsesCount(address(orb)), 0);
     }
+
+    function test_revertsInitializer() public {
+        vm.expectRevert("Initializable: contract is already initialized");
+        orbInvocationRegistry.initialize();
+    }
+
+    function test_initializerSuccess() public {
+        ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
+            address(orbInvocationRegistryImplementation), ""
+        );
+        OrbInvocationRegistry _orbInvocationRegistry = OrbInvocationRegistry(address(orbInvocationRegistryProxy));
+        assertEq(_orbInvocationRegistry.owner(), address(0));
+        _orbInvocationRegistry.initialize();
+        assertEq(_orbInvocationRegistry.owner(), address(this));
+    }
+}
+
+contract SupportsInterfaceTest is OrbInvocationRegistryTestBase {
+    // Test that the initial state is correct
+    function test_supportsInterface() public view {
+        // console.logBytes4(type(IOrbInvocationRegistry).interfaceId);
+        assert(orbInvocationRegistry.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
+        assert(orbInvocationRegistry.supportsInterface(0xd4f5d1b6)); // ERC165 Interface ID for IOrbInvocationRegistry
+    }
 }
 
 contract InvokeWithCleartextTest is OrbInvocationRegistryTestBase {
