@@ -12,7 +12,7 @@ import "hardhat-deploy"
 
 import * as dotenv from "dotenv"
 dotenv.config()
-const { INFURA_API_KEY, ETHERSCAN_API_KEY } = process.env
+const { INFURA_API_KEY, ETHERSCAN_API_KEY, DEPLOYER_PRIVATE_KEY } = process.env
 // SAFE_SERVICE_URL, DEPLOYER_SAFE
 
 // function getRemappings() {
@@ -49,7 +49,10 @@ const config: HardhatUserConfig = {
         },
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [process.env.DEPLOYER_PRIVATE_KEY as string],
+            accounts: [
+                (DEPLOYER_PRIVATE_KEY ||
+                    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80") as string,
+            ],
         },
     },
     etherscan: {
