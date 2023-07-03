@@ -29,7 +29,7 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
     uint256 private constant _VERSION = 2;
 
     /// The address of the Late Response Deposit contract.
-    address public lateResponseDepositAddress;
+    address public lateResponseFund;
     /// Mapping for late response receipts. Used to track late response receipts for invocations that have not been
     mapping(address orb => mapping(uint256 invocationId => LateResponseReceipt receipt)) public lateResponseReceipts;
     /// Mapping for late response receipts. Used to track late response receipts for invocations that have not been
@@ -41,9 +41,9 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
     }
 
     /// @notice  Re-initializes the contract after upgrade
-    /// @param   lateResponseDepositAddress_  The address of the Orb Land wallet.
-    function initializeV2(address lateResponseDepositAddress_) public reinitializer(2) {
-        lateResponseDepositAddress = lateResponseDepositAddress_;
+    /// @param   lateResponseFund_  The address of the Late Response Compensation Fund.
+    function initializeV2(address lateResponseFund_) public reinitializer(2) {
+        lateResponseFund = lateResponseFund_;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
     }
 
     function setLateResponseReceiptClaimed(address orb, uint256 invocationId) external {
-        if (msg.sender != lateResponseDepositAddress) {
+        if (msg.sender != lateResponseFund) {
             revert Unauthorized();
         }
         if (lateResponseReceipts[orb][invocationId].lateDuration == 0) {
