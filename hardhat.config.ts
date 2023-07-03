@@ -39,14 +39,14 @@ const config: HardhatUserConfig = {
         sources: "./src", // Use ./src rather than ./contracts as Hardhat expects
         cache: "./cache_hardhat", // Use a different cache for Hardhat than Foundry
     },
-    defaultNetwork: "localhost",
+    defaultNetwork: "hardhat",
     networks: {
-        hardhat: {
-            mining: {
-                auto: true,
-                interval: [3000, 6000],
-            },
-        },
+        // hardhat: {
+        //     mining: {
+        //         auto: true,
+        //         interval: [3000, 6000],
+        //     },
+        // },
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
             accounts: [
