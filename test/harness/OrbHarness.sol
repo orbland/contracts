@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Orb} from "src/Orb.sol";
+import {Orb} from "../../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract OrbHarness is Orb {

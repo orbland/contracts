@@ -4,8 +4,8 @@ pragma solidity ^0.8.20;
 import {Test} from "../lib/forge-std/src/Test.sol";
 
 import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "src/IOrb.sol";
-import {OrbV2} from "src/OrbV2.sol";
+import {IOrb} from "../src/IOrb.sol";
+import {OrbV2} from "../src/OrbV2.sol";
 
 contract RequestUpgradeTest is OrbTestBase {
     event UpgradeRequest(address indexed requestedImplementation);
