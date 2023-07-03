@@ -7,8 +7,10 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 import {Test} from "forge-std/Test.sol";
 
 import {OrbPond} from "src/OrbPond.sol";
+import {OrbPondV2} from "src/OrbPondV2.sol";
 import {OrbInvocationRegistry} from "src/OrbInvocationRegistry.sol";
 import {Orb} from "src/Orb.sol";
+import {OrbV2} from "src/OrbV2.sol";
 import {IOrb} from "src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
@@ -66,9 +68,26 @@ contract InitialStateTest is OrbPondTestBase {
         assertEq(orbPond.registry(), address(orbInvocationRegistry));
         assertEq(orbPond.orbCount(), 0);
     }
+
+    function test_revertsInitializer() public {
+        vm.expectRevert("Initializable: contract is already initialized");
+        orbPond.initialize(address(0));
+    }
+
+    function test_initializerSuccess() public {
+        ERC1967Proxy orbPondProxy = new ERC1967Proxy(
+            address(orbPondImplementation), ""
+        );
+        OrbPond _orbPond = OrbPond(address(orbPondProxy));
+        assertEq(_orbPond.owner(), address(0));
+        assertEq(_orbPond.registry(), address(0));
+        _orbPond.initialize(address(0xBABEFACE));
+        assertEq(_orbPond.owner(), address(this));
+        assertEq(_orbPond.registry(), address(0xBABEFACE));
+    }
 }
 
-contract DeployTest is OrbPondTestBase {
+contract CreateOrbTest is OrbPondTestBase {
     function test_revertWhen_NotOwner() public {
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
@@ -79,7 +98,9 @@ contract DeployTest is OrbPondTestBase {
     event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    function test_deploy() public {
+    function test_createOrb() public {
+        assertEq(orbPond.orbCount(), 0);
+
         vm.expectEmit(true, true, true, true);
         emit Creation();
 
@@ -94,5 +115,89 @@ contract DeployTest is OrbPondTestBase {
         Orb orb = Orb(orbPond.orbs(0));
 
         assertEq(orb.owner(), address(this));
+        assertEq(orb.beneficiary(), beneficiary);
+        assertEq(orb.name(), "TestOrb");
+        assertEq(orb.symbol(), "TEST");
+        assertEq(orb.tokenURI(1), "test baseURI");
+
+        assertEq(orbPond.orbCount(), 1);
+    }
+}
+
+contract RegisterVersionTest is OrbPondTestBase {
+    function test_revertWhen_NotOwner() public {
+        OrbV2 orbV2Implementation = new OrbV2();
+
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orbPond.registerVersion(2, address(orbV2Implementation), "");
+    }
+
+    function test_registerNewVersion() public {
+        OrbV2 orbV2Implementation = new OrbV2();
+        assertEq(orbPond.latestVersion(), 1);
+
+        vm.prank(owner);
+        orbPond.registerVersion(2, address(orbV2Implementation), "randomdata");
+        assertEq(orbPond.versions(2), address(orbV2Implementation));
+        assertEq(orbPond.upgradeCalldata(2), "randomdata");
+        assertEq(orbPond.latestVersion(), 2);
+    }
+
+    function test_changeExistingVersion() public {
+        OrbV2 orbV2Implementation = new OrbV2();
+        vm.prank(owner);
+        orbPond.registerVersion(2, address(orbV2Implementation), "");
+        assertEq(orbPond.versions(2), address(orbV2Implementation));
+
+        orbPond.registerVersion(2, address(orbImplementation), "");
+        assertEq(orbPond.versions(2), address(orbImplementation));
+    }
+
+    function test_unregisterVersion() public {
+        OrbV2 orbV2Implementation = new OrbV2();
+        vm.prank(owner);
+        orbPond.registerVersion(2, address(orbV2Implementation), "randomdata");
+        assertEq(orbPond.versions(2), address(orbV2Implementation));
+        assertEq(orbPond.upgradeCalldata(2), "randomdata");
+        assertEq(orbPond.latestVersion(), 2);
+
+        orbPond.registerVersion(2, address(0), "");
+        assertEq(orbPond.versions(2), address(0));
+        assertEq(orbPond.upgradeCalldata(2), "");
+        assertEq(orbPond.latestVersion(), 2);
+    }
+}
+
+contract UpgradeTest is OrbPondTestBase {
+    function test_upgrade_revertOnlyOwner() public {
+        OrbPondV2 orbPondV2Implementation = new OrbPondV2();
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user);
+        orbPond.upgradeToAndCall(
+            address(orbPondV2Implementation),
+            abi.encodeWithSelector(OrbPondV2.initializeV2.selector, address(0xBABEFACE))
+        );
+    }
+
+    function test_upgradeSucceeds() public {
+        OrbPondV2 orbPondV2Implementation = new OrbPondV2();
+        bytes4 orbLandWalletSelector = bytes4(keccak256("orbLandWallet()"));
+
+        assertEq(orbPond.version(), 1);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool successBefore,) = address(orbPond).call(abi.encodeWithSelector(orbLandWalletSelector));
+        assertEq(successBefore, false);
+
+        orbPond.upgradeToAndCall(
+            address(orbPondV2Implementation),
+            abi.encodeWithSelector(OrbPondV2.initializeV2.selector, address(0xBABEFACE))
+        );
+
+        assertEq(OrbPondV2(address(orbPond)).orbLandWallet(), address(0xBABEFACE));
+        assertEq(orbPond.version(), 2);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool successAfter,) = address(orbPond).call(abi.encodeWithSelector(orbLandWalletSelector));
+        assertEq(successAfter, true);
     }
 }
