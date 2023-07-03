@@ -21,7 +21,7 @@ contract OrbPondV2 is OrbPond {
     /// Orb Pond version. Value: 2.
     uint256 private constant _VERSION = 2;
 
-    address public orbLandAddress;
+    address public orbLandWallet;
 
     // @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -29,9 +29,9 @@ contract OrbPondV2 is OrbPond {
     }
 
     /// @notice  Re-initializes the contract after upgrade
-    /// @param   orbLandAddress_   The address of the Orb Land wallet.
-    function initializeV2(address orbLandAddress_) public reinitializer(2) {
-        orbLandAddress = orbLandAddress_;
+    /// @param   orbLandWallet_   The address of the Orb Land wallet.
+    function initializeV2(address orbLandWallet_) public reinitializer(2) {
+        orbLandWallet = orbLandWallet_;
     }
 
     /// @notice  Creates a new Orb, and emits an event with the Orb's address.
@@ -41,7 +41,7 @@ contract OrbPondV2 is OrbPond {
     function createOrb(string memory name, string memory symbol, string memory tokenURI) external virtual {
         address[] memory beneficiaryAddresses = new address[](2);
         beneficiaryAddresses[0] = msg.sender;
-        beneficiaryAddresses[1] = orbLandAddress;
+        beneficiaryAddresses[1] = orbLandWallet;
         uint256[] memory beneficiaryShares = new uint256[](2);
         beneficiaryShares[0] = 95;
         beneficiaryShares[1] = 5;
