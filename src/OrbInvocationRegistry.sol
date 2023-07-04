@@ -244,7 +244,7 @@ contract OrbInvocationRegistry is
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
     /// @return  orbInvocationRegistryVersion  Version of the Orb Invocation Registry contract.
-    function version() public virtual returns (uint256 orbInvocationRegistryVersion) {
+    function version() public view virtual returns (uint256 orbInvocationRegistryVersion) {
         return _VERSION;
     }
 
