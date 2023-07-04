@@ -1,11 +1,18 @@
+import { PaymentSplitter } from "./../typechain-types/src/CustomPaymentSplitter.sol/PaymentSplitter"
 import { expect } from "chai"
 import { ethers, upgrades } from "hardhat"
 
 describe("Orb Pond Upgrade", function () {
     it("Should deploy and upgrade", async function () {
         const [owner, registry] = await ethers.getSigners()
+
+        const paymentSplitterImplementation = await ethers.deployContract(
+            "src/CustomPaymentSplitter.sol:PaymentSplitter"
+        )
+        const paymentSplitterImplementationAddress = await paymentSplitterImplementation.getAddress()
+
         const OrbPond = await ethers.getContractFactory("OrbPond")
-        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address], {
+        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address, paymentSplitterImplementationAddress], {
             kind: "uups",
             initializer: "initialize",
         })
@@ -66,7 +73,7 @@ describe("Orb Registry Upgrade", function () {
 
 describe("Orb Upgrade", function () {
     it("Should be deploy directly", async function () {
-        const [admin, creator, keeper, beneficiary, registry] = await ethers.getSigners()
+        const [admin, creator, keeper, beneficiary] = await ethers.getSigners()
 
         const Orb = await ethers.getContractFactory("Orb")
         const orb = await upgrades.deployProxy(Orb, [beneficiary.address, "Orb", "ORB", "https://example.com/"], {
@@ -97,11 +104,16 @@ describe("Orb Upgrade", function () {
         // await orb.requestUpgrade(orb.address)
     })
 
-    it("Should be deploy from Pond and unpgrade", async function () {
-        const [admin, creator, keeper, beneficiary, registry] = await ethers.getSigners()
+    it("Should deploy from Pond and upgrade", async function () {
+        const [admin, creator, keeper, registry, beneficiary1, beneficiary2] = await ethers.getSigners()
+
+        const paymentSplitterImplementation = await ethers.deployContract(
+            "src/CustomPaymentSplitter.sol:PaymentSplitter"
+        )
+        const paymentSplitterImplementationAddress = await paymentSplitterImplementation.getAddress()
 
         const OrbPond = await ethers.getContractFactory("OrbPond")
-        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address], {
+        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address, paymentSplitterImplementationAddress], {
             kind: "uups",
             initializer: "initialize",
         })
@@ -122,15 +134,24 @@ describe("Orb Upgrade", function () {
             ethers.AbiCoder.defaultAbiCoder().encode(["string"], ["Orb"])
         )
 
-        await orbPond.createOrb(beneficiary.address, "Orb", "ORB", "https://example.com/")
+        await orbPond.createOrb([beneficiary1, beneficiary2], [95, 5], "Orb", "ORB", "https://example.com/")
         const firstOrbAddress = await orbPond.orbs(0)
         const orb = await ethers.getContractAt("Orb", firstOrbAddress)
         expect(await orb.name()).to.equal("Orb")
         expect(await orb.symbol()).to.equal("ORB")
         expect(await orb.tokenURI(1)).to.equal("https://example.com/")
-        expect(await orb.beneficiary()).to.equal(beneficiary.address)
         expect(await orb.owner()).to.equal(admin.address)
         expect(await orb.version()).to.equal(1n)
+
+        const beneficiary = await ethers.getContractAt(
+            "src/CustomPaymentSplitter.sol:PaymentSplitter",
+            await orb.beneficiary()
+        )
+        expect(await beneficiary.totalShares()).to.equal(100)
+        expect(await beneficiary.payee(0)).to.equal(beneficiary1.address)
+        expect(await beneficiary.payee(1)).to.equal(beneficiary2.address)
+        expect(await beneficiary.shares(beneficiary1.address)).to.equal(95n)
+        expect(await beneficiary.shares(beneficiary2.address)).to.equal(5n)
 
         await orb.transferOwnership(creator.address)
         const orbAsCreator = orb.connect(creator) as typeof orb
