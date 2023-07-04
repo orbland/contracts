@@ -51,7 +51,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     //  INITIALIZER
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // @custom:oz-upgrades-unsafe-allow constructor
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
