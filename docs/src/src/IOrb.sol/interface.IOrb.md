@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/IOrb.sol)
 
 **Inherits:**
 IERC165Upgradeable
@@ -199,14 +199,14 @@ function responsePeriod() external view returns (uint256);
 
 
 ```solidity
-function version() external returns (uint256);
+function version() external view returns (uint256);
 ```
 
 ### requestedUpgradeImplementation
 
 
 ```solidity
-function requestedUpgradeImplementation() external returns (address);
+function requestedUpgradeImplementation() external view returns (address);
 ```
 
 ### initialize
@@ -576,18 +576,6 @@ error ContractDoesNotHoldOrb();
 
 ```solidity
 error CreatorDoesNotControlOrb();
-```
-
-### NotPermittedForCreator
-
-```solidity
-error NotPermittedForCreator();
-```
-
-### BeneficiaryDisallowed
-
-```solidity
-error BeneficiaryDisallowed();
 ```
 
 ### AuctionNotRunning

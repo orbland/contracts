@@ -1,5 +1,5 @@
 # OrbPondV2
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/OrbPondV2.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/OrbPondV2.sol)
 
 **Inherits:**
 [OrbPond](/src/OrbPond.sol/contract.OrbPond.md)
@@ -27,10 +27,10 @@ uint256 private constant _VERSION = 2;
 ```
 
 
-### orbLandAddress
+### orbLandWallet
 
 ```solidity
-address public orbLandAddress;
+address public orbLandWallet;
 ```
 
 
@@ -48,13 +48,13 @@ Re-initializes the contract after upgrade
 
 
 ```solidity
-function initializeV2(address orbLandAddress_) public reinitializer(2);
+function initializeV2(address orbLandWallet_) public reinitializer(2);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orbLandAddress_`|`address`|  The address of the Orb Land wallet.|
+|`orbLandWallet_`|`address`|  The address of the Orb Land wallet.|
 
 
 ### createOrb
@@ -80,7 +80,7 @@ Returns the version of the Orb. Internal constant `_VERSION` will be increased w
 
 
 ```solidity
-function version() public virtual override returns (uint256 orbPondVersion);
+function version() public view virtual override returns (uint256 orbPondVersion);
 ```
 **Returns**
 

@@ -1,6 +1,7 @@
 
 
 # Contents
+- [PaymentSplitter](CustomPaymentSplitter.sol/contract.PaymentSplitter.md)
 - [UUPSUpgradeable](CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 - [IOrb](IOrb.sol/interface.IOrb.md)
 - [IOrbInvocationRegistry](IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md)

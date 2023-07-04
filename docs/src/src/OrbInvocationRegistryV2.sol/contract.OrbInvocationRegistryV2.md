@@ -1,5 +1,5 @@
 # OrbInvocationRegistryV2
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/OrbInvocationRegistryV2.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/OrbInvocationRegistryV2.sol)
 
 **Inherits:**
 [OrbInvocationRegistry](/src/OrbInvocationRegistry.sol/contract.OrbInvocationRegistry.md)
@@ -25,12 +25,12 @@ uint256 private constant _VERSION = 2;
 ```
 
 
-### lateResponseDepositAddress
+### lateResponseFund
 The address of the Late Response Deposit contract.
 
 
 ```solidity
-address public lateResponseDepositAddress;
+address public lateResponseFund;
 ```
 
 
@@ -66,13 +66,13 @@ Re-initializes the contract after upgrade
 
 
 ```solidity
-function initializeV2(address lateResponseDepositAddress_) public reinitializer(2);
+function initializeV2(address lateResponseFund_) public reinitializer(2);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`lateResponseDepositAddress_`|`address`| The address of the Orb Land wallet.|
+|`lateResponseFund_`|`address`| The address of the Late Response Compensation Fund.|
 
 
 ### respond
@@ -109,7 +109,7 @@ Returns the version of the Orb. Internal constant `_VERSION` will be increased w
 
 
 ```solidity
-function version() public virtual override returns (uint256 orbInvocationRegistryVersion);
+function version() public view virtual override returns (uint256 orbInvocationRegistryVersion);
 ```
 **Returns**
 
