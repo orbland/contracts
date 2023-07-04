@@ -97,7 +97,7 @@ contract OrbV2 is Orb {
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
     /// @return  orbVersion  Version of the Orb.
-    function version() public virtual override returns (uint256 orbVersion) {
+    function version() public view virtual override returns (uint256 orbVersion) {
         return _VERSION;
     }
 }

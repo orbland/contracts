@@ -112,7 +112,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
     /// @return  orbPondVersion  Version of the Orb Pond contract.
-    function version() public virtual returns (uint256 orbPondVersion) {
+    function version() public view virtual returns (uint256 orbPondVersion) {
         return _VERSION;
     }
 

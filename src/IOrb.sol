@@ -152,8 +152,8 @@ interface IOrb is IERC165Upgradeable {
     function responsePeriod() external view returns (uint256);
 
     // Upgrading View Functions
-    function version() external returns (uint256);
-    function requestedUpgradeImplementation() external returns (address);
+    function version() external view returns (uint256);
+    function requestedUpgradeImplementation() external view returns (address);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS
