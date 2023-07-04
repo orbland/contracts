@@ -23,7 +23,7 @@ contract OrbPondV2 is OrbPond {
 
     address public orbLandWallet;
 
-    // @custom:oz-upgrades-unsafe-allow constructor
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
