@@ -7,7 +7,8 @@
         "test": "test"
     },
     "scripts": {
-        "test": "hardhat test"
+        "test": "hardhat test",
+        "node": "hardhat node"
     },
     "author": "Jonas Lekevicius <jonas@orb.land>",
     "license": "MIT",
