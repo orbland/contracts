@@ -1,4 +1,3 @@
-import { PaymentSplitter } from "./../typechain-types/src/CustomPaymentSplitter.sol/PaymentSplitter"
 import { expect } from "chai"
 import { ethers, upgrades } from "hardhat"
 
