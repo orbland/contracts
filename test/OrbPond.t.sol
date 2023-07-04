@@ -41,7 +41,7 @@ contract OrbPondTestBase is Test {
         paymentSplitterImplementation = new PaymentSplitter();
 
         beneficiaryPayees[0] = address(0xC0FFEE);
-        beneficiaryPayees[1] = address(0xFACEB00C);
+        beneficiaryPayees[1] = address(0xFACEBABE);
         beneficiaryShares[0] = 95;
         beneficiaryShares[1] = 5;
 
@@ -137,6 +137,48 @@ contract CreateOrbTest is OrbPondTestBase {
         assertEq(orb.tokenURI(1), "test baseURI");
 
         assertEq(orbPond.orbCount(), 1);
+    }
+}
+
+contract PaymentSplitterTest is OrbPondTestBase {
+    event PaymentReleased(address to, uint256 amount);
+
+    function test_paymentSplitter() public {
+        orbPond.createOrb(beneficiaryPayees, beneficiaryShares, "TestOrb", "TEST", "test baseURI");
+        Orb orb = Orb(orbPond.orbs(0));
+        PaymentSplitter paymentSplitter = PaymentSplitter(payable(orb.beneficiary()));
+
+        assertEq(paymentSplitter.totalShares(), 100);
+        assertEq(paymentSplitter.totalReleased(), 0);
+        assertEq(paymentSplitter.payee(0), address(0xC0FFEE));
+        assertEq(paymentSplitter.payee(1), address(0xFACEBABE));
+        assertEq(paymentSplitter.shares(address(0xC0FFEE)), 95);
+        assertEq(paymentSplitter.shares(address(0xFACEBABE)), 5);
+        assertEq(paymentSplitter.releasable(address(0xC0FFEE)), 0);
+        assertEq(paymentSplitter.releasable(address(0xFACEBABE)), 0);
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        paymentSplitter.initialize(beneficiaryPayees, beneficiaryShares);
+
+        (bool success,) = payable(paymentSplitter).call{value: 100 ether}("");
+        assertTrue(success);
+        assertEq(paymentSplitter.totalReleased(), 0);
+        assertEq(address(paymentSplitter).balance, 100 ether);
+        assertEq(paymentSplitter.releasable(address(0xC0FFEE)), 95 ether);
+        assertEq(paymentSplitter.releasable(address(0xFACEBABE)), 5 ether);
+
+        assertEq(address(0xC0FFEE).balance, 0);
+        vm.expectEmit(true, true, true, true);
+        emit PaymentReleased(address(0xC0FFEE), 95 ether);
+        paymentSplitter.release(payable(address(0xC0FFEE)));
+        assertEq(address(0xC0FFEE).balance, 95 ether);
+        assertEq(address(paymentSplitter).balance, 5 ether);
+
+        vm.expectRevert("PaymentSplitter: account is not due payment");
+        paymentSplitter.release(payable(address(0xC0FFEE)));
+
+        vm.expectRevert("PaymentSplitter: account has no shares");
+        paymentSplitter.release(payable(address(0xBAADF00D)));
     }
 }
 
