@@ -7,6 +7,7 @@ import {OrbTestBase} from "./Orb.t.sol";
 import {IOrb} from "../src/IOrb.sol";
 import {OrbV2} from "../src/OrbV2.sol";
 
+/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract RequestUpgradeTest is OrbTestBase {
     event UpgradeRequest(address indexed requestedImplementation);
 

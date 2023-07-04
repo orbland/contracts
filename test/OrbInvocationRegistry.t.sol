@@ -119,7 +119,7 @@ contract SupportsInterfaceTest is OrbInvocationRegistryTestBase {
     function test_supportsInterface() public view {
         // console.logBytes4(type(IOrbInvocationRegistry).interfaceId);
         assert(orbInvocationRegistry.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
-        assert(orbInvocationRegistry.supportsInterface(0xd4f5d1b6)); // ERC165 Interface ID for IOrbInvocationRegistry
+        assert(orbInvocationRegistry.supportsInterface(0x80089ce6)); // ERC165 Interface ID for IOrbInvocationRegistry
     }
 }
 
