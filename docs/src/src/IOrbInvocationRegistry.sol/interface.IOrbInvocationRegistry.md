@@ -1,5 +1,5 @@
 # IOrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/IOrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/IOrbInvocationRegistry.sol)
 
 **Inherits:**
 IERC165Upgradeable
@@ -42,6 +42,13 @@ function responseFlagged(address orb, uint256 invocationId) external view return
 
 ```solidity
 function flaggedResponsesCount(address orb) external view returns (uint256);
+```
+
+### version
+
+
+```solidity
+function version() external view returns (uint256);
 ```
 
 ### invokeWithCleartext

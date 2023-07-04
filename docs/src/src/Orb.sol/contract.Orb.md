@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/Orb.sol)
 
 **Inherits:**
 Initializable, IERC165Upgradeable, IERC721Upgradeable, IERC721MetadataUpgradeable, [IOrb](/src/IOrb.sol/interface.IOrb.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
@@ -1134,7 +1134,7 @@ Returns the version of the Orb. Internal constant `_VERSION` will be increased w
 
 
 ```solidity
-function version() public virtual returns (uint256 orbVersion);
+function version() public view virtual returns (uint256 orbVersion);
 ```
 **Returns**
 

@@ -1,5 +1,5 @@
 # OrbPond
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/OrbPond.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/OrbPond.sol)
 
 **Inherits:**
 Initializable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
@@ -81,6 +81,15 @@ address public registry;
 ```
 
 
+### paymentSplitterImplementation
+The address of the PaymentSplitter implementation contract, used to create new PaymentSplitters.
+
+
+```solidity
+address public paymentSplitterImplementation;
+```
+
+
 ## Functions
 ### constructor
 
@@ -95,31 +104,36 @@ Initializes the contract, setting the `owner` and `registry` variables.
 
 
 ```solidity
-function initialize(address registry_) public initializer;
+function initialize(address registry_, address paymentSplitterImplementation_) public initializer;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`registry_`|`address`|  The address of the Orb Invocation Registry.|
+|`registry_`|`address`|                       The address of the Orb Invocation Registry.|
+|`paymentSplitterImplementation_`|`address`|  The address of the PaymentSplitter implementation contract.|
 
 
 ### createOrb
 
-Creates a new Orb, and emits an event with the Orb's address.
+Creates a new Orb together with a PaymentSplitter, and emits an event with the Orb's address.
 
 
 ```solidity
-function createOrb(address beneficiary, string memory name, string memory symbol, string memory tokenURI)
-    external
-    virtual
-    onlyOwner;
+function createOrb(
+    address[] memory payees_,
+    uint256[] memory shares_,
+    string memory name,
+    string memory symbol,
+    string memory tokenURI
+) external virtual onlyOwner;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`beneficiary`|`address`|  Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.|
+|`payees_`|`address[]`|      Beneficiaries of the Orb's PaymentSplitter.|
+|`shares_`|`uint256[]`|      Shares of the Orb's PaymentSplitter.|
 |`name`|`string`|         Name of the Orb, used for display purposes. Suggestion: "NameOrb".|
 |`symbol`|`string`|       Symbol of the Orb, used for display purposes. Suggestion: "ORB".|
 |`tokenURI`|`string`|     Initial tokenURI of the Orb, used as part of ERC-721 tokenURI.|
@@ -151,7 +165,7 @@ Returns the version of the Orb. Internal constant `_VERSION` will be increased w
 
 
 ```solidity
-function version() public virtual returns (uint256 orbPondVersion);
+function version() public view virtual returns (uint256 orbPondVersion);
 ```
 **Returns**
 

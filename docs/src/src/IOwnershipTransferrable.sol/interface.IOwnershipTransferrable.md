@@ -1,5 +1,5 @@
 # IOwnershipTransferrable
-[Git Source](https://github.com/orbland/orb/blob/5cb9d2d45418f2f4d5e123695311a6c3bddbfea2/src/IOwnershipTransferrable.sol)
+[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/IOwnershipTransferrable.sol)
 
 
 ## Functions

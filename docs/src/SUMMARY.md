@@ -1,6 +1,7 @@
 # Summary
 - [Home](README.md)
 # src
+  - [PaymentSplitter](src/CustomPaymentSplitter.sol/contract.PaymentSplitter.md)
   - [UUPSUpgradeable](src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
   - [IOrb](src/IOrb.sol/interface.IOrb.md)
   - [IOrbInvocationRegistry](src/IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md)
