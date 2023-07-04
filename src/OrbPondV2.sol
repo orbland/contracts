@@ -2,8 +2,9 @@
 pragma solidity ^0.8.20;
 
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PaymentSplitter} from "../lib/openzeppelin-contracts/contracts/finance/PaymentSplitter.sol";
+import {ClonesUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
 
+import {PaymentSplitter} from "./CustomPaymentSplitter.sol";
 import {IOwnershipTransferrable} from "./IOwnershipTransferrable.sol";
 import {IOrb} from "./IOrb.sol";
 import {OrbPond} from "./OrbPond.sol";
@@ -46,11 +47,11 @@ contract OrbPondV2 is OrbPond {
         beneficiaryShares[0] = 95;
         beneficiaryShares[1] = 5;
 
-        PaymentSplitter orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
-        address splitterAddress = address(orbBeneficiary);
+        address beneficiary = ClonesUpgradeable.clone(paymentSplitterImplementation);
+        PaymentSplitter(payable(beneficiary)).initialize(beneficiaryAddresses, beneficiaryShares);
 
         bytes memory initializeCalldata =
-            abi.encodeWithSelector(IOrb.initialize.selector, splitterAddress, name, symbol, tokenURI);
+            abi.encodeWithSelector(IOrb.initialize.selector, beneficiary, name, symbol, tokenURI);
         ERC1967Proxy proxy = new ERC1967Proxy(versions[1], initializeCalldata);
         orbs[orbCount] = address(proxy);
         IOwnershipTransferrable(orbs[orbCount]).transferOwnership(msg.sender);

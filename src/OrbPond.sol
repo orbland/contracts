@@ -5,7 +5,9 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {ClonesUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
 
+import {PaymentSplitter} from "./CustomPaymentSplitter.sol";
 import {IOwnershipTransferrable} from "./IOwnershipTransferrable.sol";
 import {IOrb} from "./IOrb.sol";
 
@@ -46,6 +48,8 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     /// The address of the Orb Invocation Registry, used to register Orb invocations and responses.
     address public registry;
+    /// The address of the PaymentSplitter implementation contract, used to create new PaymentSplitters.
+    address public paymentSplitterImplementation;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER
@@ -57,28 +61,36 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /// @notice  Initializes the contract, setting the `owner` and `registry` variables.
-    /// @param   registry_   The address of the Orb Invocation Registry.
-    function initialize(address registry_) public initializer {
+    /// @param   registry_                        The address of the Orb Invocation Registry.
+    /// @param   paymentSplitterImplementation_   The address of the PaymentSplitter implementation contract.
+    function initialize(address registry_, address paymentSplitterImplementation_) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         registry = registry_;
+        paymentSplitterImplementation = paymentSplitterImplementation_;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: ORB CREATION
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Creates a new Orb, and emits an event with the Orb's address.
-    /// @param   beneficiary   Address of the Orb's beneficiary. See `Orb` contract for more on beneficiary.
+    /// @notice  Creates a new Orb together with a PaymentSplitter, and emits an event with the Orb's address.
+    /// @param   payees_       Beneficiaries of the Orb's PaymentSplitter.
+    /// @param   shares_       Shares of the Orb's PaymentSplitter.
     /// @param   name          Name of the Orb, used for display purposes. Suggestion: "NameOrb".
     /// @param   symbol        Symbol of the Orb, used for display purposes. Suggestion: "ORB".
     /// @param   tokenURI      Initial tokenURI of the Orb, used as part of ERC-721 tokenURI.
-    function createOrb(address beneficiary, string memory name, string memory symbol, string memory tokenURI)
-        external
-        virtual
-        onlyOwner
-    {
+    function createOrb(
+        address[] memory payees_,
+        uint256[] memory shares_,
+        string memory name,
+        string memory symbol,
+        string memory tokenURI
+    ) external virtual onlyOwner {
+        address beneficiary = ClonesUpgradeable.clone(paymentSplitterImplementation);
+        PaymentSplitter(payable(beneficiary)).initialize(payees_, shares_);
+
         bytes memory initializeCalldata =
             abi.encodeWithSelector(IOrb.initialize.selector, beneficiary, name, symbol, tokenURI);
         ERC1967Proxy proxy = new ERC1967Proxy(versions[1], initializeCalldata);

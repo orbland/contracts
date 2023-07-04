@@ -6,6 +6,7 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Test} from "../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
 import {OrbHarness} from "./harness/OrbHarness.sol";
 import {OrbPond} from "../src/OrbPond.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
@@ -15,6 +16,8 @@ import {IOrb} from "../src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbTestBase is Test {
+    PaymentSplitter internal paymentSplitterImplementation;
+
     OrbInvocationRegistry internal orbInvocationRegistryImplementation;
     OrbInvocationRegistry internal orbInvocationRegistry;
 
@@ -37,7 +40,14 @@ contract OrbTestBase is Test {
     function setUp() public {
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
-        beneficiary = address(0xC0FFEE);
+
+        address[] memory beneficiaryPayees = new address[](2);
+        uint256[] memory beneficiaryShares = new uint256[](2);
+        beneficiaryPayees[0] = address(0xC0FFEE);
+        beneficiaryPayees[1] = address(0xFACEB00C);
+        beneficiaryShares[0] = 95;
+        beneficiaryShares[1] = 5;
+
         startingBalance = 10_000 ether;
         vm.deal(user, startingBalance);
         vm.deal(user2, startingBalance);
@@ -46,6 +56,7 @@ contract OrbTestBase is Test {
         orbPondImplementation = new OrbPond();
         orbImplementation = new OrbHarness();
         orbV2Implementation = new OrbV2();
+        paymentSplitterImplementation = new PaymentSplitter();
 
         ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
             address(orbInvocationRegistryImplementation),
@@ -55,7 +66,11 @@ contract OrbTestBase is Test {
 
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
-            abi.encodeWithSelector(OrbPond.initialize.selector, address(orbInvocationRegistry))
+            abi.encodeWithSelector(
+                OrbPond.initialize.selector,
+                address(orbInvocationRegistry),
+                address(paymentSplitterImplementation)
+            )
         );
         orbPond = OrbPond(address(orbPondProxy));
         bytes memory orbPondV1InitializeCalldata =
@@ -64,9 +79,10 @@ contract OrbTestBase is Test {
 
         vm.expectEmit(true, true, true, true);
         emit Creation();
-        orbPond.createOrb(beneficiary, "Orb", "ORB", "https://static.orb.land/orb/");
+        orbPond.createOrb(beneficiaryPayees, beneficiaryShares, "Orb", "ORB", "https://static.orb.land/orb/");
 
         orb = OrbHarness(orbPond.orbs(0));
+        beneficiary = orb.beneficiary();
 
         orb.swearOath(
             keccak256(abi.encodePacked("test oath")), // oathHash
@@ -129,9 +145,13 @@ contract InitialStateTest is OrbTestBase {
         assertFalse(orb.workaround_auctionRunning());
         assertEq(orb.pond(), address(orbPond));
         assertEq(orb.owner(), address(this));
-        assertEq(orb.beneficiary(), address(0xC0FFEE));
         assertEq(orb.honoredUntil(), 100); // 1_700_000_000
         assertEq(orb.responsePeriod(), 3600);
+
+        assertEq(PaymentSplitter(payable(orb.beneficiary())).totalShares(), 100);
+        assertEq(PaymentSplitter(payable(orb.beneficiary())).totalReleased(), 0);
+        assertEq(PaymentSplitter(payable(orb.beneficiary())).shares(address(0xC0FFEE)), 95);
+        assertEq(PaymentSplitter(payable(orb.beneficiary())).shares(address(0xFACEB00C)), 5);
 
         assertEq(orb.name(), "Orb");
         assertEq(orb.symbol(), "ORB");

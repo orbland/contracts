@@ -5,8 +5,8 @@ pragma solidity ^0.8.20;
 // import {console} from "../lib/forge-std/src/console.sol";
 import {Script} from "../lib/forge-std/src/Script.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {PaymentSplitter} from "../lib/openzeppelin-contracts/contracts/finance/PaymentSplitter.sol";
 
+import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
 import {OrbPond} from "../src/OrbPond.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {Orb} from "../src/Orb.sol";
@@ -38,6 +38,8 @@ abstract contract DeployBase is Script {
     uint256 private immutable cleartextMaximumLength;
 
     // Deploy addresses.
+    PaymentSplitter internal paymentSplitterImplementation;
+
     PaymentSplitter public orbBeneficiary;
 
     OrbInvocationRegistry public orbInvocationRegistryImplementation;
@@ -99,6 +101,7 @@ abstract contract DeployBase is Script {
         orbInvocationRegistryImplementation = new OrbInvocationRegistry();
         orbPondImplementation = new OrbPond();
         orbImplementation = new Orb();
+        paymentSplitterImplementation = new PaymentSplitter();
 
         ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
             address(orbInvocationRegistryImplementation),
@@ -108,18 +111,20 @@ abstract contract DeployBase is Script {
 
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
-            abi.encodeWithSelector(OrbPond.initialize.selector, address(orbInvocationRegistry))
+            abi.encodeWithSelector(
+                OrbPond.initialize.selector,
+                address(orbInvocationRegistry),
+                address(paymentSplitterImplementation)
+            )
         );
         orbPond = OrbPond(address(orbPondProxy));
         bytes memory orbPondV1InitializeCalldata =
             abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
         orbPond.registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
 
-        orbBeneficiary = new PaymentSplitter(beneficiaryAddresses, beneficiaryShares);
-        address splitterAddress = address(orbBeneficiary);
-
-        orbPond.createOrb(splitterAddress, orbName, orbSymbol, "https://static.orb.land/orb/");
+        orbPond.createOrb(beneficiaryAddresses, beneficiaryShares, orbName, orbSymbol, "https://static.orb.land/orb/");
         orb = Orb(orbPond.orbs(0));
+        orbBeneficiary = PaymentSplitter(payable(orb.beneficiary()));
 
         orb.setAuctionParameters(
             auctionStartingPrice,
