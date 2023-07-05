@@ -91,8 +91,9 @@ contract OrbInvocationRegistry is
     //  MODIFIERS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
-    ///       external functions, otherwise does not make sense.
+    /// @dev    Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
+    ///         external functions, otherwise does not make sense.
+    /// @param  orb  Address of the Orb.
     modifier onlyKeeper(address orb) virtual {
         if (msg.sender != IOrb(orb).keeper()) {
             revert NotKeeper();
@@ -100,7 +101,8 @@ contract OrbInvocationRegistry is
         _;
     }
 
-    /// @dev  Ensures that the Orb belongs to someone, not the contract itself.
+    /// @dev    Ensures that the Orb belongs to someone, not the contract itself.
+    /// @param  orb  Address of the Orb.
     modifier onlyKeeperHeld(address orb) virtual {
         if (orb == IOrb(orb).keeper()) {
             revert ContractHoldsOrb();
@@ -108,7 +110,8 @@ contract OrbInvocationRegistry is
         _;
     }
 
-    /// @dev  Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
+    /// @dev    Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
+    /// @param  orb  Address of the Orb.
     modifier onlyKeeperSolvent(address orb) virtual {
         if (!IOrb(orb).keeperSolvent()) {
             revert KeeperInsolvent();
@@ -116,7 +119,8 @@ contract OrbInvocationRegistry is
         _;
     }
 
-    /// @dev  Ensures that the caller is the creator of the Orb.
+    /// @dev    Ensures that the caller is the creator of the Orb.
+    /// @param  orb  Address of the Orb.
     modifier onlyCreator(address orb) virtual {
         if (msg.sender != IOrb(orb).creator()) {
             revert NotCreator();
@@ -130,6 +134,7 @@ contract OrbInvocationRegistry is
 
     /// @notice  Invokes the Orb. Allows the keeper to submit cleartext.
     /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
+    /// @param   orb        Address of the Orb.
     /// @param   cleartext  Invocation cleartext.
     function invokeWithCleartext(address orb, string memory cleartext) external virtual {
         uint256 cleartextMaximumLength = IOrb(orb).cleartextMaximumLength();
@@ -146,6 +151,7 @@ contract OrbInvocationRegistry is
     ///          creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent keepers.
     /// @dev     Content hash is keccak256 of the cleartext. `invocationCount` is used to track the id of the next
     ///          invocation. Invocation ids start from 1. Emits `Invocation`.
+    /// @param   orb          Address of the Orb.
     /// @param   contentHash  Required keccak256 hash of the cleartext.
     function invokeWithHash(address orb, bytes32 contentHash)
         public
@@ -178,6 +184,7 @@ contract OrbInvocationRegistry is
     ///          it was made. A response to an invocation can only be written once. There is no way to record response
     ///          cleartext on-chain.
     /// @dev     Emits `Response`.
+    /// @param   orb           Address of the Orb.
     /// @param   invocationId  Id of an invocation to which the response is being made.
     /// @param   contentHash   keccak256 hash of the response text.
     function respond(address orb, uint256 invocationId, bytes32 contentHash) external virtual onlyCreator(orb) {
@@ -201,6 +208,7 @@ contract OrbInvocationRegistry is
     ///          solvent keepers to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
     ///          keeper must have received the Orb after the response was made; this is to prevent keepers from
     ///          flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.
+    /// @param   orb           Address of the Orb.
     /// @param   invocationId  Id of an invocation to which the response is being flagged.
     function flagResponse(address orb, uint256 invocationId) external virtual onlyKeeper(orb) onlyKeeperSolvent(orb) {
         uint256 keeperReceiveTime = IOrb(orb).keeperReceiveTime();
@@ -229,7 +237,8 @@ contract OrbInvocationRegistry is
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
-    /// @param   invocationId_  Id of an invocation to which to check the existance of a response of.
+    /// @param   orb            Address of the Orb.
+    /// @param   invocationId_  Id of an invocation to which to check the existence of a response of.
     /// @return  isResponseFound  If a response to an invocation exists or not.
     function _responseExists(address orb, uint256 invocationId_) internal view virtual returns (bool isResponseFound) {
         if (responses[orb][invocationId_].timestamp != 0) {

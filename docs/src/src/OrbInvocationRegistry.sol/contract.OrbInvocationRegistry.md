@@ -1,5 +1,5 @@
 # OrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/2bc9cefc3aee952af3b4e1b5c06007779197cbaa/src/OrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/bf3cb001781a25916f24b7855a3759b4c5b6dec0/src/OrbInvocationRegistry.sol)
 
 **Inherits:**
 Initializable, [IOrbInvocationRegistry](/src/IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
@@ -120,6 +120,12 @@ external functions, otherwise does not make sense.*
 ```solidity
 modifier onlyKeeper(address orb) virtual;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`orb`|`address`| Address of the Orb.|
+
 
 ### onlyKeeperHeld
 
@@ -129,6 +135,12 @@ modifier onlyKeeper(address orb) virtual;
 ```solidity
 modifier onlyKeeperHeld(address orb) virtual;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`orb`|`address`| Address of the Orb.|
+
 
 ### onlyKeeperSolvent
 
@@ -138,6 +150,12 @@ modifier onlyKeeperHeld(address orb) virtual;
 ```solidity
 modifier onlyKeeperSolvent(address orb) virtual;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`orb`|`address`| Address of the Orb.|
+
 
 ### onlyCreator
 
@@ -147,6 +165,12 @@ modifier onlyKeeperSolvent(address orb) virtual;
 ```solidity
 modifier onlyCreator(address orb) virtual;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`orb`|`address`| Address of the Orb.|
+
 
 ### invokeWithCleartext
 
@@ -162,7 +186,7 @@ function invokeWithCleartext(address orb, string memory cleartext) external virt
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orb`|`address`||
+|`orb`|`address`|       Address of the Orb.|
 |`cleartext`|`string`| Invocation cleartext.|
 
 
@@ -187,7 +211,7 @@ function invokeWithHash(address orb, bytes32 contentHash)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orb`|`address`||
+|`orb`|`address`|         Address of the Orb.|
 |`contentHash`|`bytes32`| Required keccak256 hash of the cleartext.|
 
 
@@ -207,7 +231,7 @@ function respond(address orb, uint256 invocationId, bytes32 contentHash) externa
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orb`|`address`||
+|`orb`|`address`|          Address of the Orb.|
 |`invocationId`|`uint256`| Id of an invocation to which the response is being made.|
 |`contentHash`|`bytes32`|  keccak256 hash of the response text.|
 
@@ -232,7 +256,7 @@ function flagResponse(address orb, uint256 invocationId) external virtual onlyKe
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orb`|`address`||
+|`orb`|`address`|          Address of the Orb.|
 |`invocationId`|`uint256`| Id of an invocation to which the response is being flagged.|
 
 
@@ -248,8 +272,8 @@ function _responseExists(address orb, uint256 invocationId_) internal view virtu
 
 |Name|Type|Description|
 |----|----|-----------|
-|`orb`|`address`||
-|`invocationId_`|`uint256`| Id of an invocation to which to check the existance of a response of.|
+|`orb`|`address`|           Address of the Orb.|
+|`invocationId_`|`uint256`| Id of an invocation to which to check the existence of a response of.|
 
 **Returns**
 
