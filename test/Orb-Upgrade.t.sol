@@ -72,7 +72,7 @@ contract RequestUpgradeTest is OrbTestBase {
 }
 
 contract CompleteUpgradeTest is OrbTestBase {
-    event UpgradeCompletion(address indexed newImplementation);
+    event Upgraded(address indexed implementation);
 
     function test_revertWhenNotRequested() public {
         makeKeeperAndWarp(user, 1 ether);
@@ -209,7 +209,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         assertEq(successBefore, false);
 
         vm.expectEmit(true, true, true, true);
-        emit UpgradeCompletion(address(orbV2Implementation));
+        emit Upgraded(address(orbV2Implementation));
         vm.prank(owner);
         orb.upgradeToNextVersion();
 

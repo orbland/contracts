@@ -1,5 +1,5 @@
 # IOrb
-[Git Source](https://github.com/orbland/orb/blob/bf3cb001781a25916f24b7855a3759b4c5b6dec0/src/IOrb.sol)
+[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/IOrb.sol)
 
 **Inherits:**
 IERC165Upgradeable
@@ -534,12 +534,6 @@ event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint2
 
 ```solidity
 event UpgradeRequest(address indexed requestedImplementation);
-```
-
-### UpgradeCompletion
-
-```solidity
-event UpgradeCompletion(address indexed newImplementation);
 ```
 
 ## Errors

@@ -1,5 +1,5 @@
 # UUPSUpgradeable
-[Git Source](https://github.com/orbland/orb/blob/bf3cb001781a25916f24b7855a3759b4c5b6dec0/src/CustomUUPSUpgradeable.sol)
+[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/CustomUUPSUpgradeable.sol)
 
 **Inherits:**
 Initializable, IERC1822ProxiableUpgradeable, ERC1967UpgradeUpgradeable
