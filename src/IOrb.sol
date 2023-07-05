@@ -147,6 +147,7 @@ interface IOrb is IERC165Upgradeable {
 
     // Orb Parameter View Functions
     function pond() external view returns (address);
+    function creator() external view returns (address);
     function beneficiary() external view returns (address);
     function honoredUntil() external view returns (uint256);
     function responsePeriod() external view returns (uint256);

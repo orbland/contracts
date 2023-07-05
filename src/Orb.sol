@@ -263,6 +263,12 @@ contract Orb is
             || interfaceId == type(IERC721MetadataUpgradeable).interfaceId || super.supportsInterface(interfaceId);
     }
 
+    /// @dev     Function exposing creator address as part of IOrb interface.
+    /// @return  creatorAddress  Address of the Orb creator.
+    function creator() public view virtual returns (address creatorAddress) {
+        return owner();
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  MODIFIERS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
