@@ -1,5 +1,5 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/ef217489df43f420a76112a53516d27603cf94a8/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/2bc9cefc3aee952af3b4e1b5c06007779197cbaa/src/Orb.sol)
 
 **Inherits:**
 Initializable, IERC165Upgradeable, IERC721Upgradeable, IERC721MetadataUpgradeable, [IOrb](/src/IOrb.sol/interface.IOrb.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
@@ -407,6 +407,21 @@ function supportsInterface(bytes4 interfaceId)
 |Name|Type|Description|
 |----|----|-----------|
 |`isInterfaceSupported`|`bool`| If interface with given 4 bytes id is supported.|
+
+
+### creator
+
+*Function exposing creator address as part of IOrb interface.*
+
+
+```solidity
+function creator() public view virtual returns (address creatorAddress);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`creatorAddress`|`address`| Address of the Orb creator.|
 
 
 ### onlyKeeper
