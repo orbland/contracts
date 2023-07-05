@@ -73,9 +73,9 @@ interface IOrb is IERC165Upgradeable {
 
     // ERC-721 Errors
     error NotSupported();
-    error NotPermitted();
 
     // Authorization Errors
+    error NotPermitted();
     error AlreadyKeeper();
     error NotKeeper();
     error ContractHoldsOrb();
