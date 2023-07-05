@@ -1,5 +1,5 @@
 # IOrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/ef217489df43f420a76112a53516d27603cf94a8/src/IOrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/2bc9cefc3aee952af3b4e1b5c06007779197cbaa/src/IOrbInvocationRegistry.sol)
 
 **Inherits:**
 IERC165Upgradeable
