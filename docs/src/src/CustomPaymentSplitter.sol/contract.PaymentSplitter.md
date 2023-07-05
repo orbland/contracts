@@ -1,5 +1,5 @@
 # PaymentSplitter
-[Git Source](https://github.com/orbland/orb/blob/771f5939dfb0545391995a5aae65b8d31afb5d3e/src/CustomPaymentSplitter.sol)
+[Git Source](https://github.com/orbland/orb/blob/ef217489df43f420a76112a53516d27603cf94a8/src/CustomPaymentSplitter.sol)
 
 **Inherits:**
 PaymentSplitterUpgradeable
@@ -7,9 +7,10 @@ PaymentSplitterUpgradeable
 **Author:**
 Jonas Lekevicius
 
-*This is a non-abstract version of the OpenZeppelin Contract `PaymentSplitterUpgradeable` contract that does
+*This is a non-abstract version of the OpenZeppelin Contract `PaymentSplitterUpgradeable` contract that
 implements an initializer, and has a constructor to disable the initializer on base deployment. Meant to be
-used as an implementation to a EIP-1167 clone factory.*
+used as an implementation to a EIP-1167 clone factory. This contract is not actually upgradeable despite
+the name of the base contract.*
 
 
 ## Functions

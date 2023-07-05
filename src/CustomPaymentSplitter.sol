@@ -6,9 +6,10 @@ import {PaymentSplitterUpgradeable} from
 
 /// @title   CustomPaymentSplitter - Payment Splitter with initializer
 /// @author  Jonas Lekevicius
-/// @dev     This is a non-abstract version of the OpenZeppelin Contract `PaymentSplitterUpgradeable` contract that does
+/// @dev     This is a non-abstract version of the OpenZeppelin Contract `PaymentSplitterUpgradeable` contract that
 ///          implements an initializer, and has a constructor to disable the initializer on base deployment. Meant to be
-///          used as an implementation to a EIP-1167 clone factory.
+///          used as an implementation to a EIP-1167 clone factory. This contract is not actually upgradeable despite
+///          the name of the base contract.
 contract PaymentSplitter is PaymentSplitterUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
