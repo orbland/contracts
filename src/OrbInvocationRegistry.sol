@@ -9,7 +9,7 @@ import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-import {Orb} from "./Orb.sol";
+import {IOrb} from "./IOrb.sol";
 import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
 
 /// @title   Orb Invocation Registry - Record-keeping contract for Orb invocations and responses
@@ -94,7 +94,7 @@ contract OrbInvocationRegistry is
     /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
     ///       external functions, otherwise does not make sense.
     modifier onlyKeeper(address orb) virtual {
-        if (msg.sender != Orb(orb).keeper()) {
+        if (msg.sender != IOrb(orb).keeper()) {
             revert NotKeeper();
         }
         _;
@@ -102,7 +102,7 @@ contract OrbInvocationRegistry is
 
     /// @dev  Ensures that the Orb belongs to someone, not the contract itself.
     modifier onlyKeeperHeld(address orb) virtual {
-        if (orb == Orb(orb).keeper()) {
+        if (orb == IOrb(orb).keeper()) {
             revert ContractHoldsOrb();
         }
         _;
@@ -110,7 +110,7 @@ contract OrbInvocationRegistry is
 
     /// @dev  Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
     modifier onlyKeeperSolvent(address orb) virtual {
-        if (!Orb(orb).keeperSolvent()) {
+        if (!IOrb(orb).keeperSolvent()) {
             revert KeeperInsolvent();
         }
         _;
@@ -118,7 +118,7 @@ contract OrbInvocationRegistry is
 
     /// @dev  Ensures that the caller is the creator of the Orb.
     modifier onlyCreator(address orb) virtual {
-        if (msg.sender != Orb(orb).owner()) {
+        if (msg.sender != IOrb(orb).creator()) {
             revert NotCreator();
         }
         _;
@@ -132,7 +132,7 @@ contract OrbInvocationRegistry is
     /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
     /// @param   cleartext  Invocation cleartext.
     function invokeWithCleartext(address orb, string memory cleartext) external virtual {
-        uint256 cleartextMaximumLength = Orb(orb).cleartextMaximumLength();
+        uint256 cleartextMaximumLength = IOrb(orb).cleartextMaximumLength();
 
         uint256 length = bytes(cleartext).length;
         if (length > cleartextMaximumLength) {
@@ -154,8 +154,8 @@ contract OrbInvocationRegistry is
         onlyKeeperHeld(orb)
         onlyKeeperSolvent(orb)
     {
-        uint256 lastInvocationTime = Orb(orb).lastInvocationTime();
-        uint256 cooldown = Orb(orb).cooldown();
+        uint256 lastInvocationTime = IOrb(orb).lastInvocationTime();
+        uint256 cooldown = IOrb(orb).cooldown();
 
         if (block.timestamp < lastInvocationTime + cooldown) {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
@@ -165,7 +165,7 @@ contract OrbInvocationRegistry is
         uint256 invocationId = invocationCount[orb]; // starts at 1
 
         invocations[orb][invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
-        Orb(orb).setLastInvocationTime(block.timestamp);
+        IOrb(orb).setLastInvocationTime(block.timestamp);
 
         emit Invocation(orb, invocationId, msg.sender, block.timestamp, contentHash);
     }
@@ -203,8 +203,8 @@ contract OrbInvocationRegistry is
     ///          flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.
     /// @param   invocationId  Id of an invocation to which the response is being flagged.
     function flagResponse(address orb, uint256 invocationId) external virtual onlyKeeper(orb) onlyKeeperSolvent(orb) {
-        uint256 keeperReceiveTime = Orb(orb).keeperReceiveTime();
-        uint256 flaggingPeriod = Orb(orb).flaggingPeriod();
+        uint256 keeperReceiveTime = IOrb(orb).keeperReceiveTime();
+        uint256 flaggingPeriod = IOrb(orb).flaggingPeriod();
 
         if (!_responseExists(orb, invocationId)) {
             revert ResponseNotFound(orb, invocationId);
