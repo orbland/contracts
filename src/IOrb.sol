@@ -65,7 +65,6 @@ interface IOrb is IERC165Upgradeable {
 
     // Upgrading Events
     event UpgradeRequest(address indexed requestedImplementation);
-    event UpgradeCompletion(address indexed newImplementation);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS

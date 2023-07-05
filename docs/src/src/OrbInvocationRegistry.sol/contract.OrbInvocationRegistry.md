@@ -1,5 +1,5 @@
 # OrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/bf3cb001781a25916f24b7855a3759b4c5b6dec0/src/OrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/OrbInvocationRegistry.sol)
 
 **Inherits:**
 Initializable, [IOrbInvocationRegistry](/src/IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)

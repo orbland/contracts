@@ -1081,7 +1081,5 @@ contract Orb is
 
         _upgradeToAndCall(nextVersionImplementation, OrbPond(pond).upgradeCalldata(version() + 1), false);
         requestedUpgradeImplementation = address(0);
-
-        emit UpgradeCompletion(nextVersionImplementation);
     }
 }
