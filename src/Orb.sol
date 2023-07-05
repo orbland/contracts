@@ -1079,8 +1079,7 @@ contract Orb is
             revert NotNextVersion();
         }
 
-        bytes memory nextVersionUpgradeCalldata = OrbPond(pond).upgradeCalldata(version() + 1);
-        _upgradeToAndCall(nextVersionImplementation, nextVersionUpgradeCalldata, false);
+        _upgradeToAndCall(nextVersionImplementation, OrbPond(pond).upgradeCalldata(version() + 1), false);
         requestedUpgradeImplementation = address(0);
 
         emit UpgradeCompletion(nextVersionImplementation);
