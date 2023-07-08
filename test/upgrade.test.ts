@@ -5,13 +5,14 @@ describe("Orb Pond Upgrade", function () {
     it("Should deploy and upgrade", async function () {
         const [owner, registry] = await ethers.getSigners()
 
-        const paymentSplitterImplementation = await ethers.deployContract(
-            "src/CustomPaymentSplitter.sol:PaymentSplitter"
-        )
-        const paymentSplitterImplementationAddress = await paymentSplitterImplementation.getAddress()
+        const PaymentSplitter = await ethers.getContractFactory("src/CustomPaymentSplitter.sol:PaymentSplitter")
+        const paymentSplitterImplementation = await upgrades.deployImplementation(PaymentSplitter)
+        if (typeof paymentSplitterImplementation !== "string") {
+            throw new Error("PaymentSplitter implementation is not a string")
+        }
 
         const OrbPond = await ethers.getContractFactory("OrbPond")
-        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address, paymentSplitterImplementationAddress], {
+        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address, paymentSplitterImplementation], {
             kind: "uups",
             initializer: "initialize",
         })
@@ -106,13 +107,14 @@ describe("Orb Upgrade", function () {
     it("Should deploy from Pond and upgrade", async function () {
         const [admin, creator, keeper, registry, beneficiary1, beneficiary2] = await ethers.getSigners()
 
-        const paymentSplitterImplementation = await ethers.deployContract(
-            "src/CustomPaymentSplitter.sol:PaymentSplitter"
-        )
-        const paymentSplitterImplementationAddress = await paymentSplitterImplementation.getAddress()
+        const PaymentSplitter = await ethers.getContractFactory("src/CustomPaymentSplitter.sol:PaymentSplitter")
+        const paymentSplitterImplementation = await upgrades.deployImplementation(PaymentSplitter)
+        if (typeof paymentSplitterImplementation !== "string") {
+            throw new Error("PaymentSplitter implementation is not a string")
+        }
 
         const OrbPond = await ethers.getContractFactory("OrbPond")
-        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address, paymentSplitterImplementationAddress], {
+        const orbPond = await upgrades.deployProxy(OrbPond, [registry.address, paymentSplitterImplementation], {
             kind: "uups",
             initializer: "initialize",
         })
@@ -121,7 +123,13 @@ describe("Orb Upgrade", function () {
         // console.log("Pond address:", orbPondAddress)
 
         // const Orb = await ethers.getContractFactory("Orb")
-        const orbImplementation = await ethers.deployContract("Orb")
+        const Orb = await ethers.getContractFactory("Orb")
+        const orbImplementation = await upgrades.deployImplementation(Orb, {
+            unsafeAllow: ["delegatecall"],
+        })
+        if (typeof orbImplementation !== "string") {
+            throw new Error("Orb implementation is not a string")
+        }
 
         expect(await orbPond.registry()).to.equal(registry.address)
         expect(await orbPond.version()).to.equal(1n)
@@ -129,7 +137,7 @@ describe("Orb Upgrade", function () {
 
         await orbPond.registerVersion(
             1,
-            orbImplementation.getAddress(),
+            orbImplementation,
             ethers.AbiCoder.defaultAbiCoder().encode(["string"], ["Orb"])
         )
 
@@ -164,16 +172,21 @@ describe("Orb Upgrade", function () {
         })
         expect(await orb.keeper()).to.equal(keeper.address)
 
-        const orbV2Implementation = await ethers.deployContract("OrbV2")
-        const orbV2ImplementationAddress = await orbV2Implementation.getAddress()
+        const OrbV2 = await ethers.getContractFactory("OrbV2")
+        const orbV2Implementation = await upgrades.deployImplementation(OrbV2, {
+            unsafeAllow: ["delegatecall"],
+        })
+        if (typeof orbV2Implementation !== "string") {
+            throw new Error("Orb implementation is not a string")
+        }
         await orbPond.registerVersion(
             2,
-            orbV2ImplementationAddress,
-            orbV2Implementation.interface.encodeFunctionData("initializeV2", ["Whorb", "WHORB"])
+            orbV2Implementation,
+            OrbV2.interface.encodeFunctionData("initializeV2", ["Whorb", "WHORB"])
         )
 
-        await orbAsCreator.requestUpgrade(orbV2Implementation.getAddress())
-        expect(await orb.requestedUpgradeImplementation()).to.equal(orbV2ImplementationAddress)
+        await orbAsCreator.requestUpgrade(orbV2Implementation)
+        expect(await orb.requestedUpgradeImplementation()).to.equal(orbV2Implementation)
 
         await orbAsKeeper.upgradeToNextVersion()
         expect(await orb.name()).to.equal("Whorb")
