@@ -7,7 +7,8 @@
         "test": "test"
     },
     "scripts": {
-        "test": "hardhat test",
+        "compile": "hardhat compile",
+        "test": "hardhat test --show-stack-traces",
         "node": "hardhat node"
     },
     "author": "Jonas Lekevicius <jonas@orb.land>",
