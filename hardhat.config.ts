@@ -1,9 +1,9 @@
-import fs from "fs"
+import { HardhatUserConfig } from "hardhat/config"
 import "@nomicfoundation/hardhat-toolbox"
+import "@nomicfoundation/hardhat-verify"
 import "@nomiclabs/hardhat-solhint"
 import "@openzeppelin/hardhat-upgrades"
 import "@typechain/hardhat"
-import { HardhatUserConfig } from "hardhat/config"
 import "hardhat-contract-sizer"
 import "hardhat-gas-reporter"
 import "hardhat-preprocessor"
@@ -12,18 +12,8 @@ import "hardhat-deploy"
 
 import * as dotenv from "dotenv"
 dotenv.config()
-const { INFURA_API_KEY, ETHERSCAN_API_KEY, DEPLOYER_PRIVATE_KEY } = process.env
-// SAFE_SERVICE_URL, DEPLOYER_SAFE
-
-// function getRemappings() {
-//     return fs
-//         .readFileSync("remappings.txt", "utf8")
-//         .split("\n")
-//         .filter(Boolean)
-//         .map((line) => line.trim().split("="))
-// }
-
-const coinmarketcapKey: string | undefined = process.env.CMC_API_KEY
+const { INFURA_API_KEY, ETHERSCAN_API_KEY, DEPLOYER_PRIVATE_KEY, CMC_API_KEY } = process.env
+const deployerPrivateKey = DEPLOYER_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 
 const config: HardhatUserConfig = {
     solidity: {
@@ -41,18 +31,14 @@ const config: HardhatUserConfig = {
     },
     defaultNetwork: "hardhat",
     networks: {
-        // hardhat: {
-        //     mining: {
-        //         auto: true,
-        //         interval: [3000, 6000],
-        //     },
-        // },
+        hardhat: {},
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [
-                (DEPLOYER_PRIVATE_KEY ||
-                    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80") as string,
-            ],
+            accounts: [deployerPrivateKey],
+        },
+        mainnet: {
+            url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+            accounts: [deployerPrivateKey],
         },
     },
     etherscan: {
@@ -61,23 +47,8 @@ const config: HardhatUserConfig = {
     gasReporter: {
         enabled: true,
         currency: "USD",
-        coinmarketcap: coinmarketcapKey,
+        coinmarketcap: CMC_API_KEY,
     },
-    // This fully resolves paths for imports in the ./lib directory for Hardhat
-    // preprocess: {
-    //     eachLine: (hre) => ({
-    //         transform: (line: string) => {
-    //             if (line.match(/^\s*import /i)) {
-    //                 getRemappings().forEach(([find, replace]) => {
-    //                     if (line.match(find)) {
-    //                         line = line.replace(find, replace)
-    //                     }
-    //                 })
-    //             }
-    //             return line
-    //         },
-    //     }),
-    // },
 }
 
 export default config
