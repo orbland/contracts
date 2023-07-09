@@ -119,7 +119,7 @@ describe("Orb Upgrade", function () {
             initializer: "initialize",
         })
         await orbPond.waitForDeployment()
-        const orbPondAddress = await orbPond.getAddress()
+        // const orbPondAddress = await orbPond.getAddress()
         // console.log("Pond address:", orbPondAddress)
 
         // const Orb = await ethers.getContractFactory("Orb")
@@ -130,6 +130,7 @@ describe("Orb Upgrade", function () {
         if (typeof orbImplementation !== "string") {
             throw new Error("Orb implementation is not a string")
         }
+        // console.log("Orb implementation:", orbImplementation)
 
         expect(await orbPond.registry()).to.equal(registry.address)
         expect(await orbPond.version()).to.equal(1n)
@@ -144,6 +145,18 @@ describe("Orb Upgrade", function () {
         await orbPond.createOrb([beneficiary1, beneficiary2], [95, 5], "Orb", "ORB", "https://example.com/")
         const firstOrbAddress = await orbPond.orbs(0)
         const orb = await ethers.getContractAt("Orb", firstOrbAddress)
+
+        // 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
+        // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+        const implementationValue = await ethers.provider.getStorage(
+            firstOrbAddress,
+            BigInt("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")
+        )
+        // convert to address
+        const addrValue = ethers.AbiCoder.defaultAbiCoder().decode(["address"], implementationValue)[0]
+        // console.log(ethers.getAddress(addrValue))
+        expect(addrValue).to.equal(orbImplementation)
+
         expect(await orb.name()).to.equal("Orb")
         expect(await orb.symbol()).to.equal("ORB")
         expect(await orb.tokenURI(1)).to.equal("https://example.com/")
