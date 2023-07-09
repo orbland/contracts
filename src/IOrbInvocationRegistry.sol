@@ -35,6 +35,7 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     error NotCreator();
     error ContractHoldsOrb();
     error KeeperInsolvent();
+    error ContractNotAuthorized(address externalContract);
 
     // Invoking and Responding Errors
     error CooldownIncomplete(uint256 timeRemaining);
@@ -62,6 +63,8 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     function responseFlagged(address orb, uint256 invocationId) external view returns (bool);
     function flaggedResponsesCount(address orb) external view returns (uint256);
 
+    function authorizedContracts(address contractAddress) external view returns (bool);
+
     function version() external view returns (uint256);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +72,15 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     function invokeWithCleartext(address orb, string memory cleartext) external;
+    function invokeWithCleartextAndCall(
+        address orb,
+        string memory cleartext,
+        address addressToCall,
+        bytes memory dataToCall
+    ) external;
     function invokeWithHash(address orb, bytes32 contentHash) external;
+    function invokeWithHashAndCall(address orb, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
+        external;
     function respond(address orb, uint256 invocationId, bytes32 contentHash) external;
     function flagResponse(address orb, uint256 invocationId) external;
 }
