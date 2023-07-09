@@ -13,6 +13,7 @@ import {OrbInvocationRegistryV2} from "../src/OrbInvocationRegistryV2.sol";
 import {Orb} from "../src/Orb.sol";
 import {IOrb} from "../src/IOrb.sol";
 import {IOrbInvocationRegistry} from "../src/IOrbInvocationRegistry.sol";
+import {ExternalCallee} from "./ExternalCallee.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbInvocationRegistryTestBase is Test {
@@ -87,6 +88,7 @@ contract OrbInvocationRegistryTestBase is Test {
             3600 // responsePeriod
         );
         orb.setAuctionParameters(0.1 ether, 0.1 ether, 1 days, 6 hours, 5 minutes);
+        orb.setCleartextMaximumLength(20);
         orb.transferOwnership(creator);
 
         vm.prank(creator);
@@ -150,22 +152,92 @@ contract InvokeWithCleartextTest is OrbInvocationRegistryTestBase {
     event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
 
     function test_revertsIfLongLength() public {
-        uint256 max = orb.cleartextMaximumLength();
-        string memory text =
-            "asfsafsfsafsafasdfasfdsakfjdsakfjasdlkfajsdlfsdlfkasdfjdjasfhasdljhfdaslkfjsda;kfjasdklfjasdklfjasd;ladlkfjasdfad;flksadjf;lkasdjf;lsadsdlsdlkfjas;dlkfjas;dlkfjsad;lkfjsad;lda;lkfj;kasjf;klsadjf;lsadsdlkfjasd;lkfjsad;lfkajsd;flkasdjf;lsdkfjas;lfkasdflkasdf;laskfj;asldkfjsad;lfs;lf;flksajf;lk"; // solhint-disable-line
+        vm.prank(creator);
+        string memory text = "this text does not need to be very long to be too long";
         uint256 length = bytes(text).length;
-        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.CleartextTooLong.selector, length, max));
+        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.CleartextTooLong.selector, length, 20));
         orbInvocationRegistry.invokeWithCleartext(address(orb), text);
     }
 
     function test_callsInvokeWithHashCorrectly() public {
-        string memory text = "fjasdklfjasdklfjasdasdffakfjsad;lfs;lf;flksajf;lk";
+        string memory text = "hi there";
         vm.expectEmit(true, true, true, true);
         emit Invocation(address(orb), 1, user, block.timestamp, keccak256(abi.encodePacked(text)));
         vm.expectEmit(true, true, true, true);
         emit CleartextRecording(address(orb), 1, text);
         vm.prank(user);
         orbInvocationRegistry.invokeWithCleartext(address(orb), text);
+    }
+}
+
+contract InvokeWithCleartextAndCallTest is OrbInvocationRegistryTestBase {
+    ExternalCallee public externalCallee;
+
+    event Invocation(
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed invoker,
+        uint256 timestamp,
+        bytes32 contentHash
+    );
+    event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
+
+    function test_revertsIfContractUnauthorized() public {
+        externalCallee = new ExternalCallee();
+        vm.expectRevert(
+            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+        );
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb),
+            "hi three",
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 69)
+        );
+    }
+
+    function test_passesRevertFromContract() public {
+        externalCallee = new ExternalCallee();
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        vm.expectRevert(abi.encodeWithSelector(ExternalCallee.InvalidNumber.selector, 0));
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb),
+            "hi three",
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 0)
+        );
+    }
+
+    function test_revertsFromContractIfFunctionNotFound() public {
+        externalCallee = new ExternalCallee();
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        vm.expectRevert("Address: low-level call failed");
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb),
+            "hi three",
+            address(externalCallee),
+            abi.encodeWithSelector(IOrbInvocationRegistry.version.selector)
+        );
+    }
+
+    function test_callsInvokeWithCleartextCorrectly() public {
+        externalCallee = new ExternalCallee();
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 0);
+        assertEq(externalCallee.number(), 42);
+        string memory text = "hi there";
+        vm.expectEmit(true, true, true, true);
+        emit Invocation(address(orb), 1, user, block.timestamp, keccak256(abi.encodePacked(text)));
+        vm.expectEmit(true, true, true, true);
+        emit CleartextRecording(address(orb), 1, text);
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb), text, address(externalCallee), abi.encodeWithSelector(ExternalCallee.setNumber.selector, 69)
+        );
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 1);
+        assertEq(externalCallee.number(), 69);
     }
 }
 
@@ -179,7 +251,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
     );
 
     function test_revertWhen_NotKeeper() public {
-        bytes32 hash = "asdfsaf";
+        bytes32 hash = keccak256(abi.encodePacked("hi there"));
         vm.prank(user2);
         vm.expectRevert(IOrbInvocationRegistry.NotKeeper.selector);
         orbInvocationRegistry.invokeWithHash(address(orb), hash);
@@ -191,7 +263,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
     }
 
     function test_revertWhen_KeeperInsolvent() public {
-        bytes32 hash = "asdfsaf";
+        bytes32 hash = keccak256(abi.encodePacked("hi there"));
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
         vm.expectRevert(IOrbInvocationRegistry.KeeperInsolvent.selector);
@@ -199,7 +271,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
     }
 
     function test_revertWhen_CooldownIncomplete() public {
-        bytes32 hash = "asdfsaf";
+        bytes32 hash = keccak256(abi.encodePacked("hi there"));
         vm.startPrank(user);
         orbInvocationRegistry.invokeWithHash(address(orb), hash);
         (address invocationUser1, bytes32 invocationHash1, uint256 invocationTimestamp1) =
@@ -230,7 +302,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
     }
 
     function test_success() public {
-        bytes32 hash = "asdfsaf";
+        bytes32 hash = keccak256(abi.encodePacked("hi there"));
         vm.startPrank(user);
         vm.expectEmit(true, true, true, true);
         emit Invocation(address(orb), 1, user, block.timestamp, hash);
@@ -242,6 +314,74 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
         assertEq(invocationTimestamp, block.timestamp);
         assertEq(orb.lastInvocationTime(), block.timestamp);
         assertEq(orbInvocationRegistry.invocationCount(address(orb)), 1);
+    }
+}
+
+contract InvokeWithHashAndCallTest is OrbInvocationRegistryTestBase {
+    ExternalCallee public externalCallee;
+
+    event Invocation(
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed invoker,
+        uint256 timestamp,
+        bytes32 contentHash
+    );
+
+    function test_revertsIfContractUnauthorized() public {
+        externalCallee = new ExternalCallee();
+        vm.expectRevert(
+            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+        );
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithHashAndCall(
+            address(orb),
+            keccak256(abi.encodePacked("hi there")),
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 69)
+        );
+    }
+
+    function test_passesRevertFromContract() public {
+        externalCallee = new ExternalCallee();
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        vm.expectRevert(abi.encodeWithSelector(ExternalCallee.InvalidNumber.selector, 0));
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithHashAndCall(
+            address(orb),
+            keccak256(abi.encodePacked("hi there")),
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 0)
+        );
+    }
+
+    function test_revertsFromContractIfFunctionNotFound() public {
+        externalCallee = new ExternalCallee();
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        vm.expectRevert("Address: low-level call failed");
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithHashAndCall(
+            address(orb),
+            keccak256(abi.encodePacked("hi there")),
+            address(externalCallee),
+            abi.encodeWithSelector(IOrbInvocationRegistry.version.selector)
+        );
+    }
+
+    function test_callsInvokeWithHashCorrectly() public {
+        externalCallee = new ExternalCallee();
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 0);
+        assertEq(externalCallee.number(), 42);
+        bytes32 hash = keccak256(abi.encodePacked("hi there"));
+        vm.expectEmit(true, true, true, true);
+        emit Invocation(address(orb), 1, user, block.timestamp, hash);
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithHashAndCall(
+            address(orb), hash, address(externalCallee), abi.encodeWithSelector(ExternalCallee.setNumber.selector, 69)
+        );
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 1);
+        assertEq(externalCallee.number(), 69);
     }
 }
 
@@ -417,7 +557,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         orbInvocationRegistry.respond(address(orb), 1, response);
 
         vm.startPrank(user2);
-        orb.purchase{value: 3 ether}(2 ether, 1 ether, 10_00, 10_00, 7 days, 280);
+        orb.purchase{value: 3 ether}(2 ether, 1 ether, 10_00, 10_00, 7 days, 20);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IOrbInvocationRegistry.FlaggingPeriodExpired.selector,
@@ -454,6 +594,74 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         orbInvocationRegistry.flagResponse(address(orb), 1);
         assertEq(orbInvocationRegistry.responseFlagged(address(orb), 1), true);
         assertEq(orbInvocationRegistry.flaggedResponsesCount(address(orb)), 1);
+    }
+}
+
+contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
+    function test_revertOnlyOwner() public {
+        assertEq(orbInvocationRegistry.authorizedContracts(address(orb)), false);
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user);
+        orbInvocationRegistry.authorizeContract(address(orb), true);
+
+        assertEq(orbInvocationRegistry.authorizedContracts(address(orb)), false);
+        orbInvocationRegistry.authorizeContract(address(orb), true);
+        assertEq(orbInvocationRegistry.authorizedContracts(address(orb)), true);
+    }
+
+    function test_success() public {
+        // (not work) auth (and works) deauth (and does not work anymore)
+        ExternalCallee externalCallee = new ExternalCallee();
+        vm.expectRevert(
+            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+        );
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb),
+            "hi three",
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 69)
+        );
+
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 0);
+        assertEq(externalCallee.number(), 42);
+
+        assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), false);
+        vm.prank(admin);
+        orbInvocationRegistry.authorizeContract(address(externalCallee), true);
+        assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), true);
+
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb),
+            "hi three",
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 69)
+        );
+
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 1);
+        assertEq(externalCallee.number(), 69);
+
+        assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), true);
+        vm.prank(admin);
+        orbInvocationRegistry.authorizeContract(address(externalCallee), false);
+        assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), false);
+
+        vm.warp(block.timestamp + orb.cooldown());
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+        );
+        vm.prank(user);
+        orbInvocationRegistry.invokeWithCleartextAndCall(
+            address(orb),
+            "hi three",
+            address(externalCallee),
+            abi.encodeWithSelector(ExternalCallee.setNumber.selector, 42)
+        );
+
+        assertEq(orbInvocationRegistry.invocationCount(address(orb)), 1);
+        assertEq(externalCallee.number(), 69);
     }
 }
 
