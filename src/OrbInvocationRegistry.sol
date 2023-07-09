@@ -8,6 +8,7 @@ import {ERC165Upgradeable} from
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
 import {IOrb} from "./IOrb.sol";
 import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
@@ -58,6 +59,9 @@ contract OrbInvocationRegistry is
     mapping(address orb => mapping(uint256 invocationId => bool isFlagged)) public responseFlagged;
     /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
     mapping(address orb => uint256 count) public flaggedResponsesCount;
+
+    /// Addresses authorized for external calls in invokeWithXAndCall()
+    mapping(address contractAddress => bool authorizedForCalling) public authorizedContracts;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
@@ -136,7 +140,7 @@ contract OrbInvocationRegistry is
     /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
     /// @param   orb        Address of the Orb.
     /// @param   cleartext  Invocation cleartext.
-    function invokeWithCleartext(address orb, string memory cleartext) external virtual {
+    function invokeWithCleartext(address orb, string memory cleartext) public virtual {
         uint256 cleartextMaximumLength = IOrb(orb).cleartextMaximumLength();
 
         uint256 length = bytes(cleartext).length;
@@ -145,6 +149,22 @@ contract OrbInvocationRegistry is
         }
         invokeWithHash(orb, keccak256(abi.encodePacked(cleartext)));
         emit CleartextRecording(orb, invocationCount[orb], cleartext);
+    }
+
+    /// @notice  Invokes the Orb with cleartext and calls an external contract.
+    /// @dev     Calls `invokeWithCleartext()` and then calls the external contract.
+    /// @param   orb            Address of the Orb.
+    /// @param   cleartext      Invocation cleartext.
+    /// @param   addressToCall  Address of the contract to call.
+    /// @param   dataToCall     Data to call the contract with.
+    function invokeWithCleartextAndCall(
+        address orb,
+        string memory cleartext,
+        address addressToCall,
+        bytes memory dataToCall
+    ) external virtual {
+        invokeWithCleartext(orb, cleartext);
+        _callWithData(addressToCall, dataToCall);
     }
 
     /// @notice  Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
@@ -174,6 +194,31 @@ contract OrbInvocationRegistry is
         IOrb(orb).setLastInvocationTime(block.timestamp);
 
         emit Invocation(orb, invocationId, msg.sender, block.timestamp, contentHash);
+    }
+
+    /// @notice  Invokes the Orb with content hash and calls an external contract.
+    /// @dev     Calls `invokeWithHash()` and then calls the external contract.
+    /// @param   orb            Address of the Orb.
+    /// @param   contentHash    Required keccak256 hash of the cleartext.
+    /// @param   addressToCall  Address of the contract to call.
+    /// @param   dataToCall     Data to call the contract with.
+    function invokeWithHashAndCall(address orb, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
+        external
+        virtual
+    {
+        invokeWithHash(orb, contentHash);
+        _callWithData(addressToCall, dataToCall);
+    }
+
+    /// @dev    Internal function that calls an external contract. The contract has to be approved via
+    ///         `authorizeCalls()`.
+    /// @param  addressToCall  Address of the contract to call.
+    /// @param  dataToCall     Data to call the contract with.
+    function _callWithData(address addressToCall, bytes memory dataToCall) internal virtual {
+        if (authorizedContracts[addressToCall] == false) {
+            revert ContractNotAuthorized(addressToCall);
+        }
+        AddressUpgradeable.functionCall(addressToCall, dataToCall);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +293,15 @@ contract OrbInvocationRegistry is
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  FUNCTIONS: UPGRADING
+    //  FUNCTIONS: UPGRADING AND MANAGEMENT
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// @notice  Allows the owner address to authorize externally callable contracts.
+    /// @param   addressToAuthorize  Address of the contract to authorize.
+    /// @param   authorizationValue  Boolean value to set the authorization to.
+    function authorizeContract(address addressToAuthorize, bool authorizationValue) external virtual onlyOwner {
+        authorizedContracts[addressToAuthorize] = authorizationValue;
+    }
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
     /// @return  orbInvocationRegistryVersion  Version of the Orb Invocation Registry contract.
