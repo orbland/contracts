@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /* solhint-disable no-console */
-// import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
 import {Script} from "../lib/forge-std/src/Script.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -99,15 +99,23 @@ abstract contract DeployBase is Script {
         vm.startBroadcast(deployerKey);
 
         orbInvocationRegistryImplementation = new OrbInvocationRegistry();
+        console.log("OrbInvocationRegistry implementation: ", address(orbInvocationRegistryImplementation));
+
         orbPondImplementation = new OrbPond();
+        console.log("OrbPond implementation: ", address(orbPondImplementation));
+
         orbImplementation = new Orb();
+        console.log("OrbV1 implementation: ", address(orbImplementation));
+
         paymentSplitterImplementation = new PaymentSplitter();
+        console.log("PaymentSplitter implementation: ", address(paymentSplitterImplementation));
 
         ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
             address(orbInvocationRegistryImplementation),
             abi.encodeWithSelector(OrbInvocationRegistry.initialize.selector)
         );
         orbInvocationRegistry = OrbInvocationRegistry(address(orbInvocationRegistryProxy));
+        console.log("OrbInvocationRegistry: ", address(orbInvocationRegistry));
 
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
@@ -118,13 +126,17 @@ abstract contract DeployBase is Script {
             )
         );
         orbPond = OrbPond(address(orbPondProxy));
+        console.log("OrbPond: ", address(orbPond));
+
         bytes memory orbPondV1InitializeCalldata =
             abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
         orbPond.registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
 
         orbPond.createOrb(beneficiaryAddresses, beneficiaryShares, orbName, orbSymbol, "https://static.orb.land/orb/");
         orb = Orb(orbPond.orbs(0));
+        console.log("Orb: ", address(orb));
         orbBeneficiary = PaymentSplitter(payable(orb.beneficiary()));
+        console.log("Orb beneficiary: ", address(orbBeneficiary));
 
         orb.setAuctionParameters(
             auctionStartingPrice,
@@ -138,6 +150,7 @@ abstract contract DeployBase is Script {
         orb.setCleartextMaximumLength(cleartextMaximumLength);
 
         orb.transferOwnership(creatorAddress);
+        console.log("Orb ownership transferred to: ", creatorAddress);
 
         vm.stopBroadcast();
     }
