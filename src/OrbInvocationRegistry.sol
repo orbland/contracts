@@ -301,6 +301,7 @@ contract OrbInvocationRegistry is
     /// @param   authorizationValue  Boolean value to set the authorization to.
     function authorizeContract(address addressToAuthorize, bool authorizationValue) external virtual onlyOwner {
         authorizedContracts[addressToAuthorize] = authorizationValue;
+        emit ContractAuthorization(addressToAuthorize, authorizationValue);
     }
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.

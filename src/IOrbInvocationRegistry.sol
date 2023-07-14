@@ -26,6 +26,8 @@ interface IOrbInvocationRegistry is IERC165Upgradeable {
     event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
 
+    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
