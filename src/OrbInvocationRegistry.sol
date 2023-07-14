@@ -18,13 +18,7 @@ import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
 /// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
 /// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `IOrb` interface. Uses `Ownable`'s `owner()` to
 ///          guard upgrading.
-contract OrbInvocationRegistry is
-    Initializable,
-    IOrbInvocationRegistry,
-    ERC165Upgradeable,
-    OwnableUpgradeable,
-    UUPSUpgradeable
-{
+contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
     /// InvocationData is used to determine if the response can be flagged by the keeper.
     /// Invocation timestamp and invoker address is tracked for the benefit of other contracts.

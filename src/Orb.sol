@@ -68,16 +68,7 @@ import {IOrb} from "./IOrb.sol";
 ///          allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
 ///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
-contract Orb is
-    Initializable,
-    IERC165Upgradeable,
-    IERC721Upgradeable,
-    IERC721MetadataUpgradeable,
-    IOrb,
-    ERC165Upgradeable,
-    OwnableUpgradeable,
-    UUPSUpgradeable
-{
+contract Orb is IERC721MetadataUpgradeable, IOrb, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
