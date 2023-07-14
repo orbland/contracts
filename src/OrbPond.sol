@@ -24,6 +24,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
+    event VersionRegistration(uint256 indexed versionNumber, address indexed implementation);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -141,6 +142,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         if (version_ == latestVersion && implementation_ == address(0)) {
             latestVersion--;
         }
+        emit VersionRegistration(version_, implementation_);
     }
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
