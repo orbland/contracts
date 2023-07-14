@@ -598,6 +598,8 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
 }
 
 contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
+    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+
     function test_revertOnlyOwner() public {
         assertEq(orbInvocationRegistry.authorizedContracts(address(orb)), false);
         vm.expectRevert("Ownable: caller is not the owner");
@@ -627,6 +629,8 @@ contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
         assertEq(externalCallee.number(), 42);
 
         assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), false);
+        vm.expectEmit(true, true, true, true);
+        emit ContractAuthorization(address(externalCallee), true);
         vm.prank(admin);
         orbInvocationRegistry.authorizeContract(address(externalCallee), true);
         assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), true);
@@ -643,6 +647,8 @@ contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
         assertEq(externalCallee.number(), 69);
 
         assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), true);
+        vm.expectEmit(true, true, true, true);
+        emit ContractAuthorization(address(externalCallee), false);
         vm.prank(admin);
         orbInvocationRegistry.authorizeContract(address(externalCallee), false);
         assertEq(orbInvocationRegistry.authorizedContracts(address(externalCallee)), false);
