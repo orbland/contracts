@@ -5,7 +5,6 @@ import {IERC1822ProxiableUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/interfaces/draft-IERC1822Upgradeable.sol";
 import {ERC1967UpgradeUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol";
-import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 // solhint-disable func-name-mixedcase
 
@@ -16,7 +15,7 @@ import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts
 ///          modified version of the OpenZeppelin Contract `UUPSUpgradeable` contract that does not expose any public
 ///          functions, to allow custom upgradeability logic to be implemented in the `Orb` contract.
 ///          Also, replaces string errors with custom errors.
-abstract contract UUPSUpgradeable is Initializable, IERC1822ProxiableUpgradeable, ERC1967UpgradeUpgradeable {
+abstract contract UUPSUpgradeable is IERC1822ProxiableUpgradeable, ERC1967UpgradeUpgradeable {
     // Errors
     error RequiresCallViaDelegatecall();
     error RequiresCallViaActiveProxy();
