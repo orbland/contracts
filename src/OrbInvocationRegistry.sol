@@ -303,7 +303,8 @@ contract OrbInvocationRegistry is
         authorizedContracts[addressToAuthorize] = authorizationValue;
     }
 
-    /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+    /// @notice  Returns the version of the Orb Invocation Registry. Internal constant `_VERSION` will be increased with
+    ///          each upgrade.
     /// @return  orbInvocationRegistryVersion  Version of the Orb Invocation Registry contract.
     function version() public view virtual returns (uint256 orbInvocationRegistryVersion) {
         return _VERSION;

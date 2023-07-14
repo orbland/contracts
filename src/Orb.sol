@@ -1012,8 +1012,8 @@ contract Orb is
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @dev    Allows Orb Invocation Registry to update lastInvocationTime of the Orb. It is the only Orb state
-    ///         variable that can needs to be written by the Orb Invocation Registry. The Only Orb Invocation Registry
-    ///         that can update this variable is the one specified in the Orb Pond that created this Orb.
+    ///         variable that can be written by the Orb Invocation Registry. The Only Orb Invocation Registry that can
+    ///         update this variable is the one specified in the Orb Pond that created this Orb.
     /// @param  timestamp  New value for lastInvocationTime.
     function setLastInvocationTime(uint256 timestamp) external virtual {
         if (msg.sender != OrbPond(pond).registry()) {
