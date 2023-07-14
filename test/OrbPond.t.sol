@@ -191,6 +191,27 @@ contract RegisterVersionTest is OrbPondTestBase {
         orbPond.registerVersion(2, address(orbV2Implementation), "");
     }
 
+    function test_revertWhen_UnsettingNotLatest() public {
+        OrbV2 orbV2Implementation = new OrbV2();
+
+        vm.prank(owner);
+        orbPond.registerVersion(2, address(orbV2Implementation), "");
+        vm.prank(owner);
+        orbPond.registerVersion(3, address(orbV2Implementation), "");
+
+        vm.prank(owner);
+        vm.expectRevert(OrbPond.InvalidVersion.selector);
+        orbPond.registerVersion(2, address(0), "");
+    }
+
+    function test_revertWhen_TooLargeVersion() public {
+        OrbV2 orbV2Implementation = new OrbV2();
+
+        vm.prank(owner);
+        vm.expectRevert(OrbPond.InvalidVersion.selector);
+        orbPond.registerVersion(3, address(orbV2Implementation), "");
+    }
+
     function test_registerNewVersion() public {
         OrbV2 orbV2Implementation = new OrbV2();
         assertEq(orbPond.latestVersion(), 1);
@@ -223,7 +244,7 @@ contract RegisterVersionTest is OrbPondTestBase {
         orbPond.registerVersion(2, address(0), "");
         assertEq(orbPond.versions(2), address(0));
         assertEq(orbPond.upgradeCalldata(2), "");
-        assertEq(orbPond.latestVersion(), 2);
+        assertEq(orbPond.latestVersion(), 1);
     }
 }
 
