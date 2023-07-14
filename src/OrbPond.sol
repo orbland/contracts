@@ -26,6 +26,12 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ERRORS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    error InvalidVersion();
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +112,10 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     //  FUNCTIONS: UPGRADING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Registers a new version of the Orb implementation contract.
+    /// @notice  Registers a new version of the Orb implementation contract. The version number must be exactly one
+    ///          higher than the previous version number, and the implementation address must be non-zero. Versions can
+    ///          be un-registered by setting the implementation address to 0; only the latest version can be
+    ///          un-registered.
     /// @param   version_          Version number of the new implementation contract.
     /// @param   implementation_   Address of the new implementation contract.
     /// @param   upgradeCalldata_  Initialization calldata to be used for upgrading to the new implementation contract.
@@ -115,10 +124,19 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         virtual
         onlyOwner
     {
+        if (version_ < latestVersion && implementation_ == address(0)) {
+            revert InvalidVersion();
+        }
+        if (version_ > latestVersion + 1) {
+            revert InvalidVersion();
+        }
         versions[version_] = implementation_;
         upgradeCalldata[version_] = upgradeCalldata_;
         if (version_ > latestVersion) {
             latestVersion = version_;
+        }
+        if (version_ == latestVersion && implementation_ == address(0)) {
+            latestVersion--;
         }
     }
 
