@@ -53,9 +53,6 @@ jobs:
               with:
                   node-version: "18.x"
 
-            # Temporary addition while npm is having issues
-            - run: npm config set registry https://registry.npmmirror.com/
-
             - name: Install dependencies
               run: npm install
 
