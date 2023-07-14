@@ -1079,7 +1079,7 @@ contract Orb is
             revert NotNextVersion();
         }
 
-        _upgradeToAndCall(nextVersionImplementation, OrbPond(pond).upgradeCalldata(version() + 1), false);
+        _upgradeToAndCallUUPS(nextVersionImplementation, OrbPond(pond).upgradeCalldata(version() + 1), false);
         requestedUpgradeImplementation = address(0);
     }
 }
