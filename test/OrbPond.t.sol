@@ -183,6 +183,8 @@ contract PaymentSplitterTest is OrbPondTestBase {
 }
 
 contract RegisterVersionTest is OrbPondTestBase {
+    event VersionRegistration(uint256 indexed versionNumber, address indexed implementation);
+
     function test_revertWhen_NotOwner() public {
         OrbV2 orbV2Implementation = new OrbV2();
 
@@ -216,6 +218,8 @@ contract RegisterVersionTest is OrbPondTestBase {
         OrbV2 orbV2Implementation = new OrbV2();
         assertEq(orbPond.latestVersion(), 1);
 
+        vm.expectEmit(true, true, true, true);
+        emit VersionRegistration(2, address(orbV2Implementation));
         vm.prank(owner);
         orbPond.registerVersion(2, address(orbV2Implementation), "randomdata");
         assertEq(orbPond.versions(2), address(orbV2Implementation));
@@ -225,22 +229,32 @@ contract RegisterVersionTest is OrbPondTestBase {
 
     function test_changeExistingVersion() public {
         OrbV2 orbV2Implementation = new OrbV2();
+        vm.expectEmit(true, true, true, true);
+        emit VersionRegistration(2, address(orbV2Implementation));
         vm.prank(owner);
         orbPond.registerVersion(2, address(orbV2Implementation), "");
         assertEq(orbPond.versions(2), address(orbV2Implementation));
 
+        vm.expectEmit(true, true, true, true);
+        emit VersionRegistration(2, address(orbImplementation));
+        vm.prank(owner);
         orbPond.registerVersion(2, address(orbImplementation), "");
         assertEq(orbPond.versions(2), address(orbImplementation));
     }
 
     function test_unregisterVersion() public {
         OrbV2 orbV2Implementation = new OrbV2();
+        vm.expectEmit(true, true, true, true);
+        emit VersionRegistration(2, address(orbV2Implementation));
         vm.prank(owner);
         orbPond.registerVersion(2, address(orbV2Implementation), "randomdata");
         assertEq(orbPond.versions(2), address(orbV2Implementation));
         assertEq(orbPond.upgradeCalldata(2), "randomdata");
         assertEq(orbPond.latestVersion(), 2);
 
+        vm.expectEmit(true, true, true, true);
+        emit VersionRegistration(2, address(0));
+        vm.prank(owner);
         orbPond.registerVersion(2, address(0), "");
         assertEq(orbPond.versions(2), address(0));
         assertEq(orbPond.upgradeCalldata(2), "");
