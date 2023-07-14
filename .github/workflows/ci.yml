@@ -53,6 +53,8 @@ jobs:
               with:
                   node-version: "18.x"
 
+            - run: npm config set registry https://registry.npmmirror.com/
+
             - name: Install dependencies
               run: npm install
 
