@@ -4,8 +4,6 @@ async function main() {
     const orbPondImplementationAddress = process.env.ORB_POND_ADDRESS
 
     console.log("Orb Pond Implementation Address:", orbPondImplementationAddress)
-    console.log("Orb Invocation Registry Address:", process.env.ORB_INVOCATION_REGISTRY_ADDRESS)
-    console.log("Payment Splitter Implementation Address:", process.env.PAYMENT_SPLITTER_IMPLEMENTATION_ADDRESS)
 
     if (network.name === "goerli" || network.name === "sepolia" || network.name === "mainnet") {
         console.log(
@@ -13,10 +11,7 @@ async function main() {
         )
         await run(`verify:verify`, {
             address: orbPondImplementationAddress,
-            constructorArguments: [
-                process.env.ORB_INVOCATION_REGISTRY_ADDRESS,
-                process.env.PAYMENT_SPLITTER_IMPLEMENTATION_ADDRESS,
-            ],
+            constructorArguments: [],
         })
         console.log(`Contract verification complete.`)
     } else {
