@@ -1,8 +1,8 @@
 # OrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/OrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/OrbInvocationRegistry.sol)
 
 **Inherits:**
-Initializable, [IOrbInvocationRegistry](/src/IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
+[IOrbInvocationRegistry](/src/IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Author:**
 Jonas Lekevicius
@@ -65,6 +65,24 @@ Flagged responses count is a convencience count of total flagged responses. Not 
 
 ```solidity
 mapping(address orb => uint256 count) public flaggedResponsesCount;
+```
+
+
+### authorizedContracts
+Addresses authorized for external calls in invokeWithXAndCall()
+
+
+```solidity
+mapping(address contractAddress => bool authorizedForCalling) public authorizedContracts;
+```
+
+
+### __gap
+Gap used to prevent storage collisions.
+
+
+```solidity
+uint256[100] private __gap;
 ```
 
 
@@ -180,7 +198,7 @@ Invokes the Orb. Allows the keeper to submit cleartext.
 
 
 ```solidity
-function invokeWithCleartext(address orb, string memory cleartext) external virtual;
+function invokeWithCleartext(address orb, string memory cleartext) public virtual;
 ```
 **Parameters**
 
@@ -188,6 +206,31 @@ function invokeWithCleartext(address orb, string memory cleartext) external virt
 |----|----|-----------|
 |`orb`|`address`|       Address of the Orb.|
 |`cleartext`|`string`| Invocation cleartext.|
+
+
+### invokeWithCleartextAndCall
+
+Invokes the Orb with cleartext and calls an external contract.
+
+*Calls `invokeWithCleartext()` and then calls the external contract.*
+
+
+```solidity
+function invokeWithCleartextAndCall(
+    address orb,
+    string memory cleartext,
+    address addressToCall,
+    bytes memory dataToCall
+) external virtual;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`orb`|`address`|           Address of the Orb.|
+|`cleartext`|`string`|     Invocation cleartext.|
+|`addressToCall`|`address`| Address of the contract to call.|
+|`dataToCall`|`bytes`|    Data to call the contract with.|
 
 
 ### invokeWithHash
@@ -213,6 +256,45 @@ function invokeWithHash(address orb, bytes32 contentHash)
 |----|----|-----------|
 |`orb`|`address`|         Address of the Orb.|
 |`contentHash`|`bytes32`| Required keccak256 hash of the cleartext.|
+
+
+### invokeWithHashAndCall
+
+Invokes the Orb with content hash and calls an external contract.
+
+*Calls `invokeWithHash()` and then calls the external contract.*
+
+
+```solidity
+function invokeWithHashAndCall(address orb, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
+    external
+    virtual;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`orb`|`address`|           Address of the Orb.|
+|`contentHash`|`bytes32`|   Required keccak256 hash of the cleartext.|
+|`addressToCall`|`address`| Address of the contract to call.|
+|`dataToCall`|`bytes`|    Data to call the contract with.|
+
+
+### _callWithData
+
+*Internal function that calls an external contract. The contract has to be approved via
+`authorizeCalls()`.*
+
+
+```solidity
+function _callWithData(address addressToCall, bytes memory dataToCall) internal virtual;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`addressToCall`|`address`| Address of the contract to call.|
+|`dataToCall`|`bytes`|    Data to call the contract with.|
 
 
 ### respond
@@ -282,9 +364,26 @@ function _responseExists(address orb, uint256 invocationId_) internal view virtu
 |`isResponseFound`|`bool`| If a response to an invocation exists or not.|
 
 
+### authorizeContract
+
+Allows the owner address to authorize externally callable contracts.
+
+
+```solidity
+function authorizeContract(address addressToAuthorize, bool authorizationValue) external virtual onlyOwner;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`addressToAuthorize`|`address`| Address of the contract to authorize.|
+|`authorizationValue`|`bool`| Boolean value to set the authorization to.|
+
+
 ### version
 
-Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+Returns the version of the Orb Invocation Registry. Internal constant `_VERSION` will be increased with
+each upgrade.
 
 
 ```solidity

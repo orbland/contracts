@@ -1,8 +1,8 @@
 # OrbPond
-[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/OrbPond.sol)
+[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/OrbPond.sol)
 
 **Inherits:**
-Initializable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
+OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Author:**
 Jonas Lekevicius
@@ -90,6 +90,15 @@ address public paymentSplitterImplementation;
 ```
 
 
+### __gap
+Gap used to prevent storage collisions.
+
+
+```solidity
+uint256[100] private __gap;
+```
+
+
 ## Functions
 ### constructor
 
@@ -141,7 +150,10 @@ function createOrb(
 
 ### registerVersion
 
-Registers a new version of the Orb implementation contract.
+Registers a new version of the Orb implementation contract. The version number must be exactly one
+higher than the previous version number, and the implementation address must be non-zero. Versions can
+be un-registered by setting the implementation address to 0; only the latest version can be
+un-registered.
 
 
 ```solidity
@@ -161,7 +173,7 @@ function registerVersion(uint256 version_, address implementation_, bytes callda
 
 ### version
 
-Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+Returns the version of the Orb Pond. Internal constant `_VERSION` will be increased with each upgrade.
 
 
 ```solidity
@@ -188,5 +200,18 @@ function _authorizeUpgrade(address newImplementation) internal override onlyOwne
 
 ```solidity
 event OrbCreation(uint256 indexed orbId, address indexed orbAddress);
+```
+
+### VersionRegistration
+
+```solidity
+event VersionRegistration(uint256 indexed versionNumber, address indexed implementation);
+```
+
+## Errors
+### InvalidVersion
+
+```solidity
+error InvalidVersion();
 ```
 

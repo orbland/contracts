@@ -1,5 +1,5 @@
 # OrbInvocationRegistryV2
-[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/OrbInvocationRegistryV2.sol)
+[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/OrbInvocationRegistryV2.sol)
 
 **Inherits:**
 [OrbInvocationRegistry](/src/OrbInvocationRegistry.sol/contract.OrbInvocationRegistry.md)
@@ -105,7 +105,8 @@ function setLateResponseReceiptClaimed(address orb, uint256 invocationId) extern
 
 ### version
 
-Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+Returns the version of the Orb Invocation Registry. Internal constant `_VERSION` will be increased with
+each upgrade.
 
 
 ```solidity

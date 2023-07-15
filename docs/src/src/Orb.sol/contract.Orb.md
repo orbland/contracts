@@ -1,8 +1,8 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/Orb.sol)
 
 **Inherits:**
-Initializable, IERC165Upgradeable, IERC721Upgradeable, IERC721MetadataUpgradeable, [IOrb](/src/IOrb.sol/interface.IOrb.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
+IERC721MetadataUpgradeable, [IOrb](/src/IOrb.sol/interface.IOrb.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Authors:**
 Jonas Lekevicius, Eric Wall
@@ -350,6 +350,15 @@ Requested upgrade implementation address
 
 ```solidity
 address public requestedUpgradeImplementation;
+```
+
+
+### __gap
+Gap used to prevent storage collisions.
+
+
+```solidity
+uint256[100] private __gap;
 ```
 
 
@@ -1129,8 +1138,8 @@ function foreclose() external virtual onlyKeeperHeld;
 ### setLastInvocationTime
 
 *Allows Orb Invocation Registry to update lastInvocationTime of the Orb. It is the only Orb state
-variable that can needs to be written by the Orb Invocation Registry. The Only Orb Invocation Registry
-that can update this variable is the one specified in the Orb Pond that created this Orb.*
+variable that can be written by the Orb Invocation Registry. The Only Orb Invocation Registry that can
+update this variable is the one specified in the Orb Pond that created this Orb.*
 
 
 ```solidity

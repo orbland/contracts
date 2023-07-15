@@ -1,5 +1,5 @@
 # IOrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/IOrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/IOrbInvocationRegistry.sol)
 
 **Inherits:**
 IERC165Upgradeable
@@ -44,6 +44,13 @@ function responseFlagged(address orb, uint256 invocationId) external view return
 function flaggedResponsesCount(address orb) external view returns (uint256);
 ```
 
+### authorizedContracts
+
+
+```solidity
+function authorizedContracts(address contractAddress) external view returns (bool);
+```
+
 ### version
 
 
@@ -58,11 +65,31 @@ function version() external view returns (uint256);
 function invokeWithCleartext(address orb, string memory cleartext) external;
 ```
 
+### invokeWithCleartextAndCall
+
+
+```solidity
+function invokeWithCleartextAndCall(
+    address orb,
+    string memory cleartext,
+    address addressToCall,
+    bytes memory dataToCall
+) external;
+```
+
 ### invokeWithHash
 
 
 ```solidity
 function invokeWithHash(address orb, bytes32 contentHash) external;
+```
+
+### invokeWithHashAndCall
+
+
+```solidity
+function invokeWithHashAndCall(address orb, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
+    external;
 ```
 
 ### respond
@@ -108,6 +135,12 @@ event CleartextRecording(address indexed orb, uint256 indexed invocationId, stri
 event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
 ```
 
+### ContractAuthorization
+
+```solidity
+event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+```
+
 ## Errors
 ### NotKeeper
 
@@ -131,6 +164,12 @@ error ContractHoldsOrb();
 
 ```solidity
 error KeeperInsolvent();
+```
+
+### ContractNotAuthorized
+
+```solidity
+error ContractNotAuthorized(address externalContract);
 ```
 
 ### CooldownIncomplete

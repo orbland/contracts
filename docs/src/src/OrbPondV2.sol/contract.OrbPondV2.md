@@ -1,5 +1,5 @@
 # OrbPondV2
-[Git Source](https://github.com/orbland/orb/blob/b04862cea7bd1040996e46491def80d07e33895b/src/OrbPondV2.sol)
+[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/OrbPondV2.sol)
 
 **Inherits:**
 [OrbPond](/src/OrbPond.sol/contract.OrbPond.md)
@@ -76,7 +76,7 @@ function createOrb(string memory name, string memory symbol, string memory token
 
 ### version
 
-Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
+Returns the version of the Orb Pond. Internal constant `_VERSION` will be increased with each upgrade.
 
 
 ```solidity
