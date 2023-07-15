@@ -64,7 +64,7 @@ contract OrbInvocationRegistry is
     mapping(address contractAddress => bool authorizedForCalling) public authorizedContracts;
 
     /// Gap used to prevent storage collisions.
-    uint256[100] __gap;
+    uint256[100] private __gap;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
