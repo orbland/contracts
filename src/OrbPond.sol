@@ -52,7 +52,7 @@ contract OrbPond is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public paymentSplitterImplementation;
 
     /// Gap used to prevent storage collisions.
-    uint256[100] __gap;
+    uint256[100] private __gap;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER
