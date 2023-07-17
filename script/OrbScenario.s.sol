@@ -8,21 +8,18 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Orb} from "../src/Orb.sol";
 
 contract OrbScenario is Script {
-    /* solhint-disable quotes,max-line-length */
-    string public oath =
-        '{"oath":"My orb is my promise, and my promise is my orb.","allowPublicInvocations":true,"allowPrivateInvocations":true,"allowPrivateResponses":true,"allowReadPastInvocations":true,"allowRevealOwnInvocations":true,"allowRevealPastInvocations":true}';
-    /* solhint-enable quotes,max-line-length */
+    bytes32 public immutable oathHash = 0x7f504772a68002f66cb889faaf26ccb17f5da54cfc0032f12f8bdce7f64242de;
     uint256 public immutable honoredUntil = 1_700_000_000;
     uint256 public immutable responsePeriod = 7 * 24 * 60 * 60;
 
     function run() external {
         Orb orb = Orb(vm.envAddress("ORB_ADDRESS"));
-        bytes32 oathHash = keccak256(abi.encodePacked(oath));
-        console.log("Oath hash:");
-        console.logBytes32(oathHash);
-
         vm.startBroadcast(vm.envUint("CREATOR_PRIVATE_KEY"));
         orb.swearOath(oathHash, honoredUntil, responsePeriod);
         vm.stopBroadcast();
+
+        // bytes32 oathHash = keccak256(abi.encodePacked(oath));
+        // console.log("Oath hash:");
+        // console.logBytes32(oathHash);
     }
 }
