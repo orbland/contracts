@@ -8,7 +8,7 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Orb} from "../src/Orb.sol";
 
 contract OrbScenario is Script {
-    bytes32 public immutable oathHash = 0x7f504772a68002f66cb889faaf26ccb17f5da54cfc0032f12f8bdce7f64242de;
+    bytes32 public immutable oathHash = 0x21144ebccf78f508f97c58c356209917be7cc4f7f8466da7b3bbacc1132af54c;
     uint256 public immutable honoredUntil = 1_700_000_000;
     uint256 public immutable responsePeriod = 7 * 24 * 60 * 60;
 
