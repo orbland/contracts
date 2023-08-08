@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Orb} from "../../src/Orb.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
+import {Orb} from "../Orb.sol";
+import {OrbInvocationRegistry} from "../OrbInvocationRegistry.sol";
 
 /// @title   Orb Invocation Registry Test Upgrade - Record-keeping contract for Orb invocations and responses
 /// @author  Jonas Lekevicius
@@ -42,7 +42,7 @@ contract OrbInvocationRegistryTestUpgrade is OrbInvocationRegistry {
 
     /// @notice  Re-initializes the contract after upgrade
     /// @param   lateResponseFund_  The address of the Late Response Compensation Fund.
-    function initializeV2(address lateResponseFund_) public reinitializer(100) {
+    function initializeTestUpgrade(address lateResponseFund_) public reinitializer(100) {
         lateResponseFund = lateResponseFund_;
     }
 

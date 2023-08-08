@@ -35,7 +35,7 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity ^0.8.20;
 
-import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../Orb.sol";
 
 /// @title   Orb Test Upgrade - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
@@ -66,7 +66,7 @@ contract OrbTestUpgrade is Orb {
     /// @notice  Re-initializes the contract after upgrade, sets initial number value
     /// @param   newName_    New name of the Orb
     /// @param   newSymbol_  New symbol of the Orb
-    function initializeV2(string memory newName_, string memory newSymbol_) public reinitializer(100) {
+    function initializeTestUpgrade(string memory newName_, string memory newSymbol_) public reinitializer(100) {
         name = newName_;
         symbol = newSymbol_;
 
