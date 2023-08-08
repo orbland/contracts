@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ClonesUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
+import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ClonesUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
 
-import {PaymentSplitter} from "./CustomPaymentSplitter.sol";
-import {IOwnershipTransferrable} from "./IOwnershipTransferrable.sol";
-import {IOrb} from "./IOrb.sol";
-import {OrbPond} from "./OrbPond.sol";
+import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {IOwnershipTransferrable} from "../../src/IOwnershipTransferrable.sol";
+import {IOrb} from "../../src/IOrb.sol";
+import {OrbPond} from "../../src/OrbPond.sol";
 
 /// @title   Orb Pond - The Orb Factory
 /// @author  Jonas Lekevicius
@@ -16,11 +16,11 @@ import {OrbPond} from "./OrbPond.sol";
 ///          implementations, and keeps a reference to an Orb Invocation Registry used by all Orbs created with this
 ///          Orb Pond.
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.
-///          V2 allows anyone to create orbs, not just the owner, automatically splitting proceeds between the creator
-///          and the Orb Land wallet.
-contract OrbPondV2 is OrbPond {
-    /// Orb Pond version. Value: 2.
-    uint256 private constant _VERSION = 2;
+///          Test Upgrade allows anyone to create orbs, not just the owner, automatically splitting proceeds between the
+///          creator and the Orb Land wallet.
+contract OrbPondTestUpgrade is OrbPond {
+    /// Orb Pond version.
+    uint256 private constant _VERSION = 100;
 
     address public orbLandWallet;
 
@@ -31,7 +31,7 @@ contract OrbPondV2 is OrbPond {
 
     /// @notice  Re-initializes the contract after upgrade
     /// @param   orbLandWallet_   The address of the Orb Land wallet.
-    function initializeV2(address orbLandWallet_) public reinitializer(2) {
+    function initializeV2(address orbLandWallet_) public reinitializer(100) {
         orbLandWallet = orbLandWallet_;
     }
 
