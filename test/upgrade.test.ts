@@ -24,8 +24,8 @@ describe("Orb Pond Upgrade", function () {
         expect(await orbPond.version()).to.equal(1n)
         expect(await orbPond.owner()).to.equal(owner.address)
 
-        const OrbPondV2 = await ethers.getContractFactory("OrbPondV2")
-        const orbPondUpgraded = await upgrades.upgradeProxy(orbPondAddress, OrbPondV2, {
+        const OrbPondTestUpgrade = await ethers.getContractFactory("OrbPondTestUpgrade")
+        const orbPondUpgraded = await upgrades.upgradeProxy(orbPondAddress, OrbPondTestUpgrade, {
             kind: "uups",
         })
         // console.log("Orb Pond upgraded")
@@ -34,7 +34,7 @@ describe("Orb Pond Upgrade", function () {
         const orbAddressUpgraded = await orbPondUpgraded.getAddress()
         // console.log("Upgraded Pond address:", orbAddressUpgraded)
         expect(orbAddressUpgraded).to.equal(orbPondAddress)
-        expect(await orbPond.version()).to.equal(2n)
+        expect(await orbPond.version()).to.equal(100n)
     })
 })
 
@@ -53,10 +53,10 @@ describe("Orb Registry Upgrade", function () {
         expect(await orbInvocationRegistry.owner()).to.equal(owner.address)
         expect(await orbInvocationRegistry.version()).to.equal(1n)
 
-        const OrbInvocationRegistryV2 = await ethers.getContractFactory("OrbInvocationRegistryV2")
+        const OrbInvocationRegistryTestUpgrade = await ethers.getContractFactory("OrbInvocationRegistryTestUpgrade")
         const orbInvocationRegistryUpgraded = await upgrades.upgradeProxy(
             orbInvocationRegistryAddress,
-            OrbInvocationRegistryV2,
+            OrbInvocationRegistryTestUpgrade,
             {
                 kind: "uups",
             }
@@ -67,7 +67,7 @@ describe("Orb Registry Upgrade", function () {
         const orbInvocationRegistryAddressUpgraded = await orbInvocationRegistryUpgraded.getAddress()
         // console.log("Upgraded InvocationRegistry address:", orbInvocationRegistryAddressUpgraded)
         expect(orbInvocationRegistryAddressUpgraded).to.equal(orbInvocationRegistryAddress)
-        expect(await orbInvocationRegistry.version()).to.equal(2n)
+        expect(await orbInvocationRegistry.version()).to.equal(100n)
     })
 })
 
@@ -185,25 +185,25 @@ describe("Orb Upgrade", function () {
         })
         expect(await orb.keeper()).to.equal(keeper.address)
 
-        const OrbV2 = await ethers.getContractFactory("OrbV2")
-        const orbV2Implementation = await upgrades.deployImplementation(OrbV2, {
+        const OrbTestUpgrade = await ethers.getContractFactory("OrbTestUpgrade")
+        const orbTestUpgradeImplementation = await upgrades.deployImplementation(OrbTestUpgrade, {
             unsafeAllow: ["delegatecall"],
         })
-        if (typeof orbV2Implementation !== "string") {
+        if (typeof orbTestUpgradeImplementation !== "string") {
             throw new Error("Orb implementation is not a string")
         }
         await orbPond.registerVersion(
             2,
-            orbV2Implementation,
-            OrbV2.interface.encodeFunctionData("initializeV2", ["Whorb", "WHORB"])
+            orbTestUpgradeImplementation,
+            OrbTestUpgrade.interface.encodeFunctionData("initializeTestUpgrade", ["Whorb", "WHORB"])
         )
 
-        await orbAsCreator.requestUpgrade(orbV2Implementation)
-        expect(await orb.requestedUpgradeImplementation()).to.equal(orbV2Implementation)
+        await orbAsCreator.requestUpgrade(orbTestUpgradeImplementation)
+        expect(await orb.requestedUpgradeImplementation()).to.equal(orbTestUpgradeImplementation)
 
         await orbAsKeeper.upgradeToNextVersion()
         expect(await orb.name()).to.equal("Whorb")
         expect(await orb.symbol()).to.equal("WHORB")
-        expect(await orb.version()).to.equal(2n)
+        expect(await orb.version()).to.equal(100n)
     })
 })
