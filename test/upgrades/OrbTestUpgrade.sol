@@ -35,9 +35,9 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity ^0.8.20;
 
-import {Orb} from "./Orb.sol";
+import {Orb} from "../../src/Orb.sol";
 
-/// @title   Orb v2 - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
+/// @title   Orb Test Upgrade - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
 /// @author  Eric Wall
 /// @notice  The Orb is issued by a Creator: the user who swore an Orb Oath together with a date until which the Oath
@@ -54,11 +54,11 @@ import {Orb} from "./Orb.sol";
 ///          allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
 ///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
-///          V2 adds a new storage variable `number`, settable with `setNumber`, changes Orb name and symbol, and allows
-///          the Creator to set the cleartext maximum length to zero. FOR TESTING ONLY!
-contract OrbV2 is Orb {
-    /// Orb version. Value: 2.
-    uint256 private constant _VERSION = 2;
+///          Test Upgrade adds a new storage variable `number`, settable with `setNumber`, changes Orb name and symbol,
+///          and allows the Creator to set the cleartext maximum length to zero. FOR TESTING ONLY!
+contract OrbTestUpgrade is Orb {
+    /// Orb version.
+    uint256 private constant _VERSION = 100;
 
     /// Testing new storage variable in upgrade. It's a number!
     uint256 public number;
@@ -66,7 +66,7 @@ contract OrbV2 is Orb {
     /// @notice  Re-initializes the contract after upgrade, sets initial number value
     /// @param   newName_    New name of the Orb
     /// @param   newSymbol_  New symbol of the Orb
-    function initializeV2(string memory newName_, string memory newSymbol_) public reinitializer(2) {
+    function initializeV2(string memory newName_, string memory newSymbol_) public reinitializer(100) {
         name = newName_;
         symbol = newSymbol_;
 

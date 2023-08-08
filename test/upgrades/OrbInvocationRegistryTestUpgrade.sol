@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Orb} from "./Orb.sol";
-import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
+import {Orb} from "../../src/Orb.sol";
+import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
 
-/// @title   Orb Invocation Registry v2 - Record-keeping contract for Orb invocations and responses
+/// @title   Orb Invocation Registry Test Upgrade - Record-keeping contract for Orb invocations and responses
 /// @author  Jonas Lekevicius
 /// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
 /// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `IOrb` interface. Uses `Ownable`'s `owner()` to
 ///          guard upgrading.
-///          V2 records Late Response Receipts if the response is made after the response period. Together with the
-///          `LateResponseDeposit` contract, it can allow Creators to compensate Keepers for late responses.
-contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
+///          Test Upgrade records Late Response Receipts if the response is made after the response period. Together
+///          with the `LateResponseDeposit` contract, it can allow Creators to compensate Keepers for late responses.
+contract OrbInvocationRegistryTestUpgrade is OrbInvocationRegistry {
     struct LateResponseReceipt {
         uint256 lateDuration;
         uint256 price;
@@ -25,8 +25,8 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
         address indexed orb, uint256 indexed invocationId, address indexed responder, uint256 lateDuration
     );
 
-    /// Orb Invocation Registry version. Value: 2.
-    uint256 private constant _VERSION = 2;
+    /// Orb Invocation Registry version.
+    uint256 private constant _VERSION = 100;
 
     /// The address of the Late Response Deposit contract.
     address public lateResponseFund;
@@ -42,7 +42,7 @@ contract OrbInvocationRegistryV2 is OrbInvocationRegistry {
 
     /// @notice  Re-initializes the contract after upgrade
     /// @param   lateResponseFund_  The address of the Late Response Compensation Fund.
-    function initializeV2(address lateResponseFund_) public reinitializer(2) {
+    function initializeV2(address lateResponseFund_) public reinitializer(100) {
         lateResponseFund = lateResponseFund_;
     }
 
