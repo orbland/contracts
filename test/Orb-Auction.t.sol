@@ -334,6 +334,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         uint256 auctionBeneficiaryShare = amount - beneficiaryRoyalty;
         uint256 userFunds = orb.fundsOf(user);
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
+        uint256 lastInvocationTime = orb.lastInvocationTime();
 
         vm.expectEmit(true, true, true, true);
         emit AuctionFinalization(user2, amount);
@@ -354,7 +355,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(beneficiary), beneficiaryFunds + beneficiaryRoyalty);
         assertEq(orb.keeper(), user2);
         assertEq(orb.lastSettlementTime(), block.timestamp);
-        assertEq(orb.lastInvocationTime(), block.timestamp - orb.cooldown());
+        assertEq(orb.lastInvocationTime(), lastInvocationTime); // unchanged because it's Keeper's auction
         assertEq(orb.fundsOf(user2), funds - amount);
         assertEq(orb.fundsOf(user), userFunds + auctionBeneficiaryShare);
     }
