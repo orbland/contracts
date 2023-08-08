@@ -284,14 +284,28 @@ contract RegisterVersionTest is OrbPondTestBase {
         assertEq(orbPond.upgradeCalldata(latestVersion + 1), "");
         assertEq(orbPond.latestVersion(), latestVersion);
     }
+}
+
+contract SetOrbInitialVersionTest is OrbPondTestBase {
+    event OrbInitialVersionUpdate(uint256 previousInitialVersion, uint256 indexed newInitialVersion);
+
+    function test_revertWhen_NotOwner() public {
+        vm.prank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        orbPond.setOrbInitialVersion(1);
+    }
+
+    function test_revertWhen_SetInitialVersionNotExisting() public {
+        vm.prank(owner);
+        vm.expectRevert(OrbPond.InvalidVersion.selector);
+        orbPond.setOrbInitialVersion(2);
+    }
 
     function test_setInitialOrbVersion() public {
         uint256 latestVersion = orbPond.latestVersion();
 
         bytes memory orbPondV1InitializeCalldata =
             abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
-        vm.expectEmit(true, true, true, true);
-        emit VersionRegistration(latestVersion + 1, address(orbV2Implementation));
         vm.prank(owner);
         orbPond.registerVersion(latestVersion + 1, address(orbV2Implementation), orbPondV1InitializeCalldata);
         assertEq(orbPond.versions(latestVersion + 1), address(orbV2Implementation));
@@ -304,6 +318,9 @@ contract RegisterVersionTest is OrbPondTestBase {
         assertEq(orb1_.version(), 1);
 
         assertEq(orbPond.orbInitialVersion(), 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit OrbInitialVersionUpdate(1, 2);
         vm.prank(owner);
         orbPond.setOrbInitialVersion(2);
         assertEq(orbPond.orbInitialVersion(), 2);

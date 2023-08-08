@@ -21,6 +21,16 @@ import {IOrb} from "./IOrb.sol";
 ///          V2 adds a new `orbInitialVersion` field for new Orb creation, and a new `setOrbInitialVersion()` function
 ///          to set it.
 contract OrbPondV2 is OrbPond {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    event OrbInitialVersionUpdate(uint256 previousInitialVersion, uint256 indexed newInitialVersion);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  STORAGE
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     /// Orb Pond version. Value: 2.
     uint256 private constant _VERSION = 2;
 
@@ -79,7 +89,12 @@ contract OrbPondV2 is OrbPond {
     /// @notice  Sets the registered Orb implementation version to be used for new Orbs.
     /// @param   orbInitialVersion_  Registered Orb implementation version number to be used for new Orbs.
     function setOrbInitialVersion(uint256 orbInitialVersion_) external virtual onlyOwner {
+        if (orbInitialVersion_ > latestVersion) {
+            revert InvalidVersion();
+        }
+        uint256 previousInitialVersion = orbInitialVersion;
         orbInitialVersion = orbInitialVersion_;
+        emit OrbInitialVersionUpdate(previousInitialVersion, orbInitialVersion_);
     }
 
     /// @notice  Returns the version of the Orb Pond. Internal constant `_VERSION` will be increased with each upgrade.
