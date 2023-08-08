@@ -30,7 +30,7 @@ format :; forge fmt
 # solhint should be installed globally
 lint :; solhint src/**/*.sol && solhint src/*.sol && solhint test/**/*.sol && solhint test/*.sol
 
-anvil :; anvil -m 'test test test test test test test test test test test junk' -b 12
+anvil :; anvil -m 'test test test test test test test test test test test junk' -b 6
 
 # use the "@" to hide the command from your shell
 deploy-goerli :; @forge script script/DeployGoerli.s.sol:DeployGoerli --rpc-url ${GOERLI_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
