@@ -9,7 +9,7 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
 import {OrbPond} from "../src/OrbPond.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
-import {OrbInvocationRegistryV2} from "../src/OrbInvocationRegistryV2.sol";
+import {OrbInvocationRegistryTestUpgrade} from "../src/test-upgrades/OrbInvocationRegistryTestUpgrade.sol";
 import {Orb} from "../src/Orb.sol";
 import {IOrb} from "../src/IOrb.sol";
 import {IOrbInvocationRegistry} from "../src/IOrbInvocationRegistry.sol";
@@ -673,17 +673,19 @@ contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
 
 contract UpgradeTest is OrbInvocationRegistryTestBase {
     function test_upgrade_revertOnlyOwner() public {
-        OrbInvocationRegistryV2 orbInvocationRegistryV2Implementation = new OrbInvocationRegistryV2();
+        OrbInvocationRegistryTestUpgrade orbInvocationRegistryTestUpgradeImplementation =
+            new OrbInvocationRegistryTestUpgrade();
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user);
         orbInvocationRegistry.upgradeToAndCall(
-            address(orbInvocationRegistryV2Implementation),
-            abi.encodeWithSelector(OrbInvocationRegistryV2.initializeV2.selector, address(0xBABEFACE))
+            address(orbInvocationRegistryTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbInvocationRegistryTestUpgrade.initializeTestUpgrade.selector, address(0xBABEFACE))
         );
     }
 
     function test_upgradeSucceeds() public {
-        OrbInvocationRegistryV2 orbInvocationRegistryV2Implementation = new OrbInvocationRegistryV2();
+        OrbInvocationRegistryTestUpgrade orbInvocationRegistryTestUpgradeImplementation =
+            new OrbInvocationRegistryTestUpgrade();
         bytes4 lateResponseFundSelector = bytes4(keccak256("lateResponseFund()"));
 
         assertEq(orbInvocationRegistry.version(), 1);
@@ -692,17 +694,19 @@ contract UpgradeTest is OrbInvocationRegistryTestBase {
         assertEq(successBefore, false);
 
         orbInvocationRegistry.upgradeToAndCall(
-            address(orbInvocationRegistryV2Implementation),
-            abi.encodeWithSelector(OrbInvocationRegistryV2.initializeV2.selector, address(0xBABEFACE))
+            address(orbInvocationRegistryTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbInvocationRegistryTestUpgrade.initializeTestUpgrade.selector, address(0xBABEFACE))
         );
 
-        assertEq(OrbInvocationRegistryV2(address(orbInvocationRegistry)).lateResponseFund(), address(0xBABEFACE));
-        assertEq(orbInvocationRegistry.version(), 2);
+        assertEq(
+            OrbInvocationRegistryTestUpgrade(address(orbInvocationRegistry)).lateResponseFund(), address(0xBABEFACE)
+        );
+        assertEq(orbInvocationRegistry.version(), 100);
         // solhint-disable-next-line avoid-low-level-calls
         (bool successAfter,) = address(orbInvocationRegistry).call(abi.encodeWithSelector(lateResponseFundSelector));
         assertEq(successAfter, true);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        OrbInvocationRegistryV2(address(orbInvocationRegistry)).initializeV2(address(0xCAFEBABE));
+        OrbInvocationRegistryTestUpgrade(address(orbInvocationRegistry)).initializeTestUpgrade(address(0xCAFEBABE));
     }
 }
