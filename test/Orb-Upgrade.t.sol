@@ -5,7 +5,7 @@ import {Test} from "../lib/forge-std/src/Test.sol";
 
 import {OrbTestBase} from "./Orb.t.sol";
 import {IOrb} from "../src/IOrb.sol";
-import {OrbV2} from "../src/OrbV2.sol";
+import {OrbTestUpgrade} from "../src/test-upgrades/OrbTestUpgrade.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract RequestUpgradeTest is OrbTestBase {
@@ -15,11 +15,13 @@ contract RequestUpgradeTest is OrbTestBase {
         assertEq(orb.requestedUpgradeImplementation(), address(0));
         vm.expectRevert(IOrb.NotNextVersion.selector);
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
         assertEq(orb.requestedUpgradeImplementation(), address(0));
 
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
 
         vm.expectRevert(IOrb.NotNextVersion.selector);
@@ -28,22 +30,24 @@ contract RequestUpgradeTest is OrbTestBase {
         assertEq(orb.requestedUpgradeImplementation(), address(0));
 
         vm.expectEmit(true, true, true, true);
-        emit UpgradeRequest(address(orbV2Implementation));
+        emit UpgradeRequest(address(orbTestUpgradeImplementation));
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
-        assertEq(orb.requestedUpgradeImplementation(), address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
+        assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
     }
 
     function test_ownerCanCancel() public {
         assertEq(orb.requestedUpgradeImplementation(), address(0));
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.expectEmit(true, true, true, true);
-        emit UpgradeRequest(address(orbV2Implementation));
+        emit UpgradeRequest(address(orbTestUpgradeImplementation));
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
-        assertEq(orb.requestedUpgradeImplementation(), address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
+        assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
 
         vm.expectEmit(true, true, true, true);
         emit UpgradeRequest(address(0));
@@ -54,20 +58,22 @@ contract RequestUpgradeTest is OrbTestBase {
 
     function test_revertWhenNotOwner() public {
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
 
         assertEq(orb.requestedUpgradeImplementation(), address(0));
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user);
-        orb.requestUpgrade(address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
         assertEq(orb.requestedUpgradeImplementation(), address(0));
 
         vm.expectEmit(true, true, true, true);
-        emit UpgradeRequest(address(orbV2Implementation));
+        emit UpgradeRequest(address(orbTestUpgradeImplementation));
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
-        assertEq(orb.requestedUpgradeImplementation(), address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
+        assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
     }
 }
 
@@ -80,127 +86,142 @@ contract CompleteUpgradeTest is OrbTestBase {
         vm.prank(user);
         vm.expectRevert(IOrb.NoUpgradeRequested.selector);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
     }
 
     function test_revertWhenNotKeeper() public {
         makeKeeperAndWarp(user, 1 ether);
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
 
-        assertEq(orb.requestedUpgradeImplementation(), address(orbV2Implementation));
+        assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
         vm.expectRevert(IOrb.NotPermitted.selector);
         vm.prank(user2);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
 
         vm.prank(user);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Whorb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Whorb");
     }
 
     function test_revertWhenNotKeeperSolvent() public {
         makeKeeperAndWarp(user, 1 ether);
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
-        assertEq(orb.requestedUpgradeImplementation(), address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
+        assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
 
         vm.warp(block.timestamp + 10000 days);
         vm.expectRevert(IOrb.NotPermitted.selector);
         vm.prank(user);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
 
         vm.warp(block.timestamp - 10000 days);
         vm.prank(user);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Whorb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Whorb");
     }
 
     function test_revertWhenNotOwner() public {
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
         assertEq(orb.keeper(), address(orb));
 
         vm.expectRevert(IOrb.NotPermitted.selector);
         vm.prank(user);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
 
         vm.prank(owner);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Whorb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Whorb");
     }
 
     function test_revertWhenAuctionRunning() public {
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
         orb.startAuction();
 
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
 
         vm.expectRevert(IOrb.NotPermitted.selector);
         vm.prank(owner);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
 
         vm.warp(orb.auctionEndTime() + 1);
         orb.finalizeAuction();
 
         vm.prank(owner);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Whorb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Whorb");
     }
 
     function test_revertWhenImplementationChanged() public {
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
 
-        OrbV2 orbV2AnotherImplementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeAnotherImplementation = new OrbTestUpgrade();
         orbPond.registerVersion(
-            2,
-            address(orbV2AnotherImplementation),
-            abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeAnotherImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
 
         vm.expectRevert(IOrb.NotNextVersion.selector);
         vm.prank(owner);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
 
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
         orb.upgradeToNextVersion();
-        assertEq(OrbV2(address(orb)).name(), "Whorb");
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Whorb");
     }
 
     function test_upgradeSucceeds() public {
         orbPond.registerVersion(
-            2, address(orbV2Implementation), abi.encodeWithSelector(OrbV2.initializeV2.selector, "Whorb", "WHORB")
+            orb.version() + 1,
+            address(orbTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
         vm.prank(owner);
-        orb.requestUpgrade(address(orbV2Implementation));
-        assertEq(OrbV2(address(orb)).name(), "Orb");
-        assertEq(OrbV2(address(orb)).symbol(), "ORB");
-        assertEq(OrbV2(address(orb)).version(), 1);
-        assertEq(orb.requestedUpgradeImplementation(), address(orbV2Implementation));
+        orb.requestUpgrade(address(orbTestUpgradeImplementation));
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
+        assertEq(OrbTestUpgrade(address(orb)).symbol(), "ORB");
+        // Note: needs to be updated with every new base version
+        assertEq(OrbTestUpgrade(address(orb)).version(), 2);
+        assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
 
         bytes4 numberSelector = bytes4(keccak256("number()"));
 
@@ -209,21 +230,21 @@ contract CompleteUpgradeTest is OrbTestBase {
         assertEq(successBefore, false);
 
         vm.expectEmit(true, true, true, true);
-        emit Upgraded(address(orbV2Implementation));
+        emit Upgraded(address(orbTestUpgradeImplementation));
         vm.prank(owner);
         orb.upgradeToNextVersion();
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool successAfter,) = address(orb).call(abi.encodeWithSelector(numberSelector));
         assertEq(successAfter, true);
-        assertEq(OrbV2(address(orb)).number(), 69);
-        assertEq(OrbV2(address(orb)).name(), "Whorb");
-        assertEq(OrbV2(address(orb)).symbol(), "WHORB");
-        assertEq(OrbV2(address(orb)).version(), 2);
+        assertEq(OrbTestUpgrade(address(orb)).number(), 69);
+        assertEq(OrbTestUpgrade(address(orb)).name(), "Whorb");
+        assertEq(OrbTestUpgrade(address(orb)).symbol(), "WHORB");
+        assertEq(OrbTestUpgrade(address(orb)).version(), 100);
 
         assertEq(orb.requestedUpgradeImplementation(), address(0));
 
         vm.expectRevert("Initializable: contract is already initialized");
-        OrbV2(address(orb)).initializeV2("Error", "ERROR");
+        OrbTestUpgrade(address(orb)).initializeTestUpgrade("Error", "ERROR");
     }
 }
