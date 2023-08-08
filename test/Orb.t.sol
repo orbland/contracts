@@ -11,7 +11,7 @@ import {OrbHarness} from "./harness/OrbHarness.sol";
 import {OrbPond} from "../src/OrbPond.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {Orb} from "../src/Orb.sol";
-import {OrbV2} from "../src/OrbV2.sol";
+import {OrbTestUpgrade} from "../src/test-upgrades/OrbTestUpgrade.sol";
 import {IOrb} from "../src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
@@ -24,8 +24,9 @@ contract OrbTestBase is Test {
     OrbPond internal orbPondImplementation;
     OrbPond internal orbPond;
 
+    // Orb internal orbV1Implementation;
     OrbHarness internal orbImplementation;
-    OrbV2 internal orbV2Implementation;
+    OrbTestUpgrade internal orbTestUpgradeImplementation;
     OrbHarness internal orb;
 
     address internal user;
@@ -54,8 +55,9 @@ contract OrbTestBase is Test {
 
         orbInvocationRegistryImplementation = new OrbInvocationRegistry();
         orbPondImplementation = new OrbPond();
+        // orbV1Implementation = new Orb();
         orbImplementation = new OrbHarness();
-        orbV2Implementation = new OrbV2();
+        orbTestUpgradeImplementation = new OrbTestUpgrade();
         paymentSplitterImplementation = new PaymentSplitter();
 
         ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
@@ -73,9 +75,10 @@ contract OrbTestBase is Test {
             )
         );
         orbPond = OrbPond(address(orbPondProxy));
-        bytes memory orbPondV1InitializeCalldata =
-            abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
-        orbPond.registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
+        bytes memory orbInitializeCalldata = abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
+        orbPond.registerVersion(1, address(orbImplementation), orbInitializeCalldata);
+        // TODO rework after OrpPond supports initial version
+        orbPond.registerVersion(2, address(orbImplementation), orbInitializeCalldata);
 
         vm.expectEmit(true, true, true, true);
         emit Creation();
@@ -140,7 +143,8 @@ contract OrbTestBase is Test {
 contract InitialStateTest is OrbTestBase {
     // Test that the initial state is correct
     function test_initialState() public {
-        assertEq(orb.version(), 1);
+        // Note: needs to be updated with every new version
+        assertEq(orb.version(), 2);
         assertEq(address(orb), orb.keeper());
         assertFalse(orb.workaround_auctionRunning());
         assertEq(orb.pond(), address(orbPond));
