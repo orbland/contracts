@@ -8,10 +8,10 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 
 import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
 import {OrbPond} from "../src/OrbPond.sol";
-import {OrbPondV2} from "../src/OrbPondV2.sol";
+import {OrbPondTestUpgrade} from "../src/test-upgrades/OrbPondTestUpgrade.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {Orb} from "../src/Orb.sol";
-import {OrbV2} from "../src/OrbV2.sol";
+import {OrbTestUpgrade} from "../src/test-upgrades/OrbTestUpgrade.sol";
 import {IOrb} from "../src/IOrb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
@@ -27,8 +27,8 @@ contract OrbPondTestBase is Test {
     Orb internal orbImplementation;
     // Orb internal orb;
 
-    address[] beneficiaryPayees = new address[](2);
-    uint256[] beneficiaryShares = new uint256[](2);
+    address[] internal beneficiaryPayees = new address[](2);
+    uint256[] internal beneficiaryShares = new uint256[](2);
 
     address internal owner;
     address internal user;
@@ -186,20 +186,20 @@ contract RegisterVersionTest is OrbPondTestBase {
     event VersionRegistration(uint256 indexed versionNumber, address indexed implementation);
 
     function test_revertWhen_NotOwner() public {
-        OrbV2 orbV2Implementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeImplementation = new OrbTestUpgrade();
 
         vm.prank(user);
         vm.expectRevert("Ownable: caller is not the owner");
-        orbPond.registerVersion(2, address(orbV2Implementation), "");
+        orbPond.registerVersion(2, address(orbTestUpgradeImplementation), "");
     }
 
     function test_revertWhen_UnsettingNotLatest() public {
-        OrbV2 orbV2Implementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeImplementation = new OrbTestUpgrade();
 
         vm.prank(owner);
-        orbPond.registerVersion(2, address(orbV2Implementation), "");
+        orbPond.registerVersion(2, address(orbTestUpgradeImplementation), "");
         vm.prank(owner);
-        orbPond.registerVersion(3, address(orbV2Implementation), "");
+        orbPond.registerVersion(3, address(orbTestUpgradeImplementation), "");
 
         vm.prank(owner);
         vm.expectRevert(OrbPond.InvalidVersion.selector);
@@ -207,33 +207,33 @@ contract RegisterVersionTest is OrbPondTestBase {
     }
 
     function test_revertWhen_TooLargeVersion() public {
-        OrbV2 orbV2Implementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeImplementation = new OrbTestUpgrade();
 
         vm.prank(owner);
         vm.expectRevert(OrbPond.InvalidVersion.selector);
-        orbPond.registerVersion(3, address(orbV2Implementation), "");
+        orbPond.registerVersion(3, address(orbTestUpgradeImplementation), "");
     }
 
     function test_registerNewVersion() public {
-        OrbV2 orbV2Implementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeImplementation = new OrbTestUpgrade();
         assertEq(orbPond.latestVersion(), 1);
 
         vm.expectEmit(true, true, true, true);
-        emit VersionRegistration(2, address(orbV2Implementation));
+        emit VersionRegistration(2, address(orbTestUpgradeImplementation));
         vm.prank(owner);
-        orbPond.registerVersion(2, address(orbV2Implementation), "randomdata");
-        assertEq(orbPond.versions(2), address(orbV2Implementation));
+        orbPond.registerVersion(2, address(orbTestUpgradeImplementation), "randomdata");
+        assertEq(orbPond.versions(2), address(orbTestUpgradeImplementation));
         assertEq(orbPond.upgradeCalldata(2), "randomdata");
         assertEq(orbPond.latestVersion(), 2);
     }
 
     function test_changeExistingVersion() public {
-        OrbV2 orbV2Implementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeImplementation = new OrbTestUpgrade();
         vm.expectEmit(true, true, true, true);
-        emit VersionRegistration(2, address(orbV2Implementation));
+        emit VersionRegistration(2, address(orbTestUpgradeImplementation));
         vm.prank(owner);
-        orbPond.registerVersion(2, address(orbV2Implementation), "");
-        assertEq(orbPond.versions(2), address(orbV2Implementation));
+        orbPond.registerVersion(2, address(orbTestUpgradeImplementation), "");
+        assertEq(orbPond.versions(2), address(orbTestUpgradeImplementation));
 
         vm.expectEmit(true, true, true, true);
         emit VersionRegistration(2, address(orbImplementation));
@@ -243,12 +243,12 @@ contract RegisterVersionTest is OrbPondTestBase {
     }
 
     function test_unregisterVersion() public {
-        OrbV2 orbV2Implementation = new OrbV2();
+        OrbTestUpgrade orbTestUpgradeImplementation = new OrbTestUpgrade();
         vm.expectEmit(true, true, true, true);
-        emit VersionRegistration(2, address(orbV2Implementation));
+        emit VersionRegistration(2, address(orbTestUpgradeImplementation));
         vm.prank(owner);
-        orbPond.registerVersion(2, address(orbV2Implementation), "randomdata");
-        assertEq(orbPond.versions(2), address(orbV2Implementation));
+        orbPond.registerVersion(2, address(orbTestUpgradeImplementation), "randomdata");
+        assertEq(orbPond.versions(2), address(orbTestUpgradeImplementation));
         assertEq(orbPond.upgradeCalldata(2), "randomdata");
         assertEq(orbPond.latestVersion(), 2);
 
@@ -264,17 +264,17 @@ contract RegisterVersionTest is OrbPondTestBase {
 
 contract UpgradeTest is OrbPondTestBase {
     function test_upgrade_revertOnlyOwner() public {
-        OrbPondV2 orbPondV2Implementation = new OrbPondV2();
+        OrbPondTestUpgrade orbPondTestUpgradeImplementation = new OrbPondTestUpgrade();
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user);
         orbPond.upgradeToAndCall(
-            address(orbPondV2Implementation),
-            abi.encodeWithSelector(OrbPondV2.initializeV2.selector, address(0xBABEFACE))
+            address(orbPondTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbPondTestUpgrade.initializeTestUpgrade.selector, address(0xBABEFACE))
         );
     }
 
     function test_upgradeSucceeds() public {
-        OrbPondV2 orbPondV2Implementation = new OrbPondV2();
+        OrbPondTestUpgrade orbPondTestUpgradeImplementation = new OrbPondTestUpgrade();
         bytes4 orbLandWalletSelector = bytes4(keccak256("orbLandWallet()"));
 
         assertEq(orbPond.version(), 1);
@@ -283,17 +283,17 @@ contract UpgradeTest is OrbPondTestBase {
         assertEq(successBefore, false);
 
         orbPond.upgradeToAndCall(
-            address(orbPondV2Implementation),
-            abi.encodeWithSelector(OrbPondV2.initializeV2.selector, address(0xBABEFACE))
+            address(orbPondTestUpgradeImplementation),
+            abi.encodeWithSelector(OrbPondTestUpgrade.initializeTestUpgrade.selector, address(0xBABEFACE))
         );
 
-        assertEq(OrbPondV2(address(orbPond)).orbLandWallet(), address(0xBABEFACE));
-        assertEq(orbPond.version(), 2);
+        assertEq(OrbPondTestUpgrade(address(orbPond)).orbLandWallet(), address(0xBABEFACE));
+        assertEq(orbPond.version(), 100);
         // solhint-disable-next-line avoid-low-level-calls
         (bool successAfter,) = address(orbPond).call(abi.encodeWithSelector(orbLandWalletSelector));
         assertEq(successAfter, true);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        OrbPondV2(address(orbPond)).initializeV2(address(0xCAFEBABE));
+        OrbPondTestUpgrade(address(orbPond)).initializeTestUpgrade(address(0xCAFEBABE));
     }
 }
