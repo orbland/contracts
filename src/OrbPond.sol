@@ -39,7 +39,7 @@ contract OrbPond is OwnableUpgradeable, UUPSUpgradeable {
     uint256 private constant _VERSION = 1;
 
     /// The mapping of Orb ids to Orbs. Increases monotonically.
-    mapping(uint256 => address) public orbs;
+    mapping(uint256 orbId => address orbAddress) public orbs;
     /// The number of Orbs created so far, used to find the next Orb id.
     uint256 public orbCount;
 
