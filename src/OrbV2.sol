@@ -79,28 +79,33 @@ contract OrbV2 is Orb {
             revert AuctionNotStarted();
         }
 
-        if (leadingBidder != address(0)) {
-            fundsOf[leadingBidder] -= leadingBid;
+        address _leadingBidder = leadingBidder;
+        uint256 _leadingBid = leadingBid;
+
+        if (_leadingBidder != address(0)) {
+            fundsOf[_leadingBidder] -= _leadingBid;
+
             uint256 auctionMinimumRoyaltyNumerator =
                 (keeperTaxNumerator * auctionKeeperMinimumDuration) / _KEEPER_TAX_PERIOD;
             uint256 auctionRoyalty =
                 auctionMinimumRoyaltyNumerator > royaltyNumerator ? auctionMinimumRoyaltyNumerator : royaltyNumerator;
-            _splitProceeds(leadingBid, auctionBeneficiary, auctionRoyalty);
+            _splitProceeds(_leadingBid, auctionBeneficiary, auctionRoyalty);
 
             lastSettlementTime = block.timestamp;
             if (auctionBeneficiary == beneficiary) {
                 lastInvocationTime = block.timestamp - cooldown;
             }
 
-            emit AuctionFinalization(leadingBidder, leadingBid);
+            emit AuctionFinalization(_leadingBidder, _leadingBid);
             emit PriceUpdate(0, price);
             // price has been set when bidding
+            // also price is always 0 when auction starts
 
-            _transferOrb(address(this), leadingBidder);
+            _transferOrb(address(this), _leadingBidder);
             leadingBidder = address(0);
             leadingBid = 0;
         } else {
-            emit AuctionFinalization(leadingBidder, leadingBid);
+            emit AuctionFinalization(address(0), 0);
         }
 
         auctionEndTime = 0;
