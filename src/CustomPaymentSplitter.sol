@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import {PaymentSplitterUpgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/finance/PaymentSplitterUpgradeable.sol";

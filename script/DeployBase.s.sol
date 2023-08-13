@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 /* solhint-disable no-console */
 import {console} from "../lib/forge-std/src/console.sol";

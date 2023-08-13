@@ -15,7 +15,7 @@
         "avoid-call-value": "warn",
         "compiler-version": [
             "error",
-            "^0.8.20"
+            "0.8.20"
         ],
         "func-visibility": [
             "warn",
