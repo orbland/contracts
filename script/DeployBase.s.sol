@@ -8,8 +8,10 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 
 import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
 import {OrbPond} from "../src/OrbPond.sol";
+import {OrbPondV2} from "../src/OrbPondV2.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {Orb} from "../src/Orb.sol";
+import {OrbV2} from "../src/OrbV2.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 abstract contract DeployBase is Script {
@@ -46,10 +48,12 @@ abstract contract DeployBase is Script {
     OrbInvocationRegistry public orbInvocationRegistry;
 
     OrbPond public orbPondImplementation;
-    OrbPond public orbPond;
+    OrbPondV2 public orbPondV2Implementation;
+    OrbPondV2 public orbPond;
 
     Orb public orbImplementation;
-    Orb public orb;
+    OrbV2 public orbV2Implementation;
+    OrbV2 public orb;
 
     constructor(
         address[] memory _beneficiaryAddresses,
@@ -102,10 +106,14 @@ abstract contract DeployBase is Script {
         console.log("OrbInvocationRegistry implementation: ", address(orbInvocationRegistryImplementation));
 
         orbPondImplementation = new OrbPond();
-        console.log("OrbPond implementation: ", address(orbPondImplementation));
+        console.log("OrbPond V1 implementation: ", address(orbPondImplementation));
+        orbPondV2Implementation = new OrbPondV2();
+        console.log("OrbPond V2 implementation: ", address(orbPondV2Implementation));
 
         orbImplementation = new Orb();
-        console.log("OrbV1 implementation: ", address(orbImplementation));
+        console.log("Orb V1 implementation: ", address(orbImplementation));
+        orbV2Implementation = new OrbV2();
+        console.log("Orb V2 implementation: ", address(orbV2Implementation));
 
         paymentSplitterImplementation = new PaymentSplitter();
         console.log("PaymentSplitter implementation: ", address(paymentSplitterImplementation));
@@ -125,16 +133,21 @@ abstract contract DeployBase is Script {
                 address(paymentSplitterImplementation)
             )
         );
-        orbPond = OrbPond(address(orbPondProxy));
-        console.log("OrbPond: ", address(orbPond));
-
         bytes memory orbPondV1InitializeCalldata =
             abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
-        orbPond.registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
+        OrbPond(address(orbPondProxy)).registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
+
+        OrbPond(address(orbPondProxy)).upgradeToAndCall(
+            address(orbPondV2Implementation), abi.encodeWithSelector(OrbPondV2.initializeV2.selector, 1)
+        );
+        orbPond = OrbPondV2(address(orbPondProxy));
+        console.log("OrbPond (V2): ", address(orbPond));
+        orbPond.registerVersion(2, address(orbV2Implementation), orbPondV1InitializeCalldata);
+        orbPond.setOrbInitialVersion(2);
 
         orbPond.createOrb(beneficiaryAddresses, beneficiaryShares, orbName, orbSymbol, "https://static.orb.land/orb/");
-        orb = Orb(orbPond.orbs(0));
-        console.log("Orb: ", address(orb));
+        orb = OrbV2(orbPond.orbs(0));
+        console.log("Orb (V2): ", address(orb));
         orbBeneficiary = PaymentSplitter(payable(orb.beneficiary()));
         console.log("Orb beneficiary: ", address(orbBeneficiary));
 
