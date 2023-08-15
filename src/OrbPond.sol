@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
@@ -39,7 +39,7 @@ contract OrbPond is OwnableUpgradeable, UUPSUpgradeable {
     uint256 private constant _VERSION = 1;
 
     /// The mapping of Orb ids to Orbs. Increases monotonically.
-    mapping(uint256 => address) public orbs;
+    mapping(uint256 orbId => address orbAddress) public orbs;
     /// The number of Orbs created so far, used to find the next Orb id.
     uint256 public orbCount;
 
