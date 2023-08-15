@@ -9,6 +9,7 @@ import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
 import {OrbHarness} from "./harness/OrbHarness.sol";
 import {OrbPond} from "../src/OrbPond.sol";
+import {OrbPondV2} from "../src/OrbPondV2.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {Orb} from "../src/Orb.sol";
 import {OrbTestUpgrade} from "../src/test-upgrades/OrbTestUpgrade.sol";
@@ -21,11 +22,12 @@ contract OrbTestBase is Test {
     OrbInvocationRegistry internal orbInvocationRegistryImplementation;
     OrbInvocationRegistry internal orbInvocationRegistry;
 
-    OrbPond internal orbPondImplementation;
-    OrbPond internal orbPond;
+    OrbPond internal orbPondV1Implementation;
+    OrbPondV2 internal orbPondV2Implementation;
+    OrbPondV2 internal orbPond;
 
-    // Orb internal orbV1Implementation;
-    OrbHarness internal orbImplementation;
+    Orb internal orbV1Implementation;
+    OrbHarness internal orbV2Implementation;
     OrbTestUpgrade internal orbTestUpgradeImplementation;
     OrbHarness internal orb;
 
@@ -54,9 +56,10 @@ contract OrbTestBase is Test {
         vm.deal(user2, startingBalance);
 
         orbInvocationRegistryImplementation = new OrbInvocationRegistry();
-        orbPondImplementation = new OrbPond();
-        // orbV1Implementation = new Orb();
-        orbImplementation = new OrbHarness();
+        orbPondV1Implementation = new OrbPond();
+        orbPondV2Implementation = new OrbPondV2();
+        orbV1Implementation = new Orb();
+        orbV2Implementation = new OrbHarness();
         orbTestUpgradeImplementation = new OrbTestUpgrade();
         paymentSplitterImplementation = new PaymentSplitter();
 
@@ -67,18 +70,22 @@ contract OrbTestBase is Test {
         orbInvocationRegistry = OrbInvocationRegistry(address(orbInvocationRegistryProxy));
 
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
-            address(orbPondImplementation),
+            address(orbPondV1Implementation),
             abi.encodeWithSelector(
                 OrbPond.initialize.selector,
                 address(orbInvocationRegistry),
                 address(paymentSplitterImplementation)
             )
         );
-        orbPond = OrbPond(address(orbPondProxy));
         bytes memory orbInitializeCalldata = abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
-        orbPond.registerVersion(1, address(orbImplementation), orbInitializeCalldata);
-        // TODO rework after OrpPond supports initial version
-        orbPond.registerVersion(2, address(orbImplementation), orbInitializeCalldata);
+        OrbPond(address(orbPondProxy)).registerVersion(1, address(orbV1Implementation), orbInitializeCalldata);
+
+        OrbPond(address(orbPondProxy)).upgradeToAndCall(
+            address(orbPondV2Implementation), abi.encodeWithSelector(OrbPondV2.initializeV2.selector, 1)
+        );
+        orbPond = OrbPondV2(address(orbPondProxy));
+        orbPond.registerVersion(2, address(orbV2Implementation), orbInitializeCalldata);
+        orbPond.setOrbInitialVersion(2);
 
         vm.expectEmit(true, true, true, true);
         emit Creation();
@@ -200,7 +207,7 @@ contract InitialStateTest is OrbTestBase {
 
     function test_initializerSuccess() public {
         ERC1967Proxy orbProxy = new ERC1967Proxy(
-            address(orbImplementation), ""
+            address(orbV2Implementation), ""
         );
         Orb _orb = Orb(address(orbProxy));
         assertEq(_orb.owner(), address(0));
