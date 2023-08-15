@@ -99,7 +99,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice  Suggests an invocation request to the Orb Tipping contract, optionally with a tip
     /// @param   orb                  The address of the orb to which the invocation is being suggested
     /// @param   invocationCleartext  The invocation's content string
-    function suggestInvocation(address orb, string memory invocationCleartext) external payable {
+    function suggestInvocation(address orb, string memory invocationCleartext) external payable virtual {
         bytes32 invocationHash = keccak256(abi.encodePacked(invocationCleartext));
 
         if (bytes(suggestedInvocations[invocationHash]).length != 0) {
@@ -121,7 +121,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice  Tips an orb keeper to invoke their orb with a specific content hash
     /// @param   orb             The address of the orb
     /// @param   invocationHash  The invocation content hash
-    function tipInvocation(address orb, bytes32 invocationHash) public payable {
+    function tipInvocation(address orb, bytes32 invocationHash) public payable virtual {
         if (msg.value < minimumTips[orb]) {
             revert InsufficientTip();
         }
@@ -146,7 +146,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orb              The address of the orb
     /// @param   invocationIndex  The invocation index to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
-    function claimTipsForInvocation(address orb, uint256 invocationIndex, uint256 minimumTipTotal) external {
+    function claimTipsForInvocation(address orb, uint256 invocationIndex, uint256 minimumTipTotal) external virtual {
         (address invoker, bytes32 contentHash,) = IOrbInvocationRegistry(orb).invocations(orb, invocationIndex);
 
         if (claimedInvocations[orb][contentHash]) {
@@ -171,7 +171,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice  Withdraws a tip previously suggested for a given invocation
     /// @param   orb             The address of the orb
     /// @param   invocationHash  The invocation content hash
-    function withdrawTip(address orb, bytes32 invocationHash) public {
+    function withdrawTip(address orb, bytes32 invocationHash) public virtual {
         uint256 tipValue = tipperTips[msg.sender][orb][invocationHash];
         if (tipValue == 0) {
             revert TipNotFound();
@@ -190,13 +190,13 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice  Withdraws a tips previously suggested for a given list of invocation
     /// @param   orbs              Array of orb addresse
     /// @param   invocationHashes  Array of invocation content hashes
-    function withdrawTips(address[] memory orbs, bytes32[] memory invocationHashes) external {
+    function withdrawTips(address[] memory orbs, bytes32[] memory invocationHashes) external virtual {
         for (uint256 index = 0; index < orbs.length; index++) {
             withdrawTip(orbs[index], invocationHashes[index]);
         }
     }
 
-    function withdrawPlatformFunds() external {
+    function withdrawPlatformFunds() external virtual {
         AddressUpgradeable.sendValue(payable(platformAddress), platformFunds);
         platformFunds = 0;
     }
@@ -208,7 +208,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice  Sets the minimum tip value for a given orb
     /// @param   orb              The address of the orb
     /// @param   minimumTipValue  The minimum tip value
-    function setMinimumTip(address orb, uint256 minimumTipValue) external {
+    function setMinimumTip(address orb, uint256 minimumTipValue) external virtual {
         if (msg.sender != IOrb(orb).keeper()) {
             revert NotKeeper();
         }
@@ -228,5 +228,5 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Authorizes owner address to upgrade the contract.
     // solhint-disable no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 }
