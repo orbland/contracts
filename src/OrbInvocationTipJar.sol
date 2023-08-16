@@ -7,6 +7,7 @@ import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 
 import {IOrb} from "./IOrb.sol";
 import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
+import {OrbPond} from "./OrbPond.sol";
 
 /// @title   Orb Invocation Tip Jar - A contract for suggesting Orb invocations and tipping Orb keepers
 /// @author  Jonas Lekevicius
@@ -69,6 +70,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error InsufficientTip();
     error InvocationNotFound();
+    error InvocationNotInvoked();
     error InvocationAlreadyClaimed();
     error InsufficientTips(uint256 minimumTipTotal, uint256 totalClaimableTips);
     error TipNotFound();
@@ -147,8 +149,14 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationIndex  The invocation index to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
     function claimTipsForInvocation(address orb, uint256 invocationIndex, uint256 minimumTipTotal) external virtual {
-        (address invoker, bytes32 contentHash,) = IOrbInvocationRegistry(orb).invocations(orb, invocationIndex);
+        address pondAddress = IOrb(orb).pond();
+        address invocationRegistryAddress = OrbPond(pondAddress).registry();
+        (address invoker, bytes32 contentHash,) =
+            IOrbInvocationRegistry(invocationRegistryAddress).invocations(orb, invocationIndex);
 
+        if (contentHash == bytes32(0)) {
+            revert InvocationNotInvoked();
+        }
         if (claimedInvocations[orb][contentHash]) {
             revert InvocationAlreadyClaimed();
         }
