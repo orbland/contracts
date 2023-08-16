@@ -68,7 +68,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
     error InvocationAlreadySuggested();
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-    error InsufficientTip();
+    error InsufficientTip(uint256 tipValue, uint256 minimumTip);
     error InvocationNotFound();
     error InvocationNotInvoked();
     error InvocationAlreadyClaimed();
@@ -124,8 +124,9 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orb             The address of the orb
     /// @param   invocationHash  The invocation content hash
     function tipInvocation(address orb, bytes32 invocationHash) public payable virtual {
-        if (msg.value < minimumTips[orb]) {
-            revert InsufficientTip();
+        uint256 _minimumTip = minimumTips[orb];
+        if (msg.value < _minimumTip) {
+            revert InsufficientTip(msg.value, _minimumTip);
         }
         if (bytes(suggestedInvocations[invocationHash]).length == 0) {
             revert InvocationNotFound();
