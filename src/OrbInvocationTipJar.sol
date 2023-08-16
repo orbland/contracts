@@ -75,6 +75,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     error InvocationAlreadyClaimed();
     error InsufficientTips(uint256 minimumTipTotal, uint256 totalClaimableTips);
     error TipNotFound();
+    error NoFundsAvailable();
     error NotKeeper();
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +176,6 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         AddressUpgradeable.sendValue(payable(invoker), invokerPortion);
 
         emit TipsClaim(orb, contentHash, invoker, invokerPortion);
-        emit TipsClaim(orb, contentHash, platformAddress, platformPortion);
     }
 
     /// @notice  Withdraws a tip previously suggested for a given invocation
@@ -207,8 +207,14 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function withdrawPlatformFunds() external virtual {
-        AddressUpgradeable.sendValue(payable(platformAddress), platformFunds);
+        uint256 _platformFunds = platformFunds;
+        address _platformAddress = platformAddress;
+        if (_platformFunds == 0) {
+            revert NoFundsAvailable();
+        }
+        AddressUpgradeable.sendValue(payable(_platformAddress), _platformFunds);
         platformFunds = 0;
+        emit TipsClaim(address(0), bytes32(0), _platformAddress, _platformFunds);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
