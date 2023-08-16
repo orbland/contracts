@@ -382,7 +382,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
     }
 
     function test_claimTips() public {
-        vm.startPrank(tipper);
+        vm.prank(tipper);
         orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
         _invoke(orbAddress, invocation);
 
@@ -405,7 +405,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
     }
 
     function test_claimTipsWithoutMinimumTipValue() public {
-        vm.startPrank(tipper);
+        vm.prank(tipper);
         orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
         _invoke(orbAddress, invocation);
 
