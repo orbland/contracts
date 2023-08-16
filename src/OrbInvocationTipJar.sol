@@ -61,6 +61,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     event TipDeposit(address indexed orb, bytes32 indexed invocationHash, address indexed tipper, uint256 tipValue);
     event TipWithdrawal(address indexed orb, bytes32 indexed invocationHash, address indexed tipper, uint256 tipValue);
     event TipsClaim(address indexed orb, bytes32 indexed invocationHash, address indexed invoker, uint256 tipsValue);
+    event MinimumTipUpdate(address indexed orb, uint256 previousMinimumTip, uint256 indexed newMinimumTip);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -221,7 +222,9 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (msg.sender != IOrb(orb).keeper()) {
             revert NotKeeper();
         }
+        uint256 previousMinimumTip = minimumTips[orb];
         minimumTips[orb] = minimumTipValue;
+        emit MinimumTipUpdate(orb, previousMinimumTip, minimumTipValue);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
