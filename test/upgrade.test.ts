@@ -71,6 +71,39 @@ describe("Orb Registry Upgrade", function () {
     })
 })
 
+describe("Orb Invocation Tip Jar Upgrade", function () {
+    it("Should deploy and upgrade", async function () {
+        const [owner] = await ethers.getSigners()
+        const OrbInvocationTipJar = await ethers.getContractFactory("OrbInvocationTipJar")
+        const orbInvocationTipJar = await upgrades.deployProxy(OrbInvocationTipJar, [ethers.ZeroAddress, 500], {
+            kind: "uups",
+            initializer: "initialize",
+        })
+        await orbInvocationTipJar.waitForDeployment()
+        const orbInvocationTipJarAddress = await orbInvocationTipJar.getAddress()
+        // console.log("InvocationTipJar address:", orbInvocationTipJarAddress)
+
+        expect(await orbInvocationTipJar.owner()).to.equal(owner.address)
+        expect(await orbInvocationTipJar.version()).to.equal(1n)
+
+        const OrbInvocationTipJarTestUpgrade = await ethers.getContractFactory("OrbInvocationTipJarTestUpgrade")
+        const orbInvocationTipJarUpgraded = await upgrades.upgradeProxy(
+            orbInvocationTipJarAddress,
+            OrbInvocationTipJarTestUpgrade,
+            {
+                kind: "uups",
+            }
+        )
+        // console.log("Orb InvocationTipJar upgraded")
+        await orbInvocationTipJarUpgraded.waitForDeployment()
+
+        const orbInvocationTipJarAddressUpgraded = await orbInvocationTipJarUpgraded.getAddress()
+        // console.log("Upgraded InvocationTipJar address:", orbInvocationTipJarAddressUpgraded)
+        expect(orbInvocationTipJarAddressUpgraded).to.equal(orbInvocationTipJarAddress)
+        expect(await orbInvocationTipJar.version()).to.equal(100n)
+    })
+})
+
 describe("Orb Upgrade", function () {
     it("Should be deploy directly", async function () {
         const [admin, creator, keeper, beneficiary] = await ethers.getSigners()
