@@ -12,7 +12,7 @@ import {OrbPond} from "./OrbPond.sol";
 /// @title   Orb Invocation Tip Jar - A contract for suggesting Orb invocations and tipping Orb keepers
 /// @author  Jonas Lekevicius
 /// @author  Oren Yomtov
-/// @notice  This contract allows anyone to suggest an invocation to an Orb and optionally tip the Orb keeper
+/// @notice  This contract allows anyone to suggest an invocation to an Orb and optionally tip the Orb keeper.
 contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -36,7 +36,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// Whether a certain invocation's tips have been claimed
     mapping(address orb => mapping(bytes32 invocationHash => bool isClaimed)) public claimedInvocations;
 
-    /// The minimum tip value for a given orb
+    /// The minimum tip value for a given Orb
     mapping(address orb => uint256 minimumTip) public minimumTips;
 
     /// Orb Land revenue address
@@ -100,9 +100,10 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  FUNCTIONS: INVOCATION SUBMISSION & TIPPING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Suggests an invocation request to the Orb Tipping contract, optionally with a tip
-    /// @param   orb                  The address of the orb to which the invocation is being suggested
-    /// @param   invocationCleartext  The invocation's content string
+    /// @notice  Records invocation cleartext for a given invocation hash, allowing it to be tipped. If any value is
+    ///          given, it is recorded as initial tip.
+    /// @param   orb                  The address of the Orb for which the invocation is being suggested
+    /// @param   invocationCleartext  The invocation's cleartext
     function suggestInvocation(address orb, string memory invocationCleartext) external payable virtual {
         bytes32 invocationHash = keccak256(abi.encodePacked(invocationCleartext));
 
@@ -122,7 +123,8 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    /// @notice  Tips an orb keeper to invoke their orb with a specific content hash
+    /// @notice  Tips a specific invocation content hash on an Orb. Any Keeper can invoke the tipped invocation and
+    ///          claim the tips.
     /// @param   orb             The address of the orb
     /// @param   invocationHash  The invocation content hash
     function tipInvocation(address orb, bytes32 invocationHash) public payable virtual {
@@ -147,9 +149,10 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  FUNCTIONS: CLAIMING & WITHDRAWING TIPS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Claims all tips for a given invocation that has been suggested
-    /// @param   orb              The address of the orb
-    /// @param   invocationIndex  The invocation index to check
+    /// @notice  Claims all tips for a given suggested invocation. Meant to be called together with the invocation
+    ///          itself, using `invokeWith*AndCall` functions on OrbInvocationRegistry.
+    /// @param   orb              The address of the Orb
+    /// @param   invocationIndex  The invocation id to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
     function claimTipsForInvocation(address orb, uint256 invocationIndex, uint256 minimumTipTotal) external virtual {
         address pondAddress = IOrb(orb).pond();
@@ -178,7 +181,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         emit TipsClaim(orb, contentHash, invoker, invokerPortion);
     }
 
-    /// @notice  Withdraws a tip previously suggested for a given invocation
+    /// @notice  Withdraws a tip from a given invocation. Not possible if invocation has been claimed.
     /// @param   orb             The address of the orb
     /// @param   invocationHash  The invocation content hash
     function withdrawTip(address orb, bytes32 invocationHash) public virtual {
@@ -197,7 +200,8 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         emit TipWithdrawal(orb, invocationHash, msg.sender, tipValue);
     }
 
-    /// @notice  Withdraws a tips previously suggested for a given list of invocation
+    /// @notice  Withdraws all tips from a given list of Orbs and invocations. Will revert if any given invocation has
+    ///          been claimed.
     /// @param   orbs              Array of orb addresse
     /// @param   invocationHashes  Array of invocation content hashes
     function withdrawTips(address[] memory orbs, bytes32[] memory invocationHashes) external virtual {
@@ -206,6 +210,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
+    /// @notice  Withdraws all funds set aside as the platform fee. Can be called by anyone.
     function withdrawPlatformFunds() external virtual {
         uint256 _platformFunds = platformFunds;
         address _platformAddress = platformAddress;
@@ -221,8 +226,8 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  FUNCTIONS: SETTINGS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Sets the minimum tip value for a given orb
-    /// @param   orb              The address of the orb
+    /// @notice  Sets the minimum tip value for a given Orb.
+    /// @param   orb              The address of the Orb
     /// @param   minimumTipValue  The minimum tip value
     function setMinimumTip(address orb, uint256 minimumTipValue) external virtual {
         if (msg.sender != IOrb(orb).keeper()) {
