@@ -5,7 +5,7 @@
 all: clean remove install update build
 
 # Clean the repo
-clean  :; forge clean
+clean :; forge clean
 
 # Remove modules
 remove :; rm -rf .gitmodules && rm -rf .git/modules/* && rm -rf lib && touch .gitmodules && git add . && git commit -m "modules"
@@ -13,13 +13,13 @@ remove :; rm -rf .gitmodules && rm -rf .git/modules/* && rm -rf lib && touch .gi
 install :; forge install foundry-rs/forge-std
 
 # Update Dependencies
-update:; forge update
+update :; forge update
 
-build:; forge build
+build :; forge build
 
 test :; forge test -vvv
 
-test-dev:; FOUNDRY_FUZZ_RUNS=50 forge test -vvv
+test-dev :; FOUNDRY_FUZZ_RUNS=50 forge test -vvv
 
 snapshot :; forge snapshot
 
@@ -32,14 +32,4 @@ lint :; solhint src/**/*.sol && solhint src/*.sol && solhint test/**/*.sol && so
 
 anvil :; anvil -m 'test test test test test test test test test test test junk' -b 6
 
-# use the "@" to hide the command from your shell
-deploy-goerli :; @forge script script/DeployGoerli.s.sol:DeployGoerli --rpc-url ${GOERLI_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
-
-deploy-sepolia :; @forge script script/DeploySepolia.s.sol:DeploySepolia --rpc-url ${SEPOLIA_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
-
-deploy-mainnet :; @forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-url ${MAINNET_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
-
-# This is the private key of account from the mnemonic from the "make anvil" command
-deploy-anvil :; @forge script script/DeployLocal.s.sol:DeployLocal --rpc-url http://localhost:8545 --broadcast
-
-scenario-anvil :; @forge script script/OrbScenario.s.sol:OrbScenario --rpc-url http://localhost:8545 --broadcast
+deploy-anvil :; forge script script/LocalDeploy.s.sol:LocalDeploy --rpc-url http://localhost:8545 --broadcast && forge script script/LocalCreatorActions.s.sol:LocalCreatorActions --rpc-url http://localhost:8545 --broadcast

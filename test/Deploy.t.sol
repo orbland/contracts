@@ -3,19 +3,19 @@ pragma solidity 0.8.20;
 
 import {Test} from "../lib/forge-std/src/Test.sol";
 
-import {DeployLocal} from "../script/DeployLocal.s.sol";
+import {LocalDeploy} from "../script/LocalDeploy.s.sol";
 import {Orb} from "../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract DeployLocalTest is Test {
-    DeployLocal internal deployScript;
+    LocalDeploy internal deployScript;
 
     function setUp() public {
         vm.setEnv("DEPLOYER_PRIVATE_KEY", "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         vm.deal(vm.addr(vm.envUint("DEPLOYER_PRIVATE_KEY")), type(uint64).max);
 
-        deployScript = new DeployLocal();
+        deployScript = new LocalDeploy();
         deployScript.run();
     }
 
