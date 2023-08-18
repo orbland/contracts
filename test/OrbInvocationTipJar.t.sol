@@ -349,6 +349,15 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
 
 contract ClaimTipsTest is OrbTipJarBaseTest {
     event TipsClaim(address indexed orb, bytes32 indexed invocationHash, address indexed invoker, uint256 tipsValue);
+    event Invocation(
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed invoker,
+        uint256 timestamp,
+        bytes32 contentHash
+    );
+    event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
+    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
 
     function test_revertIf_invocationNotInvoked() public {
         vm.expectRevert(OrbInvocationTipJar.InvocationNotInvoked.selector);
@@ -416,6 +425,52 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         emit TipsClaim(orbAddress, invocationHash, keeper, 0);
         // this is intentional: not providing minimum value might mean claiming nothing
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
+    }
+
+    function test_invokeAndClaim() public {
+        vm.prank(tipper);
+        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
+
+        bytes memory claimCalldata =
+            abi.encodeWithSelector(OrbInvocationTipJar.claimTipsForInvocation.selector, orbAddress, 1, 1 ether);
+
+        // expect revert if not authorized
+        vm.expectRevert(
+            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(orbTipJar))
+        );
+        vm.prank(keeper);
+        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithHashAndCall(
+            orbAddress, invocationHash, address(orbTipJar), claimCalldata
+        );
+
+        vm.expectEmit();
+        emit ContractAuthorization(address(orbTipJar), true);
+        orbInvocationRegistry.authorizeContract(address(orbTipJar), true);
+
+        uint256 keeperBalance = address(keeper).balance;
+        uint256 orblandBalance = address(orbland).balance;
+        assertEq(orbInvocationRegistry.invocationCount(orbAddress), 0);
+        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
+        assertEq(orbTipJar.platformFunds(), 0);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), false);
+
+        vm.expectEmit();
+        emit Invocation(orbAddress, 1, keeper, block.timestamp, invocationHash);
+        vm.expectEmit();
+        emit CleartextRecording(orbAddress, 1, invocation);
+        vm.expectEmit();
+        emit TipsClaim(orbAddress, invocationHash, keeper, 0.95 ether);
+        vm.prank(keeper);
+        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithCleartextAndCall(
+            orbAddress, invocation, address(orbTipJar), claimCalldata
+        );
+
+        assertEq(address(keeper).balance - keeperBalance, 0.95 ether);
+        assertEq(address(orbland).balance - orblandBalance, 0 ether);
+        assertEq(orbInvocationRegistry.invocationCount(orbAddress), 1);
+        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
+        assertEq(orbTipJar.platformFunds(), 0.05 ether);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), true);
     }
 }
 
