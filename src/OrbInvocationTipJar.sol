@@ -39,10 +39,15 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// The minimum tip value for a given Orb
     mapping(address orb => uint256 minimumTip) public minimumTips;
 
-    /// Orb Land revenue address
+    /// Orb Land revenue address. Set during contract initialization to Orb Land Revenue multisig. While there is no
+    /// function to change this address, it can be changed by upgrading the contract.
     address public platformAddress;
 
-    /// Orb Land revenue fee numerator
+    /// Orb Land revenue fee numerator. Set during contract initialization. While there is no function to change this
+    /// value, it can be changed by upgrading the contract. The fee is in relation to `_FEE_DENOMINATOR`.
+    /// Note: contract upgradability poses risks! Orb Land may upgrade this contract and set the fee to _FEE_DENOMINATOR
+    /// (100.00%), taking away all future tips. This is a risk that Orb keepers must be aware of, until upgradability
+    /// is removed or modified.
     uint256 public platformFee;
 
     /// Funds allocated for the Orb Land platform, withdrawable to `platformAddress`
@@ -67,6 +72,8 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    error PlatformAddressInvalid();
+    error PlatformFeeInvalid();
     error InvocationAlreadySuggested();
     error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error InsufficientTip(uint256 tipValue, uint256 minimumTip);
@@ -75,6 +82,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     error InvocationAlreadyClaimed();
     error InsufficientTips(uint256 minimumTipTotal, uint256 totalClaimableTips);
     error TipNotFound();
+    error UnevenArrayLengths();
     error NoFundsAvailable();
     error NotKeeper();
 
@@ -91,6 +99,13 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     function initialize(address platformAddress_, uint256 platformFee_) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
+
+        if (platformAddress_ == address(0)) {
+            revert PlatformAddressInvalid();
+        }
+        if (platformFee_ > _FEE_DENOMINATOR) {
+            revert PlatformFeeInvalid();
+        }
 
         platformAddress = platformAddress_;
         platformFee = platformFee_;
@@ -205,6 +220,9 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orbs              Array of orb addresse
     /// @param   invocationHashes  Array of invocation content hashes
     function withdrawTips(address[] memory orbs, bytes32[] memory invocationHashes) external virtual {
+        if (orbs.length != invocationHashes.length) {
+            revert UnevenArrayLengths();
+        }
         for (uint256 index = 0; index < orbs.length; index++) {
             withdrawTip(orbs[index], invocationHashes[index]);
         }
