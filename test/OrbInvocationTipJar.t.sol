@@ -18,6 +18,7 @@ contract OrbTipJarBaseTest is Test {
     OrbInvocationTipJar public orbTipJar;
     OrbInvocationRegistry public orbInvocationRegistry;
     Orb public orb;
+    OrbInvocationTipJar public orbTipJarImplementation;
     address public orbAddress;
 
     // Invocations
@@ -83,13 +84,13 @@ contract OrbTipJarBaseTest is Test {
         orb.finalizeAuction();
         vm.warp(block.timestamp + 30 days);
 
-        OrbInvocationTipJar orbTipJarImplementation = new OrbInvocationTipJar();
+        orbTipJarImplementation = new OrbInvocationTipJar();
         ERC1967Proxy orbTipJarProxy = new ERC1967Proxy(
             address(orbTipJarImplementation),
             abi.encodeWithSelector(
                 OrbInvocationTipJar.initialize.selector,
-                address(orbland),
-                500 // 5%
+                orbland,
+                5_00 // 5%
             )
         );
         orbTipJar = OrbInvocationTipJar(address(orbTipJarProxy));
@@ -108,19 +109,42 @@ contract InitialStateTest is OrbTipJarBaseTest {
         assertEq(orbTipJar.platformFunds(), 0);
     }
 
-    function test_revertsInitializer() public {
+    function test_revertsIf_alreadyInitialized() public {
         vm.expectRevert("Initializable: contract is already initialized");
         orbTipJar.initialize(address(0), 1);
     }
 
+    function test_revertsIf_platformAddressInvalid() public {
+        vm.expectRevert(OrbInvocationTipJar.PlatformAddressInvalid.selector);
+        new ERC1967Proxy(
+            address(orbTipJarImplementation),
+            abi.encodeWithSelector(
+                OrbInvocationTipJar.initialize.selector,
+                address(0),
+                5_00 // 5%
+            )
+        );
+    }
+
+    function test_revertsIf_platformFeeInvalid() public {
+        vm.expectRevert(OrbInvocationTipJar.PlatformFeeInvalid.selector);
+        new ERC1967Proxy(
+            address(orbTipJarImplementation),
+            abi.encodeWithSelector(
+                OrbInvocationTipJar.initialize.selector,
+                orbland,
+                100_01 // 100.01%
+            )
+        );
+    }
+
     function test_initializerSuccess() public {
-        OrbInvocationTipJar orbTipJarImplementation = new OrbInvocationTipJar();
         ERC1967Proxy orbInvocationTipJarProxy = new ERC1967Proxy(
             address(orbTipJarImplementation), ""
         );
         OrbInvocationTipJar _orbInvocationTipJar = OrbInvocationTipJar(address(orbInvocationTipJarProxy));
         assertEq(_orbInvocationTipJar.owner(), address(0));
-        _orbInvocationTipJar.initialize(address(0), 1);
+        _orbInvocationTipJar.initialize(orbland, 1);
         assertEq(_orbInvocationTipJar.owner(), address(this));
     }
 }
@@ -276,26 +300,37 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         orbTipJar.tipInvocation{value: 0.5 ether}(orbAddress, invocationHash);
 
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1.5 ether);
-        assertEq(orbTipJar.tipperTips(address(tipper), orbAddress, invocationHash), 1 ether);
-        assertEq(orbTipJar.tipperTips(address(tipper2), orbAddress, invocationHash), 0.5 ether);
+        assertEq(orbTipJar.tipperTips(tipper, orbAddress, invocationHash), 1 ether);
+        assertEq(orbTipJar.tipperTips(tipper2, orbAddress, invocationHash), 0.5 ether);
 
-        uint256 tipper2Balance = address(tipper2).balance;
+        uint256 tipper2Balance = tipper2.balance;
         vm.expectEmit();
         emit TipWithdrawal(orbAddress, invocationHash, tipper2, 0.5 ether);
         vm.prank(tipper2);
         orbTipJar.withdrawTip(orbAddress, invocationHash);
-        assertEq(address(tipper2).balance - tipper2Balance, 0.5 ether);
+        assertEq(tipper2.balance - tipper2Balance, 0.5 ether);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
-        assertEq(orbTipJar.tipperTips(address(tipper2), orbAddress, invocationHash), 0);
+        assertEq(orbTipJar.tipperTips(tipper2, orbAddress, invocationHash), 0);
 
-        uint256 tipperBalance = address(tipper).balance;
+        uint256 tipperBalance = tipper.balance;
         vm.expectEmit();
         emit TipWithdrawal(orbAddress, invocationHash, tipper, 1 ether);
         vm.prank(tipper);
         orbTipJar.withdrawTip(orbAddress, invocationHash);
-        assertEq(address(tipper).balance - tipperBalance, 1 ether);
+        assertEq(tipper.balance - tipperBalance, 1 ether);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 0);
-        assertEq(orbTipJar.tipperTips(address(tipper), orbAddress, invocationHash), 0);
+        assertEq(orbTipJar.tipperTips(tipper, orbAddress, invocationHash), 0);
+    }
+
+    function test_revertIf_withdrawTipsArraysUneven() public {
+        address[] memory orbs = new address[](1);
+        orbs[0] = orbAddress;
+        bytes32[] memory invocationHashes = new bytes32[](2);
+        invocationHashes[0] = invocationHash;
+        invocationHashes[1] = invocation2Hash;
+        vm.expectRevert(OrbInvocationTipJar.UnevenArrayLengths.selector);
+        vm.prank(tipper);
+        orbTipJar.withdrawTips(orbs, invocationHashes);
     }
 
     function test_withdrawTips() public {
@@ -304,7 +339,7 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         vm.prank(tipper);
         orbTipJar.suggestInvocation{value: 0.5 ether}(orbAddress, invocation2);
 
-        uint256 tipperBalance = address(tipper).balance;
+        uint256 tipperBalance = tipper.balance;
         address[] memory orbs = new address[](2);
         orbs[0] = orbAddress;
         orbs[1] = orbAddress;
@@ -318,9 +353,9 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         vm.prank(tipper);
         orbTipJar.withdrawTips(orbs, invocationHashes);
 
-        assertEq(address(tipper).balance - tipperBalance, 1.5 ether);
+        assertEq(tipper.balance - tipperBalance, 1.5 ether);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 0);
-        assertEq(orbTipJar.tipperTips(address(tipper), orbAddress, invocationHash), 0);
+        assertEq(orbTipJar.tipperTips(tipper, orbAddress, invocationHash), 0);
     }
 
     function test_revertIf_noPlatformFunds() public {
@@ -337,13 +372,13 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         _invoke(orbAddress, invocation);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
-        uint256 orblandBalance = address(orbland).balance;
+        uint256 orblandBalance = orbland.balance;
         assertEq(orbTipJar.platformFunds(), 0.05 ether);
         vm.expectEmit();
         emit TipsClaim(address(0), bytes32(0), orbland, 0.05 ether);
         orbTipJar.withdrawPlatformFunds();
         assertEq(orbTipJar.platformFunds(), 0);
-        assertEq(address(orbland).balance - orblandBalance, 0.05 ether);
+        assertEq(orbland.balance - orblandBalance, 0.05 ether);
     }
 }
 
@@ -395,8 +430,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
         _invoke(orbAddress, invocation);
 
-        uint256 keeperBalance = address(keeper).balance;
-        uint256 orblandBalance = address(orbland).balance;
+        uint256 keeperBalance = keeper.balance;
+        uint256 orblandBalance = orbland.balance;
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0);
         assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), false);
@@ -406,8 +441,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         vm.prank(tipper2); // anyone can do this
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
-        assertEq(address(keeper).balance - keeperBalance, 0.95 ether);
-        assertEq(address(orbland).balance - orblandBalance, 0 ether);
+        assertEq(keeper.balance - keeperBalance, 0.95 ether);
+        assertEq(orbland.balance - orblandBalance, 0 ether);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0.05 ether);
         assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), true);
@@ -447,8 +482,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         emit ContractAuthorization(address(orbTipJar), true);
         orbInvocationRegistry.authorizeContract(address(orbTipJar), true);
 
-        uint256 keeperBalance = address(keeper).balance;
-        uint256 orblandBalance = address(orbland).balance;
+        uint256 keeperBalance = keeper.balance;
+        uint256 orblandBalance = orbland.balance;
         assertEq(orbInvocationRegistry.invocationCount(orbAddress), 0);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0);
@@ -465,8 +500,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
             orbAddress, invocation, address(orbTipJar), claimCalldata
         );
 
-        assertEq(address(keeper).balance - keeperBalance, 0.95 ether);
-        assertEq(address(orbland).balance - orblandBalance, 0 ether);
+        assertEq(keeper.balance - keeperBalance, 0.95 ether);
+        assertEq(orbland.balance - orblandBalance, 0 ether);
         assertEq(orbInvocationRegistry.invocationCount(orbAddress), 1);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0.05 ether);
