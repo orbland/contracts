@@ -75,10 +75,14 @@ describe("Orb Invocation Tip Jar Upgrade", function () {
     it("Should deploy and upgrade", async function () {
         const [owner] = await ethers.getSigners()
         const OrbInvocationTipJar = await ethers.getContractFactory("OrbInvocationTipJar")
-        const orbInvocationTipJar = await upgrades.deployProxy(OrbInvocationTipJar, [ethers.ZeroAddress, 500], {
-            kind: "uups",
-            initializer: "initialize",
-        })
+        const orbInvocationTipJar = await upgrades.deployProxy(
+            OrbInvocationTipJar,
+            ["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", 500],
+            {
+                kind: "uups",
+                initializer: "initialize",
+            }
+        )
         await orbInvocationTipJar.waitForDeployment()
         const orbInvocationTipJarAddress = await orbInvocationTipJar.getAddress()
         // console.log("InvocationTipJar address:", orbInvocationTipJarAddress)
