@@ -112,7 +112,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationHash  The invocation content hash
     function tipInvocation(address orb, bytes32 invocationHash) external payable virtual {
         uint256 _minimumTip = minimumTips[orb];
-        if (msg.value < _minimumTip) {
+        if (msg.value < _minimumTip || msg.value == 0) {
             revert InsufficientTip(msg.value, _minimumTip);
         }
         if (claimedInvocations[orb][invocationHash] > 0) {
