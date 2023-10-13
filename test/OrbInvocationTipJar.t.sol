@@ -24,8 +24,8 @@ contract OrbTipJarBaseTest is Test {
     // Invocations
     string public constant invocation = "What is the meaning of life?";
     bytes32 public constant invocationHash = keccak256(abi.encodePacked(invocation));
-    string public constant invocation2 = "Who let the dogs out?";
-    bytes32 public constant invocation2Hash = keccak256(abi.encodePacked(invocation2));
+    string private constant _invocation2 = "Who let the dogs out?";
+    bytes32 public constant invocation2Hash = keccak256(abi.encodePacked(_invocation2));
 
     // Addresses
     address public constant keeper = address(0xBABE);
@@ -96,9 +96,9 @@ contract OrbTipJarBaseTest is Test {
         orbTipJar = OrbInvocationTipJar(address(orbTipJarProxy));
     }
 
-    function _invoke(address orbAddress_, string memory invocation_) internal {
+    function _invoke(address orbAddress_, bytes32 invocationHash_) internal {
         vm.prank(IOrb(orbAddress_).keeper());
-        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithCleartext(orbAddress_, invocation_);
+        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithHash(orbAddress_, invocationHash_);
     }
 }
 
@@ -149,42 +149,6 @@ contract InitialStateTest is OrbTipJarBaseTest {
     }
 }
 
-contract SuggestInvocationTest is OrbTipJarBaseTest {
-    event InvocationSuggestion(
-        address indexed orb, bytes32 indexed invocationHash, address indexed suggester, string invocationCleartext
-    );
-
-    function test_revertIf_alreadySuggested() public {
-        assertEq(orbTipJar.suggestedInvocations(invocationHash), "");
-        orbTipJar.suggestInvocation(orbAddress, invocation);
-        assertEq(orbTipJar.suggestedInvocations(invocationHash), invocation);
-
-        vm.expectRevert(OrbInvocationTipJar.InvocationAlreadySuggested.selector);
-        orbTipJar.suggestInvocation(orbAddress, invocation);
-    }
-
-    function test_revertIf_cleartextTooLong() public {
-        vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.CleartextTooLong.selector, 85, 32));
-        string memory longInvocation =
-            "Why is the sky blue? Why is water wet? Why did Judas rat to Romans while Jesus slept?";
-        bytes32 longInvocationHash = keccak256(abi.encodePacked(invocation2));
-        orbTipJar.suggestInvocation(orbAddress, longInvocation);
-        assertEq(orbTipJar.suggestedInvocations(longInvocationHash), "");
-    }
-
-    function test_suggestWithoutTip() public {
-        assertEq(orbTipJar.suggestedInvocations(invocationHash), "");
-
-        vm.expectEmit();
-        emit InvocationSuggestion(orbAddress, invocationHash, address(this), invocation);
-        orbTipJar.suggestInvocation(orbAddress, invocation);
-
-        assertEq(orbTipJar.suggestedInvocations(invocationHash), invocation);
-        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 0);
-        assertEq(orbTipJar.tipperTips(address(this), orbAddress, invocationHash), 0);
-    }
-}
-
 contract SetMinimumTipTest is OrbTipJarBaseTest {
     event MinimumTipUpdate(address indexed orb, uint256 previousMinimumTip, uint256 indexed newMinimumTip);
 
@@ -207,9 +171,6 @@ contract SetMinimumTipTest is OrbTipJarBaseTest {
 }
 
 contract TipInvocationTest is OrbTipJarBaseTest {
-    event InvocationSuggestion(
-        address indexed orb, bytes32 indexed invocationHash, address indexed suggester, string invocationCleartext
-    );
     event TipDeposit(address indexed orb, bytes32 indexed invocationHash, address indexed tipper, uint256 tipValue);
 
     function test_revertIf_insufficientTip() public {
@@ -217,59 +178,49 @@ contract TipInvocationTest is OrbTipJarBaseTest {
         orbTipJar.setMinimumTip(orbAddress, 2 ether);
 
         vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.InsufficientTip.selector, 1 ether, 2 ether));
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-    }
-
-    function test_revertIf_invocationNotSuggested() public {
-        vm.expectRevert(OrbInvocationTipJar.InvocationNotFound.selector);
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
     }
 
     function test_revertIf_invocationClaimed() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
         vm.expectRevert(OrbInvocationTipJar.InvocationAlreadyClaimed.selector);
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
     }
 
-    function test_suggestWithTip() public {
-        assertEq(orbTipJar.suggestedInvocations(invocationHash), "");
-
-        vm.expectEmit();
-        emit InvocationSuggestion(orbAddress, invocationHash, address(this), invocation);
-        vm.expectEmit();
-        emit TipDeposit(orbAddress, invocationHash, address(this), 1 ether);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-
-        assertEq(orbTipJar.suggestedInvocations(invocationHash), invocation);
-        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
-        assertEq(orbTipJar.tipperTips(address(this), orbAddress, invocationHash), 1 ether);
-    }
-
-    function test_tipExistingInvocation() public {
-        orbTipJar.suggestInvocation(orbAddress, invocation);
-
+    function test_tipNewInvocation() public {
         vm.expectEmit();
         emit TipDeposit(orbAddress, invocationHash, address(this), 1 ether);
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
 
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.tipperTips(address(this), orbAddress, invocationHash), 1 ether);
+    }
+
+    function test_tipExistingInvocation() public {
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+
+        vm.expectEmit();
+        emit TipDeposit(orbAddress, invocationHash, address(this), 1 ether);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+
+        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 2 ether);
+        assertEq(orbTipJar.tipperTips(address(this), orbAddress, invocationHash), 2 ether);
 
         vm.expectEmit();
         emit TipDeposit(orbAddress, invocationHash, tipper, 1.2 ether);
         vm.prank(tipper);
         orbTipJar.tipInvocation{value: 1.2 ether}(orbAddress, invocationHash);
 
-        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 2.2 ether);
+        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 3.2 ether);
         assertEq(orbTipJar.tipperTips(tipper, orbAddress, invocationHash), 1.2 ether);
 
         vm.prank(tipper);
         orbTipJar.tipInvocation{value: 1.2 ether}(orbAddress, invocationHash);
-        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 3.4 ether);
+        assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 4.4 ether);
         assertEq(orbTipJar.tipperTips(tipper, orbAddress, invocationHash), 2.4 ether);
     }
 }
@@ -284,8 +235,8 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
     }
 
     function test_revertIf_invocationClaimed() public {
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
         vm.expectRevert(OrbInvocationTipJar.InvocationAlreadyClaimed.selector);
@@ -294,7 +245,7 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
 
     function test_withdrawTip() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
 
         vm.prank(tipper2);
         orbTipJar.tipInvocation{value: 0.5 ether}(orbAddress, invocationHash);
@@ -335,9 +286,9 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
 
     function test_withdrawTips() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 0.5 ether}(orbAddress, invocation2);
+        orbTipJar.tipInvocation{value: 0.5 ether}(orbAddress, invocation2Hash);
 
         uint256 tipperBalance = tipper.balance;
         address[] memory orbs = new address[](2);
@@ -359,8 +310,8 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
     }
 
     function test_revertIf_noPlatformFunds() public {
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
 
         assertEq(orbTipJar.platformFunds(), 0);
         vm.expectRevert(OrbInvocationTipJar.NoFundsAvailable.selector);
@@ -368,8 +319,8 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
     }
 
     function test_withdrawPlatformFunds() public {
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
         uint256 orblandBalance = orbland.balance;
@@ -398,14 +349,14 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         vm.expectRevert(OrbInvocationTipJar.InvocationNotInvoked.selector);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
 
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
         vm.expectRevert(OrbInvocationTipJar.InvocationNotInvoked.selector);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
     }
 
     function test_revertIf_invocationClaimed() public {
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
         vm.expectRevert(OrbInvocationTipJar.InvocationAlreadyClaimed.selector);
@@ -414,8 +365,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
 
     function test_revertIf_insufficientTips() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
         vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.InsufficientTips.selector, 1.1 ether, 1 ether));
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1.1 ether);
 
@@ -427,8 +378,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
 
     function test_claimTips() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
 
         uint256 keeperBalance = keeper.balance;
         uint256 orblandBalance = orbland.balance;
@@ -450,8 +401,8 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
 
     function test_claimTipsWithoutMinimumTipValue() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
-        _invoke(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
+        _invoke(orbAddress, invocationHash);
 
         vm.prank(tipper);
         orbTipJar.withdrawTip(orbAddress, invocationHash);
@@ -464,7 +415,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
 
     function test_invokeAndClaim() public {
         vm.prank(tipper);
-        orbTipJar.suggestInvocation{value: 1 ether}(orbAddress, invocation);
+        orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
 
         bytes memory claimCalldata =
             abi.encodeWithSelector(OrbInvocationTipJar.claimTipsForInvocation.selector, orbAddress, 1, 1 ether);
