@@ -32,7 +32,7 @@ lint :; solhint src/**/*.sol && solhint src/*.sol && solhint test/**/*.sol && so
 
 anvil :; anvil -m 'test test test test test test test test test test test junk' -b 6
 
-deploy-anvil :; forge script script/LocalDeploy.s.sol:LocalDeploy --rpc-url http://localhost:8545 --broadcast && forge script script/LocalCreatorActions.s.sol:LocalCreatorActions --rpc-url http://localhost:8545 --broadcast
+deploy-anvil :; WITH_OATH=true forge script script/LocalDeploy.s.sol:LocalDeploy --rpc-url http://localhost:8545 --broadcast
 
 deploy-anvil-oathless :; forge script script/LocalDeploy.s.sol:LocalDeploy --rpc-url http://localhost:8545 --broadcast
 

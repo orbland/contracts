@@ -143,9 +143,21 @@ contract LocalDeploy is Script {
 
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        uint256 creatorKey = vm.envUint("CREATOR_PRIVATE_KEY");
 
         vm.startBroadcast(deployerKey);
         deployContracts();
         vm.stopBroadcast();
+
+        if (vm.envBool("WITH_OATH")) {
+            vm.startBroadcast(creatorKey);
+
+            orb.swearOath(oathHash, honoredUntil, responsePeriod);
+            orb.listWithPrice(50 ether);
+            orbInvocationTipJar.setMinimumTip(address(orb), 0.05 ether);
+            orb.relinquish(false);
+
+            vm.stopBroadcast();
+        }
     }
 }
