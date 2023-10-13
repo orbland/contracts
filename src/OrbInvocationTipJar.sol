@@ -30,8 +30,8 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     mapping(address orb => mapping(address tipper => mapping(bytes32 invocationHash => uint256 tippedAmount))) public
         tipperTips;
 
-    /// Whether a certain invocation's tips have been claimed
-    mapping(address orb => mapping(bytes32 invocationHash => bool isClaimed)) public claimedInvocations;
+    /// Whether a certain invocation's tips have been claimed: invocationId starts from 1
+    mapping(address orb => mapping(bytes32 invocationHash => uint256 invocationId)) public claimedInvocations;
 
     /// The minimum tip value for a given Orb
     mapping(address orb => uint256 minimumTip) public minimumTips;
@@ -115,10 +115,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (msg.value < _minimumTip) {
             revert InsufficientTip(msg.value, _minimumTip);
         }
-        if (bytes(suggestedInvocations[invocationHash]).length == 0) {
-            revert InvocationNotFound();
-        }
-        if (claimedInvocations[orb][invocationHash]) {
+        if (claimedInvocations[orb][invocationHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
 
@@ -146,7 +143,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (contentHash == bytes32(0)) {
             revert InvocationNotInvoked();
         }
-        if (claimedInvocations[orb][contentHash]) {
+        if (claimedInvocations[orb][contentHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
         uint256 totalClaimableTips = totalTips[orb][contentHash];
@@ -157,7 +154,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         uint256 platformPortion = (totalClaimableTips * platformFee) / _FEE_DENOMINATOR;
         uint256 invokerPortion = totalClaimableTips - platformPortion;
 
-        claimedInvocations[orb][contentHash] = true;
+        claimedInvocations[orb][contentHash] = invocationIndex;
         platformFunds += platformPortion;
         AddressUpgradeable.sendValue(payable(invoker), invokerPortion);
 
@@ -172,7 +169,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (tipValue == 0) {
             revert TipNotFound();
         }
-        if (claimedInvocations[orb][invocationHash]) {
+        if (claimedInvocations[orb][invocationHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
 
