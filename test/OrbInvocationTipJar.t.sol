@@ -385,7 +385,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         uint256 orblandBalance = orbland.balance;
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0);
-        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), false);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), 0);
 
         vm.expectEmit();
         emit TipsClaim(orbAddress, invocationHash, keeper, 0.95 ether);
@@ -396,7 +396,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         assertEq(orbland.balance - orblandBalance, 0 ether);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0.05 ether);
-        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), true);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), 1);
     }
 
     function test_claimTipsWithoutMinimumTipValue() public {
@@ -411,6 +411,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         emit TipsClaim(orbAddress, invocationHash, keeper, 0);
         // this is intentional: not providing minimum value might mean claiming nothing
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), 1);
     }
 
     function test_invokeAndClaim() public {
@@ -438,7 +439,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         assertEq(orbInvocationRegistry.invocationCount(orbAddress), 0);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0);
-        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), false);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), 0);
 
         vm.expectEmit();
         emit Invocation(orbAddress, 1, keeper, block.timestamp, invocationHash);
@@ -456,7 +457,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         assertEq(orbInvocationRegistry.invocationCount(orbAddress), 1);
         assertEq(orbTipJar.totalTips(orbAddress, invocationHash), 1 ether);
         assertEq(orbTipJar.platformFunds(), 0.05 ether);
-        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), true);
+        assertEq(orbTipJar.claimedInvocations(orbAddress, invocationHash), 1);
     }
 }
 

@@ -59,10 +59,7 @@ contract OrbInvocationTipJarTestUpgrade is OrbInvocationTipJar {
         if (msg.value % _tipModulo != 0) {
             revert TipNotAModuloMultiple(msg.value, _tipModulo);
         }
-        if (bytes(suggestedInvocations[invocationHash]).length == 0) {
-            revert InvocationNotFound();
-        }
-        if (claimedInvocations[orb][invocationHash]) {
+        if (claimedInvocations[orb][invocationHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
 
