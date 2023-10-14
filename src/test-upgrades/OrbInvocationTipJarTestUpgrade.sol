@@ -52,7 +52,7 @@ contract OrbInvocationTipJarTestUpgrade is OrbInvocationTipJar {
     /// @param   invocationHash  The invocation content hash
     function tipInvocation(address orb, bytes32 invocationHash) public payable virtual override {
         uint256 _minimumTip = minimumTips[orb];
-        if (msg.value < _minimumTip || msg.value == 0) {
+        if (msg.value < _minimumTip) {
             revert InsufficientTip(msg.value, _minimumTip);
         }
         uint256 _tipModulo = tipModulo;
