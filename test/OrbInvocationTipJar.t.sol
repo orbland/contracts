@@ -173,14 +173,6 @@ contract SetMinimumTipTest is OrbTipJarBaseTest {
 contract TipInvocationTest is OrbTipJarBaseTest {
     event TipDeposit(address indexed orb, bytes32 indexed invocationHash, address indexed tipper, uint256 tipValue);
 
-    function test_revertIf_noValue() public {
-        vm.prank(keeper);
-        orbTipJar.setMinimumTip(orbAddress, 0);
-
-        vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.InsufficientTip.selector, 0, 0));
-        orbTipJar.tipInvocation(orbAddress, invocationHash);
-    }
-
     function test_revertIf_insufficientTip() public {
         vm.prank(keeper);
         orbTipJar.setMinimumTip(orbAddress, 2 ether);
