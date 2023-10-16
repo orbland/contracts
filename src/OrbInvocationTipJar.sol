@@ -23,9 +23,6 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// Fee Nominator: basis points (100.00%). Platform fee is in relation to this.
     uint256 internal constant _FEE_DENOMINATOR = 100_00;
 
-    /// The invocation cleartext string for a given invocation hash
-    mapping(bytes32 invocationHash => string invocationCleartext) public suggestedInvocations;
-
     /// The sum of all tips for a given invocation
     mapping(address orb => mapping(bytes32 invocationHash => uint256 tippedAmount)) public totalTips;
 
@@ -33,8 +30,8 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     mapping(address orb => mapping(address tipper => mapping(bytes32 invocationHash => uint256 tippedAmount))) public
         tipperTips;
 
-    /// Whether a certain invocation's tips have been claimed
-    mapping(address orb => mapping(bytes32 invocationHash => bool isClaimed)) public claimedInvocations;
+    /// Whether a certain invocation's tips have been claimed: invocationId starts from 1
+    mapping(address orb => mapping(bytes32 invocationHash => uint256 invocationId)) public claimedInvocations;
 
     /// The minimum tip value for a given Orb
     mapping(address orb => uint256 minimumTip) public minimumTips;
@@ -60,9 +57,6 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    event InvocationSuggestion(
-        address indexed orb, bytes32 indexed invocationHash, address indexed suggester, string invocationCleartext
-    );
     event TipDeposit(address indexed orb, bytes32 indexed invocationHash, address indexed tipper, uint256 tipValue);
     event TipWithdrawal(address indexed orb, bytes32 indexed invocationHash, address indexed tipper, uint256 tipValue);
     event TipsClaim(address indexed orb, bytes32 indexed invocationHash, address indexed invoker, uint256 tipsValue);
@@ -74,10 +68,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
     error PlatformAddressInvalid();
     error PlatformFeeInvalid();
-    error InvocationAlreadySuggested();
-    error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
     error InsufficientTip(uint256 tipValue, uint256 minimumTip);
-    error InvocationNotFound();
     error InvocationNotInvoked();
     error InvocationAlreadyClaimed();
     error InsufficientTips(uint256 minimumTipTotal, uint256 totalClaimableTips);
@@ -115,42 +106,16 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  FUNCTIONS: INVOCATION SUBMISSION & TIPPING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice  Records invocation cleartext for a given invocation hash, allowing it to be tipped. If any value is
-    ///          given, it is recorded as initial tip.
-    /// @param   orb                  The address of the Orb for which the invocation is being suggested
-    /// @param   invocationCleartext  The invocation's cleartext
-    function suggestInvocation(address orb, string memory invocationCleartext) external payable virtual {
-        bytes32 invocationHash = keccak256(abi.encodePacked(invocationCleartext));
-
-        if (bytes(suggestedInvocations[invocationHash]).length != 0) {
-            revert InvocationAlreadySuggested();
-        }
-        if (bytes(invocationCleartext).length > IOrb(orb).cleartextMaximumLength()) {
-            revert CleartextTooLong(bytes(invocationCleartext).length, IOrb(orb).cleartextMaximumLength());
-        }
-
-        suggestedInvocations[invocationHash] = invocationCleartext;
-
-        emit InvocationSuggestion(orb, invocationHash, msg.sender, invocationCleartext);
-
-        if (msg.value > 0) {
-            tipInvocation(orb, invocationHash);
-        }
-    }
-
     /// @notice  Tips a specific invocation content hash on an Orb. Any Keeper can invoke the tipped invocation and
     ///          claim the tips.
     /// @param   orb             The address of the orb
     /// @param   invocationHash  The invocation content hash
-    function tipInvocation(address orb, bytes32 invocationHash) public payable virtual {
+    function tipInvocation(address orb, bytes32 invocationHash) external payable virtual {
         uint256 _minimumTip = minimumTips[orb];
         if (msg.value < _minimumTip) {
             revert InsufficientTip(msg.value, _minimumTip);
         }
-        if (bytes(suggestedInvocations[invocationHash]).length == 0) {
-            revert InvocationNotFound();
-        }
-        if (claimedInvocations[orb][invocationHash]) {
+        if (claimedInvocations[orb][invocationHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
 
@@ -178,7 +143,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (contentHash == bytes32(0)) {
             revert InvocationNotInvoked();
         }
-        if (claimedInvocations[orb][contentHash]) {
+        if (claimedInvocations[orb][contentHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
         uint256 totalClaimableTips = totalTips[orb][contentHash];
@@ -189,7 +154,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         uint256 platformPortion = (totalClaimableTips * platformFee) / _FEE_DENOMINATOR;
         uint256 invokerPortion = totalClaimableTips - platformPortion;
 
-        claimedInvocations[orb][contentHash] = true;
+        claimedInvocations[orb][contentHash] = invocationIndex;
         platformFunds += platformPortion;
         AddressUpgradeable.sendValue(payable(invoker), invokerPortion);
 
@@ -204,7 +169,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (tipValue == 0) {
             revert TipNotFound();
         }
-        if (claimedInvocations[orb][invocationHash]) {
+        if (claimedInvocations[orb][invocationHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
 
