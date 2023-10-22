@@ -104,6 +104,8 @@ contract LocalDeployUpgradeless is Script {
         bytes memory orbPondV1InitializeCalldata =
             abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
         OrbPond(address(orbPondProxy)).registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
+        bytes memory orbPondV2InitializeCalldata = abi.encodeWithSelector(OrbV2.initializeV2.selector);
+        OrbPond(address(orbPondProxy)).registerVersion(2, address(orbV2Implementation), orbPondV2InitializeCalldata);
 
         OrbPond(address(orbPondProxy)).upgradeToAndCall(
             address(orbPondV2Implementation), abi.encodeWithSelector(OrbPondV2.initializeV2.selector, 1)
