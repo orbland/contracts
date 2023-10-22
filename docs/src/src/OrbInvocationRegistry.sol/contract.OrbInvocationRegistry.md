@@ -1,15 +1,15 @@
 # OrbInvocationRegistry
-[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/OrbInvocationRegistry.sol)
+[Git Source](https://github.com/orbland/orb/blob/a97224f7f48993b3e85f6cac56cd5342ebaa9cd0/src/OrbInvocationRegistry.sol)
 
 **Inherits:**
-[IOrbInvocationRegistry](/src/IOrbInvocationRegistry.sol/interface.IOrbInvocationRegistry.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
+ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Author:**
 Jonas Lekevicius
 
 The Orb Invocation Registry is used to track invocations and responses for any Orb.
 
-*`Orb`s using an `OrbInvocationRegistry` must implement `IOrb` interface. Uses `Ownable`'s `owner()` to
+*`Orb`s using an `OrbInvocationRegistry` must implement `Orb` interface. Uses `Ownable`'s `owner()` to
 guard upgrading.*
 
 
@@ -105,7 +105,7 @@ function initialize() public initializer;
 
 ### supportsInterface
 
-*ERC-165 supportsInterface. Orb contract supports ERC-721 and IOrb interfaces.*
+*ERC-165 supportsInterface. Orb contract supports ERC-721 and Orb interfaces.*
 
 
 ```solidity
@@ -113,7 +113,7 @@ function supportsInterface(bytes4 interfaceId)
     public
     view
     virtual
-    override(ERC165Upgradeable, IERC165Upgradeable)
+    override(ERC165Upgradeable)
     returns (bool isInterfaceSupported);
 ```
 **Parameters**
@@ -403,6 +403,114 @@ function version() public view virtual returns (uint256 orbInvocationRegistryVer
 
 ```solidity
 function _authorizeUpgrade(address newImplementation) internal override onlyOwner;
+```
+
+## Events
+### Invocation
+
+```solidity
+event Invocation(
+    address indexed orb, uint256 indexed invocationId, address indexed invoker, uint256 timestamp, bytes32 contentHash
+);
+```
+
+### Response
+
+```solidity
+event Response(
+    address indexed orb, uint256 indexed invocationId, address indexed responder, uint256 timestamp, bytes32 contentHash
+);
+```
+
+### CleartextRecording
+
+```solidity
+event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
+```
+
+### ResponseFlagging
+
+```solidity
+event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
+```
+
+### ContractAuthorization
+
+```solidity
+event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+```
+
+## Errors
+### NotKeeper
+
+```solidity
+error NotKeeper();
+```
+
+### NotCreator
+
+```solidity
+error NotCreator();
+```
+
+### ContractHoldsOrb
+
+```solidity
+error ContractHoldsOrb();
+```
+
+### KeeperInsolvent
+
+```solidity
+error KeeperInsolvent();
+```
+
+### ContractNotAuthorized
+
+```solidity
+error ContractNotAuthorized(address externalContract);
+```
+
+### CooldownIncomplete
+
+```solidity
+error CooldownIncomplete(uint256 timeRemaining);
+```
+
+### CleartextTooLong
+
+```solidity
+error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
+```
+
+### InvocationNotFound
+
+```solidity
+error InvocationNotFound(address orb, uint256 invocationId);
+```
+
+### ResponseNotFound
+
+```solidity
+error ResponseNotFound(address orb, uint256 invocationId);
+```
+
+### ResponseExists
+
+```solidity
+error ResponseExists(address orb, uint256 invocationId);
+```
+
+### FlaggingPeriodExpired
+
+```solidity
+error FlaggingPeriodExpired(address orb, uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
+```
+
+### ResponseAlreadyFlagged
+
+```solidity
+error ResponseAlreadyFlagged(address orb, uint256 invocationId);
 ```
 
 ## Structs

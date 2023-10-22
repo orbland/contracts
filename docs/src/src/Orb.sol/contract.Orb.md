@@ -1,8 +1,8 @@
 # Orb
-[Git Source](https://github.com/orbland/orb/blob/7955ccc3c983c925780d5ee46f888378f75efa47/src/Orb.sol)
+[Git Source](https://github.com/orbland/orb/blob/a97224f7f48993b3e85f6cac56cd5342ebaa9cd0/src/Orb.sol)
 
 **Inherits:**
-IERC721MetadataUpgradeable, [IOrb](/src/IOrb.sol/interface.IOrb.md), ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
+IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeable, [UUPSUpgradeable](/src/CustomUUPSUpgradeable.sol/abstract.UUPSUpgradeable.md)
 
 **Authors:**
 Jonas Lekevicius, Eric Wall
@@ -380,6 +380,7 @@ This token represents the Orb and is called the Orb elsewhere in the contract.
 ```solidity
 function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
     public
+    virtual
     initializer;
 ```
 **Parameters**
@@ -1199,5 +1200,294 @@ calldata stored on the Orb Pond contract.
 
 ```solidity
 function upgradeToNextVersion() external virtual onlyProxy;
+```
+
+## Events
+### Creation
+
+```solidity
+event Creation();
+```
+
+### AuctionStart
+
+```solidity
+event AuctionStart(
+    uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, address indexed auctionBeneficiary
+);
+```
+
+### AuctionBid
+
+```solidity
+event AuctionBid(address indexed bidder, uint256 indexed bid);
+```
+
+### AuctionExtension
+
+```solidity
+event AuctionExtension(uint256 indexed newAuctionEndTime);
+```
+
+### AuctionFinalization
+
+```solidity
+event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
+```
+
+### Deposit
+
+```solidity
+event Deposit(address indexed depositor, uint256 indexed amount);
+```
+
+### Withdrawal
+
+```solidity
+event Withdrawal(address indexed recipient, uint256 indexed amount);
+```
+
+### Settlement
+
+```solidity
+event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
+```
+
+### PriceUpdate
+
+```solidity
+event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
+```
+
+### Purchase
+
+```solidity
+event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
+```
+
+### Foreclosure
+
+```solidity
+event Foreclosure(address indexed formerKeeper);
+```
+
+### Relinquishment
+
+```solidity
+event Relinquishment(address indexed formerKeeper);
+```
+
+### OathSwearing
+
+```solidity
+event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
+```
+
+### HonoredUntilUpdate
+
+```solidity
+event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 indexed newHonoredUntil);
+```
+
+### AuctionParametersUpdate
+
+```solidity
+event AuctionParametersUpdate(
+    uint256 previousStartingPrice,
+    uint256 indexed newStartingPrice,
+    uint256 previousMinimumBidStep,
+    uint256 indexed newMinimumBidStep,
+    uint256 previousMinimumDuration,
+    uint256 indexed newMinimumDuration,
+    uint256 previousKeeperMinimumDuration,
+    uint256 newKeeperMinimumDuration,
+    uint256 previousBidExtension,
+    uint256 newBidExtension
+);
+```
+
+### FeesUpdate
+
+```solidity
+event FeesUpdate(
+    uint256 previousKeeperTaxNumerator,
+    uint256 indexed newKeeperTaxNumerator,
+    uint256 previousRoyaltyNumerator,
+    uint256 indexed newRoyaltyNumerator
+);
+```
+
+### CooldownUpdate
+
+```solidity
+event CooldownUpdate(
+    uint256 previousCooldown,
+    uint256 indexed newCooldown,
+    uint256 previousFlaggingPeriod,
+    uint256 indexed newFlaggingPeriod
+);
+```
+
+### CleartextMaximumLengthUpdate
+
+```solidity
+event CleartextMaximumLengthUpdate(uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength);
+```
+
+### UpgradeRequest
+
+```solidity
+event UpgradeRequest(address indexed requestedImplementation);
+```
+
+## Errors
+### NotSupported
+
+```solidity
+error NotSupported();
+```
+
+### NotPermitted
+
+```solidity
+error NotPermitted();
+```
+
+### AlreadyKeeper
+
+```solidity
+error AlreadyKeeper();
+```
+
+### NotKeeper
+
+```solidity
+error NotKeeper();
+```
+
+### ContractHoldsOrb
+
+```solidity
+error ContractHoldsOrb();
+```
+
+### ContractDoesNotHoldOrb
+
+```solidity
+error ContractDoesNotHoldOrb();
+```
+
+### CreatorDoesNotControlOrb
+
+```solidity
+error CreatorDoesNotControlOrb();
+```
+
+### AuctionNotRunning
+
+```solidity
+error AuctionNotRunning();
+```
+
+### AuctionRunning
+
+```solidity
+error AuctionRunning();
+```
+
+### AuctionNotStarted
+
+```solidity
+error AuctionNotStarted();
+```
+
+### NotPermittedForLeadingBidder
+
+```solidity
+error NotPermittedForLeadingBidder();
+```
+
+### InsufficientBid
+
+```solidity
+error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
+```
+
+### KeeperSolvent
+
+```solidity
+error KeeperSolvent();
+```
+
+### KeeperInsolvent
+
+```solidity
+error KeeperInsolvent();
+```
+
+### InsufficientFunds
+
+```solidity
+error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
+```
+
+### CurrentValueIncorrect
+
+```solidity
+error CurrentValueIncorrect(uint256 valueProvided, uint256 currentValue);
+```
+
+### PurchasingNotPermitted
+
+```solidity
+error PurchasingNotPermitted();
+```
+
+### InvalidNewPrice
+
+```solidity
+error InvalidNewPrice(uint256 priceProvided);
+```
+
+### HonoredUntilNotDecreasable
+
+```solidity
+error HonoredUntilNotDecreasable();
+```
+
+### InvalidAuctionDuration
+
+```solidity
+error InvalidAuctionDuration(uint256 auctionDuration);
+```
+
+### RoyaltyNumeratorExceedsDenominator
+
+```solidity
+error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
+```
+
+### CooldownExceedsMaximumDuration
+
+```solidity
+error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDuration);
+```
+
+### InvalidCleartextMaximumLength
+
+```solidity
+error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
+```
+
+### NoUpgradeRequested
+
+```solidity
+error NoUpgradeRequested();
+```
+
+### NotNextVersion
+
+```solidity
+error NotNextVersion();
 ```
 
