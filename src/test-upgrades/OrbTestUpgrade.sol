@@ -35,7 +35,7 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity 0.8.20;
 
-import {Orb} from "../Orb.sol";
+import {OrbV2} from "../OrbV2.sol";
 
 /// @title   Orb Test Upgrade - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
@@ -56,7 +56,7 @@ import {Orb} from "../Orb.sol";
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
 ///          Test Upgrade adds a new storage variable `number`, settable with `setNumber`, changes Orb name and symbol,
 ///          and allows the Creator to set the cleartext maximum length to zero. FOR TESTING ONLY!
-contract OrbTestUpgrade is Orb {
+contract OrbTestUpgrade is OrbV2 {
     /// Orb version.
     uint256 private constant _VERSION = 100;
 
@@ -72,21 +72,6 @@ contract OrbTestUpgrade is Orb {
 
         // Set the new number to 69!
         number = 69;
-    }
-
-    /// @notice  Allows the Orb creator to set the new cleartext maximum length. This function can only be called by
-    ///          the Orb creator when the Orb is in their control.
-    /// @dev     Emits `CleartextMaximumLengthUpdate`.
-    /// @param   newCleartextMaximumLength  New cleartext maximum length. Can be 0 (FOR TESTING!).
-    function setCleartextMaximumLength(uint256 newCleartextMaximumLength)
-        external
-        override
-        onlyOwner
-        onlyCreatorControlled
-    {
-        uint256 previousCleartextMaximumLength = cleartextMaximumLength;
-        cleartextMaximumLength = newCleartextMaximumLength;
-        emit CleartextMaximumLengthUpdate(previousCleartextMaximumLength, newCleartextMaximumLength);
     }
 
     /// @notice  Allows anyone to record a number!
