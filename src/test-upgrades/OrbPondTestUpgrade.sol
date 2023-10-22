@@ -7,7 +7,7 @@ import {ClonesUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/co
 import {PaymentSplitter} from "../CustomPaymentSplitter.sol";
 import {IOwnershipTransferrable} from "../IOwnershipTransferrable.sol";
 import {Orb} from "../Orb.sol";
-import {OrbPond} from "../OrbPond.sol";
+import {OrbPondV2} from "../OrbPondV2.sol";
 
 /// @title   Orb Pond - The Orb Factory
 /// @author  Jonas Lekevicius
@@ -18,7 +18,7 @@ import {OrbPond} from "../OrbPond.sol";
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.
 ///          Test Upgrade allows anyone to create orbs, not just the owner, automatically splitting proceeds between the
 ///          creator and the Orb Land wallet.
-contract OrbPondTestUpgrade is OrbPond {
+contract OrbPondTestUpgrade is OrbPondV2 {
     /// Orb Pond version.
     uint256 private constant _VERSION = 100;
 

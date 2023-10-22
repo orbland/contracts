@@ -24,16 +24,28 @@ describe("Orb Pond Upgrade", function () {
         expect(await orbPond.version()).to.equal(1n)
         expect(await orbPond.owner()).to.equal(owner.address)
 
-        const OrbPondTestUpgrade = await ethers.getContractFactory("OrbPondTestUpgrade")
-        const orbPondUpgraded = await upgrades.upgradeProxy(orbPondAddress, OrbPondTestUpgrade, {
+        const OrbPondV2 = await ethers.getContractFactory("OrbPondV2")
+        const orbPondUpgradedV2 = await upgrades.upgradeProxy(orbPondAddress, OrbPondV2, {
             kind: "uups",
         })
         // console.log("Orb Pond upgraded")
-        await orbPondUpgraded.waitForDeployment()
+        await orbPondUpgradedV2.waitForDeployment()
 
-        const orbAddressUpgraded = await orbPondUpgraded.getAddress()
+        const orbAddressUpgradedV2 = await orbPondUpgradedV2.getAddress()
         // console.log("Upgraded Pond address:", orbAddressUpgraded)
-        expect(orbAddressUpgraded).to.equal(orbPondAddress)
+        expect(orbAddressUpgradedV2).to.equal(orbPondAddress)
+        expect(await orbPond.version()).to.equal(2n)
+
+        const OrbPondTestUpgrade = await ethers.getContractFactory("OrbPondTestUpgrade")
+        const orbPondUpgradedTest = await upgrades.upgradeProxy(orbPondAddress, OrbPondTestUpgrade, {
+            kind: "uups",
+        })
+        // console.log("Orb Pond upgraded")
+        await orbPondUpgradedTest.waitForDeployment()
+
+        const orbAddressUpgradedTest = await orbPondUpgradedTest.getAddress()
+        // console.log("Upgraded Pond address:", orbAddressUpgraded)
+        expect(orbAddressUpgradedTest).to.equal(orbPondAddress)
         expect(await orbPond.version()).to.equal(100n)
     })
 })
@@ -222,6 +234,23 @@ describe("Orb Upgrade", function () {
         })
         expect(await orb.keeper()).to.equal(keeper.address)
 
+        const OrbV2 = await ethers.getContractFactory("OrbV2")
+        const orbV2Implementation = await upgrades.deployImplementation(OrbV2, {
+            unsafeAllow: ["delegatecall"],
+        })
+        if (typeof orbV2Implementation !== "string") {
+            throw new Error("Orb V2 implementation is not a string")
+        }
+        await orbPond.registerVersion(2, orbV2Implementation, OrbV2.interface.encodeFunctionData("initializeV2"))
+
+        await orbAsCreator.requestUpgrade(orbV2Implementation)
+        expect(await orb.requestedUpgradeImplementation()).to.equal(orbV2Implementation)
+
+        await orbAsKeeper.upgradeToNextVersion()
+        const orbV2 = await ethers.getContractAt("OrbV2", firstOrbAddress)
+        expect(await orbV2.auctionRoyaltyNumerator()).to.equal(10_00n)
+        expect(await orb.version()).to.equal(2n)
+
         const OrbTestUpgrade = await ethers.getContractFactory("OrbTestUpgrade")
         const orbTestUpgradeImplementation = await upgrades.deployImplementation(OrbTestUpgrade, {
             unsafeAllow: ["delegatecall"],
@@ -230,7 +259,7 @@ describe("Orb Upgrade", function () {
             throw new Error("Orb implementation is not a string")
         }
         await orbPond.registerVersion(
-            2,
+            3,
             orbTestUpgradeImplementation,
             OrbTestUpgrade.interface.encodeFunctionData("initializeTestUpgrade", ["Whorb", "WHORB"])
         )
