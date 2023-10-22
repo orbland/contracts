@@ -110,7 +110,8 @@ contract LocalDeploy is Script {
         );
         orbPond = OrbPondV2(address(orbPondProxy));
         console.log("OrbPond (V2): ", address(orbPond));
-        orbPond.registerVersion(2, address(orbV2Implementation), orbPondV1InitializeCalldata);
+        bytes memory orbPondV2InitializeCalldata = abi.encodeWithSelector(OrbV2.initializeV2.selector);
+        orbPond.registerVersion(2, address(orbV2Implementation), orbPondV2InitializeCalldata);
         orbPond.setOrbInitialVersion(2);
 
         address[] memory beneficiaryAddresses = new address[](2);
