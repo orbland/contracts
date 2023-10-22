@@ -35,7 +35,10 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity 0.8.20;
 
+import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
+
 import {Orb} from "./Orb.sol";
+import {OrbPondV2} from "./OrbPondV2.sol";
 
 /// @title   Orb v2 - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
@@ -79,12 +82,16 @@ contract OrbV2 is Orb {
         uint256 previousCleartextMaximumLength,
         uint256 newCleartextMaximumLength
     );
+    event BeneficiaryWithdrawalAddressUpdate(
+        address previousBeneficiaryWithdrawalAddress, address indexed newBeneficiaryWithdrawalAddress
+    );
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     error NotHonored();
+    error AddressNotPermitted(address unauthorizedAddress);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -100,6 +107,9 @@ contract OrbV2 is Orb {
     /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
     uint256 public auctionRoyaltyNumerator;
 
+    /// Address to withdraw beneficiary funds. If zero address, `beneficiary` is used. Can be set by Creator at any
+    /// point using `setBeneficiaryWithdrawalAddress()`.
+    address public beneficiaryWithdrawalAddress;
 
     /// Gap used to prevent storage collisions.
     uint256[100] private __gap;
@@ -262,6 +272,27 @@ contract OrbV2 is Orb {
     /// @dev  Previous `setCleartextMaximumLength()` overriden to revert.
     function setCleartextMaximumLength(uint256) external pure override {
         revert NotSupported();
+    }
+
+    /// @notice  Allows the Orb creator to set the new beneficiary withdrawal address, which can be different from
+    ///          `beneficiary`, allowing Payment Splitter to be changed to a new version. Only addresses authorized on
+    ///          the OrbPond (or the zero address, to reset to `beneficiary` value) can be set as the new withdrawal
+    ///          address. This function can only be called anytime by the Orb Creator.
+    /// @dev     Emits `BeneficiaryWithdrawalAddressUpdate`.
+    /// @param   newBeneficiaryWithdrawalAddress  New beneficiary withdrawal address.
+    function setBeneficiaryWithdrawalAddress(address newBeneficiaryWithdrawalAddress) external virtual onlyOwner {
+        if (
+            newBeneficiaryWithdrawalAddress == address(0)
+                || OrbPondV2(pond).beneficiaryWithdrawalAddressPermitted(newBeneficiaryWithdrawalAddress)
+        ) {
+            address previousBeneficiaryWithdrawalAddress = beneficiaryWithdrawalAddress;
+            beneficiaryWithdrawalAddress = newBeneficiaryWithdrawalAddress;
+            emit BeneficiaryWithdrawalAddressUpdate(
+                previousBeneficiaryWithdrawalAddress, newBeneficiaryWithdrawalAddress
+            );
+        } else {
+            revert AddressNotPermitted(newBeneficiaryWithdrawalAddress);
+        }
     }
 
     /// @notice  Allow the Orb creator to start the Orb auction. Will run for at least `auctionMinimumDuration`.
