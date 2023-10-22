@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
 
-import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "../src/IOrb.sol";
-import {OrbTestUpgrade} from "../src/test-upgrades/OrbTestUpgrade.sol";
+import {OrbTestBase} from "./OrbV1.t.sol";
+import {Orb} from "../../src/Orb.sol";
+import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract RequestUpgradeTest is OrbTestBase {
@@ -13,7 +13,7 @@ contract RequestUpgradeTest is OrbTestBase {
 
     function test_revertWhenNotNextVersion() public {
         assertEq(orb.requestedUpgradeImplementation(), address(0));
-        vm.expectRevert(IOrb.NotNextVersion.selector);
+        vm.expectRevert(Orb.NotNextVersion.selector);
         vm.prank(owner);
         orb.requestUpgrade(address(orbTestUpgradeImplementation));
         assertEq(orb.requestedUpgradeImplementation(), address(0));
@@ -24,7 +24,7 @@ contract RequestUpgradeTest is OrbTestBase {
             abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
 
-        vm.expectRevert(IOrb.NotNextVersion.selector);
+        vm.expectRevert(Orb.NotNextVersion.selector);
         vm.prank(owner);
         orb.requestUpgrade(address(0xCAFEBABE));
         assertEq(orb.requestedUpgradeImplementation(), address(0));
@@ -84,7 +84,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         assertEq(orb.requestedUpgradeImplementation(), address(0));
         vm.prank(user);
-        vm.expectRevert(IOrb.NoUpgradeRequested.selector);
+        vm.expectRevert(Orb.NoUpgradeRequested.selector);
         orb.upgradeToNextVersion();
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
     }
@@ -100,7 +100,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         orb.requestUpgrade(address(orbTestUpgradeImplementation));
 
         assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
-        vm.expectRevert(IOrb.NotPermitted.selector);
+        vm.expectRevert(Orb.NotPermitted.selector);
         vm.prank(user2);
         orb.upgradeToNextVersion();
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
@@ -122,7 +122,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
 
         vm.warp(block.timestamp + 10000 days);
-        vm.expectRevert(IOrb.NotPermitted.selector);
+        vm.expectRevert(Orb.NotPermitted.selector);
         vm.prank(user);
         orb.upgradeToNextVersion();
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
@@ -143,7 +143,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         orb.requestUpgrade(address(orbTestUpgradeImplementation));
         assertEq(orb.keeper(), address(orb));
 
-        vm.expectRevert(IOrb.NotPermitted.selector);
+        vm.expectRevert(Orb.NotPermitted.selector);
         vm.prank(user);
         orb.upgradeToNextVersion();
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
@@ -165,7 +165,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         vm.prank(owner);
         orb.requestUpgrade(address(orbTestUpgradeImplementation));
 
-        vm.expectRevert(IOrb.NotPermitted.selector);
+        vm.expectRevert(Orb.NotPermitted.selector);
         vm.prank(owner);
         orb.upgradeToNextVersion();
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
@@ -194,7 +194,7 @@ contract CompleteUpgradeTest is OrbTestBase {
             abi.encodeWithSelector(OrbTestUpgrade.initializeTestUpgrade.selector, "Whorb", "WHORB")
         );
 
-        vm.expectRevert(IOrb.NotNextVersion.selector);
+        vm.expectRevert(Orb.NotNextVersion.selector);
         vm.prank(owner);
         orb.upgradeToNextVersion();
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
@@ -220,7 +220,7 @@ contract CompleteUpgradeTest is OrbTestBase {
         assertEq(OrbTestUpgrade(address(orb)).name(), "Orb");
         assertEq(OrbTestUpgrade(address(orb)).symbol(), "ORB");
         // Note: needs to be updated with every new base version
-        assertEq(OrbTestUpgrade(address(orb)).version(), 2);
+        assertEq(OrbTestUpgrade(address(orb)).version(), 1);
         assertEq(orb.requestedUpgradeImplementation(), address(orbTestUpgradeImplementation));
 
         bytes4 numberSelector = bytes4(keccak256("number()"));

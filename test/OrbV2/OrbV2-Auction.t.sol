@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
 
-import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "../src/IOrb.sol";
+import {OrbTestBase} from "./OrbV2.t.sol";
+import {Orb} from "../../src/Orb.sol";
+import {OrbV2} from "../../src/OrbV2.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract MinimumBidTest is OrbTestBase {
@@ -22,6 +23,11 @@ contract StartAuctionTest is OrbTestBase {
         vm.prank(address(0xBEEF));
         vm.expectRevert("Ownable: caller is not the owner");
         orb.startAuction();
+    }
+
+    function test_revertsIfOathNotSworn() public {
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 0);
+        vm.expectRevert(OrbV2.NotHonored.selector);
         orb.startAuction();
     }
 
@@ -40,7 +46,7 @@ contract StartAuctionTest is OrbTestBase {
 
     function test_startAuctionOnlyContractHeld() public {
         orb.workaround_setOrbKeeper(address(0xBEEF));
-        vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
+        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
         orb.startAuction();
         orb.workaround_setOrbKeeper(address(orb));
         vm.expectEmit(true, true, true, true);
@@ -56,7 +62,7 @@ contract StartAuctionTest is OrbTestBase {
         assertGt(orb.auctionEndTime(), 0);
         vm.warp(orb.auctionEndTime());
 
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.startAuction();
     }
 }
@@ -65,7 +71,7 @@ contract BidTest is OrbTestBase {
     function test_bidOnlyDuringAuction() public {
         uint256 bidAmount = 0.6 ether;
         vm.deal(user, bidAmount);
-        vm.expectRevert(IOrb.AuctionNotRunning.selector);
+        vm.expectRevert(Orb.AuctionNotRunning.selector);
         vm.prank(user);
         orb.bid{value: bidAmount}(bidAmount, bidAmount);
         orb.startAuction();
@@ -87,7 +93,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.workaround_minimumBid();
         vm.deal(beneficiary, amount);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.NotPermitted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Orb.NotPermitted.selector));
         vm.prank(beneficiary);
         orb.bid{value: amount}(amount, amount);
 
@@ -100,7 +106,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         // minimum bid will be the STARTING_PRICE
         uint256 amount = orb.workaround_minimumBid() - 1;
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientBid.selector, amount, orb.workaround_minimumBid()));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientBid.selector, amount, orb.workaround_minimumBid()));
         vm.prank(user);
         orb.bid{value: amount}(amount, amount);
 
@@ -113,7 +119,7 @@ contract BidTest is OrbTestBase {
 
         // minimum bid will be the leading bid + MINIMUM_BID_STEP
         amount = orb.workaround_minimumBid() - 1;
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientBid.selector, amount, orb.workaround_minimumBid()));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientBid.selector, amount, orb.workaround_minimumBid()));
         vm.prank(user);
         orb.bid{value: amount}(amount, amount);
     }
@@ -122,7 +128,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.workaround_minimumBid();
         uint256 funds = amount - 1;
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, funds, funds + 1));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, funds, funds + 1));
         vm.prank(user);
         orb.bid{value: funds}(amount, amount);
 
@@ -137,7 +143,7 @@ contract BidTest is OrbTestBase {
         orb.startAuction();
         uint256 amount = orb.workaround_minimumBid();
         uint256 price = orb.workaround_maximumPrice() + 1;
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidNewPrice.selector, price));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidNewPrice.selector, price));
         vm.prank(user);
         orb.bid{value: amount}(amount, price);
 
@@ -237,7 +243,7 @@ contract FinalizeAuctionTest is OrbTestBase {
 
     function test_finalizeAuctionRevertsDuringAuction() public {
         orb.startAuction();
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.finalizeAuction();
 
         vm.warp(orb.auctionEndTime() + 1);
@@ -247,12 +253,12 @@ contract FinalizeAuctionTest is OrbTestBase {
     }
 
     function test_finalizeAuctionRevertsIfAuctionNotStarted() public {
-        vm.expectRevert(IOrb.AuctionNotStarted.selector);
+        vm.expectRevert(Orb.AuctionNotStarted.selector);
         orb.finalizeAuction();
         orb.startAuction();
         // auctionEndTime != 0
         assertEq(orb.auctionEndTime(), block.timestamp + orb.auctionMinimumDuration());
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.finalizeAuction();
     }
 
@@ -330,7 +336,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(user2), funds);
         assertEq(orb.fundsOf(address(orb)), 0);
 
-        uint256 beneficiaryRoyalty = (amount * orb.royaltyNumerator()) / orb.feeDenominator();
+        uint256 beneficiaryRoyalty = (amount * orb.auctionRoyaltyNumerator()) / orb.feeDenominator();
         uint256 auctionBeneficiaryShare = amount - beneficiaryRoyalty;
         uint256 userFunds = orb.fundsOf(user);
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
@@ -361,7 +367,7 @@ contract FinalizeAuctionTest is OrbTestBase {
     }
 
     function test_finalizeAuctionWithBeneficiaryLowRoyalties() public {
-        orb.setFees(100_00, 0);
+        orb.setFees(100_00, 100_00, 0);
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         orb.relinquish(true);
@@ -371,7 +377,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         vm.warp(orb.auctionEndTime() + 1);
         uint256 minBeneficiaryNumerator =
             orb.keeperTaxNumerator() * orb.auctionKeeperMinimumDuration() / orb.keeperTaxPeriod();
-        assertTrue(minBeneficiaryNumerator > orb.royaltyNumerator());
+        assertTrue(minBeneficiaryNumerator > orb.auctionRoyaltyNumerator());
         uint256 minBeneficiaryRoyalty = (amount * minBeneficiaryNumerator) / orb.feeDenominator();
         uint256 auctionBeneficiaryShare = amount - minBeneficiaryRoyalty;
         uint256 userFunds = orb.fundsOf(user);
@@ -406,26 +412,32 @@ contract FinalizeAuctionTest is OrbTestBase {
 }
 
 contract ListingTest is OrbTestBase {
+    function test_revertsIfOathNotSworn() public {
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 0);
+        vm.expectRevert(OrbV2.NotHonored.selector);
+        orb.listWithPrice(1 ether);
+    }
+
     function test_revertsIfHeldByUser() public {
         makeKeeperAndWarp(user, 1 ether);
-        vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
+        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
         orb.listWithPrice(1 ether);
     }
 
     function test_revertsIfAlreadyHeldByCreator() public {
         makeKeeperAndWarp(owner, 1 ether);
-        vm.expectRevert(IOrb.ContractDoesNotHoldOrb.selector);
+        vm.expectRevert(Orb.ContractDoesNotHoldOrb.selector);
         orb.listWithPrice(1 ether);
     }
 
     function test_revertsIfAuctionStarted() public {
         orb.startAuction();
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.listWithPrice(1 ether);
 
         vm.warp(orb.auctionEndTime() + 1);
         assertFalse(orb.workaround_auctionRunning());
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.listWithPrice(1 ether);
     }
 

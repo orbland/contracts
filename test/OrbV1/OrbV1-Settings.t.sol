@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
 
-import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "../src/IOrb.sol";
+import {OrbTestBase} from "./OrbV1.t.sol";
+import {Orb} from "../../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract SwearOathTest is OrbTestBase {
@@ -19,7 +19,7 @@ contract SwearOathTest is OrbTestBase {
         orb.startAuction();
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
 
         prankAndBid(user, 1 ether);
@@ -28,7 +28,7 @@ contract SwearOathTest is OrbTestBase {
         vm.warp(block.timestamp + 30 days);
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
     }
 
@@ -59,7 +59,7 @@ contract ExtendHonoredUntilTest is OrbTestBase {
     function test_extendHonoredUntilNotDecrease() public {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(owner);
-        vm.expectRevert(IOrb.HonoredUntilNotDecreasable.selector);
+        vm.expectRevert(Orb.HonoredUntilNotDecreasable.selector);
         orb.extendHonoredUntil(99);
     }
 
@@ -109,7 +109,7 @@ contract SettingAuctionParametersTest is OrbTestBase {
         orb.startAuction();
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
 
         prankAndBid(user, 1 ether);
@@ -118,13 +118,13 @@ contract SettingAuctionParametersTest is OrbTestBase {
         vm.warp(block.timestamp + 30 days);
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
     }
 
     function test_revertIfAuctionDurationZero() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidAuctionDuration.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidAuctionDuration.selector, 0));
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 0, 1 days, 10 minutes);
     }
 
@@ -184,7 +184,7 @@ contract SettingFeesTest is OrbTestBase {
         orb.startAuction();
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.setFees(100_00, 100_00);
 
         prankAndBid(user, 1 ether);
@@ -193,7 +193,7 @@ contract SettingFeesTest is OrbTestBase {
         vm.warp(block.timestamp + 30 days);
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
         orb.setFees(100_00, 100_00);
     }
 
@@ -201,7 +201,7 @@ contract SettingFeesTest is OrbTestBase {
         uint256 largeNumerator = orb.feeDenominator() + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                IOrb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.feeDenominator()
+                Orb.RoyaltyNumeratorExceedsDenominator.selector, largeNumerator, orb.feeDenominator()
             )
         );
         vm.prank(owner);
@@ -243,7 +243,7 @@ contract SettingCooldownTest is OrbTestBase {
         orb.startAuction();
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.setCooldown(1 days, 2 days);
 
         prankAndBid(user, 1 ether);
@@ -252,13 +252,13 @@ contract SettingCooldownTest is OrbTestBase {
         vm.warp(block.timestamp + 30 days);
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
         orb.setCooldown(1 days, 2 days);
     }
 
     function test_revertsWhenCooldownTooLong() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CooldownExceedsMaximumDuration.selector, 3651 days, 3650 days));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CooldownExceedsMaximumDuration.selector, 3651 days, 3650 days));
         orb.setCooldown(3651 days, 2 days);
     }
 
@@ -288,7 +288,7 @@ contract SettingCleartextMaximumLengthTest is OrbTestBase {
         orb.startAuction();
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.AuctionRunning.selector);
+        vm.expectRevert(Orb.AuctionRunning.selector);
         orb.setCleartextMaximumLength(1);
 
         prankAndBid(user, 1 ether);
@@ -297,13 +297,13 @@ contract SettingCleartextMaximumLengthTest is OrbTestBase {
         vm.warp(block.timestamp + 30 days);
 
         vm.prank(owner);
-        vm.expectRevert(IOrb.CreatorDoesNotControlOrb.selector);
+        vm.expectRevert(Orb.CreatorDoesNotControlOrb.selector);
         orb.setCleartextMaximumLength(1);
     }
 
     function test_revertIfCleartextMaximumLengthZero() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidCleartextMaximumLength.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidCleartextMaximumLength.selector, 0));
         orb.setCleartextMaximumLength(0);
     }
 

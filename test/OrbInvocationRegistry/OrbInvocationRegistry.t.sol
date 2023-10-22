@@ -2,17 +2,17 @@
 pragma solidity 0.8.20;
 
 /* solhint-disable no-console */
-import {console} from "../lib/forge-std/src/console.sol";
-import {Test} from "../lib/forge-std/src/Test.sol";
-import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
+import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
-import {OrbPond} from "../src/OrbPond.sol";
-import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
-import {OrbInvocationRegistryTestUpgrade} from "../src/test-upgrades/OrbInvocationRegistryTestUpgrade.sol";
-import {Orb} from "../src/Orb.sol";
-import {IOrb} from "../src/IOrb.sol";
-import {IOrbInvocationRegistry} from "../src/IOrbInvocationRegistry.sol";
+import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {OrbPond} from "../../src/OrbPond.sol";
+import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistryTestUpgrade} from "../../src/test-upgrades/OrbInvocationRegistryTestUpgrade.sol";
+import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/Orb.sol";
+import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
 import {ExternalCallee} from "./ExternalCallee.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
@@ -135,9 +135,9 @@ contract InitialStateTest is OrbInvocationRegistryTestBase {
 contract SupportsInterfaceTest is OrbInvocationRegistryTestBase {
     // Test that the initial state is correct
     function test_supportsInterface() public view {
-        // console.logBytes4(type(IOrbInvocationRegistry).interfaceId);
+        // console.logBytes4(type(OrbInvocationRegistry).interfaceId);
         assert(orbInvocationRegistry.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
-        assert(orbInvocationRegistry.supportsInterface(0x767dfef3)); // ERC165 Interface ID for IOrbInvocationRegistry
+        assert(orbInvocationRegistry.supportsInterface(0x767dfef3)); // ERC165 Interface ID for OrbInvocationRegistry
     }
 }
 
@@ -155,7 +155,7 @@ contract InvokeWithCleartextTest is OrbInvocationRegistryTestBase {
         vm.prank(creator);
         string memory text = "this text does not need to be very long to be too long";
         uint256 length = bytes(text).length;
-        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.CleartextTooLong.selector, length, 20));
+        vm.expectRevert(abi.encodeWithSelector(OrbInvocationRegistry.CleartextTooLong.selector, length, 20));
         orbInvocationRegistry.invokeWithCleartext(address(orb), text);
     }
 
@@ -185,7 +185,7 @@ contract InvokeWithCleartextAndCallTest is OrbInvocationRegistryTestBase {
     function test_revertsIfContractUnauthorized() public {
         externalCallee = new ExternalCallee();
         vm.expectRevert(
-            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+            abi.encodeWithSelector(OrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
         );
         vm.prank(user);
         orbInvocationRegistry.invokeWithCleartextAndCall(
@@ -218,7 +218,7 @@ contract InvokeWithCleartextAndCallTest is OrbInvocationRegistryTestBase {
             address(orb),
             "hi three",
             address(externalCallee),
-            abi.encodeWithSelector(IOrbInvocationRegistry.version.selector)
+            abi.encodeWithSelector(OrbInvocationRegistry.version.selector)
         );
     }
 
@@ -253,7 +253,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
     function test_revertWhen_NotKeeper() public {
         bytes32 hash = keccak256(abi.encodePacked("hi there"));
         vm.prank(user2);
-        vm.expectRevert(IOrbInvocationRegistry.NotKeeper.selector);
+        vm.expectRevert(OrbInvocationRegistry.NotKeeper.selector);
         orbInvocationRegistry.invokeWithHash(address(orb), hash);
 
         vm.expectEmit(true, true, true, true);
@@ -266,7 +266,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
         bytes32 hash = keccak256(abi.encodePacked("hi there"));
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(IOrbInvocationRegistry.KeeperInsolvent.selector);
+        vm.expectRevert(OrbInvocationRegistry.KeeperInsolvent.selector);
         orbInvocationRegistry.invokeWithHash(address(orb), hash);
     }
 
@@ -282,7 +282,7 @@ contract InvokeWthHashTest is OrbInvocationRegistryTestBase {
         vm.warp(block.timestamp + 1 days);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IOrbInvocationRegistry.CooldownIncomplete.selector,
+                OrbInvocationRegistry.CooldownIncomplete.selector,
                 block.timestamp - 1 days + orb.cooldown() - block.timestamp
             )
         );
@@ -331,7 +331,7 @@ contract InvokeWithHashAndCallTest is OrbInvocationRegistryTestBase {
     function test_revertsIfContractUnauthorized() public {
         externalCallee = new ExternalCallee();
         vm.expectRevert(
-            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+            abi.encodeWithSelector(OrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
         );
         vm.prank(user);
         orbInvocationRegistry.invokeWithHashAndCall(
@@ -364,7 +364,7 @@ contract InvokeWithHashAndCallTest is OrbInvocationRegistryTestBase {
             address(orb),
             keccak256(abi.encodePacked("hi there")),
             address(externalCallee),
-            abi.encodeWithSelector(IOrbInvocationRegistry.version.selector)
+            abi.encodeWithSelector(OrbInvocationRegistry.version.selector)
         );
     }
 
@@ -400,7 +400,7 @@ contract RespondTest is OrbInvocationRegistryTestBase {
         vm.startPrank(user);
         orbInvocationRegistry.invokeWithHash(address(orb), keccak256(bytes(cleartext)));
 
-        vm.expectRevert(IOrbInvocationRegistry.NotCreator.selector);
+        vm.expectRevert(OrbInvocationRegistry.NotCreator.selector);
         orbInvocationRegistry.respond(address(orb), 1, response);
         vm.stopPrank();
 
@@ -418,14 +418,14 @@ contract RespondTest is OrbInvocationRegistryTestBase {
         vm.stopPrank();
 
         vm.prank(creator);
-        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.InvocationNotFound.selector, address(orb), 2));
+        vm.expectRevert(abi.encodeWithSelector(OrbInvocationRegistry.InvocationNotFound.selector, address(orb), 2));
         orbInvocationRegistry.respond(address(orb), 2, response);
 
         vm.prank(creator);
         orbInvocationRegistry.respond(address(orb), 1, response);
 
         vm.prank(creator);
-        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.InvocationNotFound.selector, address(orb), 0));
+        vm.expectRevert(abi.encodeWithSelector(OrbInvocationRegistry.InvocationNotFound.selector, address(orb), 0));
         orbInvocationRegistry.respond(address(orb), 0, response);
     }
 
@@ -438,7 +438,7 @@ contract RespondTest is OrbInvocationRegistryTestBase {
 
         vm.startPrank(creator);
         orbInvocationRegistry.respond(address(orb), 1, response);
-        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.ResponseExists.selector, address(orb), 1));
+        vm.expectRevert(abi.encodeWithSelector(OrbInvocationRegistry.ResponseExists.selector, address(orb), 1));
         orbInvocationRegistry.respond(address(orb), 1, response);
     }
 
@@ -470,7 +470,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         vm.prank(creator);
         orbInvocationRegistry.respond(address(orb), 1, response);
         vm.prank(user2);
-        vm.expectRevert(IOrbInvocationRegistry.NotKeeper.selector);
+        vm.expectRevert(OrbInvocationRegistry.NotKeeper.selector);
         orbInvocationRegistry.flagResponse(address(orb), 1);
 
         vm.prank(user);
@@ -486,7 +486,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         orbInvocationRegistry.respond(address(orb), 1, response);
         vm.warp(block.timestamp + 13130000 days);
         vm.prank(user);
-        vm.expectRevert(IOrbInvocationRegistry.KeeperInsolvent.selector);
+        vm.expectRevert(OrbInvocationRegistry.KeeperInsolvent.selector);
         orbInvocationRegistry.flagResponse(address(orb), 1);
 
         vm.warp(block.timestamp - 13130000 days);
@@ -503,7 +503,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         orbInvocationRegistry.respond(address(orb), 1, response);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(IOrbInvocationRegistry.ResponseNotFound.selector, address(orb), 188));
+        vm.expectRevert(abi.encodeWithSelector(OrbInvocationRegistry.ResponseNotFound.selector, address(orb), 188));
         orbInvocationRegistry.flagResponse(address(orb), 188);
 
         orbInvocationRegistry.flagResponse(address(orb), 1);
@@ -521,7 +521,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         vm.startPrank(user);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IOrbInvocationRegistry.FlaggingPeriodExpired.selector, address(orb), 1, 100 days, orb.cooldown()
+                OrbInvocationRegistry.FlaggingPeriodExpired.selector, address(orb), 1, 100 days, orb.cooldown()
             )
         );
         orbInvocationRegistry.flagResponse(address(orb), 1);
@@ -543,7 +543,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
 
         // forge fmt is not very smart
         bytes memory revertData =
-            abi.encodeWithSelector(IOrbInvocationRegistry.ResponseAlreadyFlagged.selector, address(orb), 1);
+            abi.encodeWithSelector(OrbInvocationRegistry.ResponseAlreadyFlagged.selector, address(orb), 1);
         vm.expectRevert(revertData);
         orbInvocationRegistry.flagResponse(address(orb), 1);
     }
@@ -560,7 +560,7 @@ contract FlagResponseTest is OrbInvocationRegistryTestBase {
         orb.purchase{value: 3 ether}(2 ether, 1 ether, 10_00, 10_00, 7 days, 20);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IOrbInvocationRegistry.FlaggingPeriodExpired.selector,
+                OrbInvocationRegistry.FlaggingPeriodExpired.selector,
                 address(orb),
                 1,
                 orb.keeperReceiveTime(),
@@ -615,7 +615,7 @@ contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
         // (not work) auth (and works) deauth (and does not work anymore)
         ExternalCallee externalCallee = new ExternalCallee();
         vm.expectRevert(
-            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+            abi.encodeWithSelector(OrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
         );
         vm.prank(user);
         orbInvocationRegistry.invokeWithCleartextAndCall(
@@ -656,7 +656,7 @@ contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
         vm.warp(block.timestamp + orb.cooldown());
 
         vm.expectRevert(
-            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
+            abi.encodeWithSelector(OrbInvocationRegistry.ContractNotAuthorized.selector, address(externalCallee))
         );
         vm.prank(user);
         orbInvocationRegistry.invokeWithCleartextAndCall(

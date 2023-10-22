@@ -2,18 +2,19 @@
 pragma solidity 0.8.20;
 
 /* solhint-disable no-console */
-import {console} from "../lib/forge-std/src/console.sol";
-import {Test} from "../lib/forge-std/src/Test.sol";
-import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
+import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
-import {OrbHarness} from "./harness/OrbHarness.sol";
-import {OrbPond} from "../src/OrbPond.sol";
-import {OrbPondV2} from "../src/OrbPondV2.sol";
-import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
-import {Orb} from "../src/Orb.sol";
-import {OrbTestUpgrade} from "../src/test-upgrades/OrbTestUpgrade.sol";
-import {IOrb} from "../src/IOrb.sol";
+import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {OrbHarness} from "./OrbV2Harness.sol";
+import {OrbPond} from "../../src/OrbPond.sol";
+import {OrbPondV2} from "../../src/OrbPondV2.sol";
+import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/Orb.sol";
+import {OrbV2} from "../../src/OrbV2.sol";
+import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
+import {Orb} from "../../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbTestBase is Test {
@@ -43,13 +44,6 @@ contract OrbTestBase is Test {
     function setUp() public {
         user = address(0xBEEF);
         user2 = address(0xFEEEEEB);
-
-        address[] memory beneficiaryPayees = new address[](2);
-        uint256[] memory beneficiaryShares = new uint256[](2);
-        beneficiaryPayees[0] = address(0xC0FFEE);
-        beneficiaryPayees[1] = address(0xFACEB00C);
-        beneficiaryShares[0] = 95;
-        beneficiaryShares[1] = 5;
 
         startingBalance = 10_000 ether;
         vm.deal(user, startingBalance);
@@ -84,8 +78,16 @@ contract OrbTestBase is Test {
             address(orbPondV2Implementation), abi.encodeWithSelector(OrbPondV2.initializeV2.selector, 1)
         );
         orbPond = OrbPondV2(address(orbPondProxy));
-        orbPond.registerVersion(2, address(orbV2Implementation), orbInitializeCalldata);
+        bytes memory orbV2InitializeCalldata = abi.encodeWithSelector(OrbV2.initializeV2.selector);
+        orbPond.registerVersion(2, address(orbV2Implementation), orbV2InitializeCalldata);
         orbPond.setOrbInitialVersion(2);
+
+        address[] memory beneficiaryPayees = new address[](2);
+        uint256[] memory beneficiaryShares = new uint256[](2);
+        beneficiaryPayees[0] = address(0xC0FFEE);
+        beneficiaryPayees[1] = address(0xFACEB00C);
+        beneficiaryShares[0] = 95;
+        beneficiaryShares[1] = 5;
 
         vm.expectEmit(true, true, true, true);
         emit Creation();
@@ -96,8 +98,7 @@ contract OrbTestBase is Test {
 
         orb.swearOath(
             keccak256(abi.encodePacked("test oath")), // oathHash
-            100, // 1_700_000_000 // honoredUntil
-            3600 // responsePeriod
+            20_000_000 // honoredUntil
         );
         orb.setAuctionParameters(0.1 ether, 0.1 ether, 1 days, 6 hours, 5 minutes);
         owner = orb.owner();
@@ -156,8 +157,9 @@ contract InitialStateTest is OrbTestBase {
         assertFalse(orb.workaround_auctionRunning());
         assertEq(orb.pond(), address(orbPond));
         assertEq(orb.owner(), address(this));
-        assertEq(orb.honoredUntil(), 100); // 1_700_000_000
-        assertEq(orb.responsePeriod(), 3600);
+        assertEq(orb.beneficiary(), beneficiary);
+        assertEq(orb.beneficiaryWithdrawalAddress(), address(0));
+        assertEq(orb.honoredUntil(), 20_000_000);
 
         assertEq(PaymentSplitter(payable(orb.beneficiary())).totalShares(), 100);
         assertEq(PaymentSplitter(payable(orb.beneficiary())).totalReleased(), 0);
@@ -169,11 +171,12 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.workaround_tokenURI(), "https://static.orb.land/orb/");
 
-        assertEq(orb.cleartextMaximumLength(), 280);
+        assertEq(orb.cleartextMaximumLength(), 300);
 
         assertEq(orb.price(), 0);
-        assertEq(orb.keeperTaxNumerator(), 10_00);
+        assertEq(orb.keeperTaxNumerator(), 120_00);
         assertEq(orb.royaltyNumerator(), 10_00);
+        assertEq(orb.auctionRoyaltyNumerator(), 30_00);
         assertEq(orb.lastInvocationTime(), 0);
 
         assertEq(orb.auctionStartingPrice(), 0.1 ether);
@@ -181,6 +184,10 @@ contract InitialStateTest is OrbTestBase {
         assertEq(orb.auctionMinimumDuration(), 1 days);
         assertEq(orb.auctionKeeperMinimumDuration(), 6 hours);
         assertEq(orb.auctionBidExtension(), 5 minutes);
+
+        assertEq(orb.cooldown(), 7 days);
+        assertEq(orb.responsePeriod(), 7 days);
+        assertEq(orb.flaggingPeriod(), 7 days);
 
         assertEq(orb.auctionBeneficiary(), address(0));
         assertEq(orb.auctionEndTime(), 0);
@@ -219,7 +226,7 @@ contract InitialStateTest is OrbTestBase {
 contract SupportsInterfaceTest is OrbTestBase {
     // Test that the initial state is correct
     function test_supportsInterface() public view {
-        // console.logBytes4(type(IOrb).interfaceId);
+        // console.logBytes4(type(Orb).interfaceId);
         assert(orb.supportsInterface(0x01ffc9a7)); // ERC165 Interface ID for ERC165
         assert(orb.supportsInterface(0x80ac58cd)); // ERC165 Interface ID for ERC721
         assert(orb.supportsInterface(0x5b5e139f)); // ERC165 Interface ID for ERC721Metadata
@@ -250,24 +257,24 @@ contract ERC721Test is OrbTestBase {
     }
 
     function test_erc721FunctionsRevert() public {
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.approve(address(0), 1);
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.setApprovalForAll(address(0), true);
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.getApproved(0);
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.isApprovedForAll(address(0), owner);
     }
 
     function test_transfersRevert() public {
         address newOwner = address(0xBEEF);
         uint256 tokenId = 1;
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.transferFrom(address(this), newOwner, tokenId);
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, tokenId);
-        vm.expectRevert(IOrb.NotSupported.selector);
+        vm.expectRevert(Orb.NotSupported.selector);
         orb.safeTransferFrom(address(this), newOwner, tokenId, bytes(""));
     }
 }
@@ -275,7 +282,7 @@ contract ERC721Test is OrbTestBase {
 contract OrbInvocationRegistrySupportTest is OrbTestBase {
     function test_setLastInvocationTime() public {
         assertEq(orb.lastInvocationTime(), 0);
-        vm.expectRevert(IOrb.NotPermitted.selector);
+        vm.expectRevert(Orb.NotPermitted.selector);
         orb.setLastInvocationTime(42);
         assertEq(orb.lastInvocationTime(), 0);
 

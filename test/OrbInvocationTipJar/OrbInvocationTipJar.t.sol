@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
-import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
+import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {OrbInvocationTipJar} from "../src/OrbInvocationTipJar.sol";
-import {OrbInvocationTipJarTestUpgrade} from "../src/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
-import {OrbPond} from "../src/OrbPond.sol";
-import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
-import {IOrbInvocationRegistry} from "../src/IOrbInvocationRegistry.sol";
-import {Orb} from "../src/Orb.sol";
-import {IOrb} from "../src/IOrb.sol";
-import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
+import {OrbInvocationTipJar} from "../../src/OrbInvocationTipJar.sol";
+import {OrbInvocationTipJarTestUpgrade} from "../../src/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
+import {OrbPond} from "../../src/OrbPond.sol";
+import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/Orb.sol";
+import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
 
 /* solhint-disable const-name-snakecase,func-name-mixedcase */
 contract OrbTipJarBaseTest is Test {
@@ -97,8 +97,8 @@ contract OrbTipJarBaseTest is Test {
     }
 
     function _invoke(address orbAddress_, bytes32 invocationHash_) internal {
-        vm.prank(IOrb(orbAddress_).keeper());
-        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithHash(orbAddress_, invocationHash_);
+        vm.prank(Orb(orbAddress_).keeper());
+        OrbInvocationRegistry(orbInvocationRegistry).invokeWithHash(orbAddress_, invocationHash_);
     }
 }
 
@@ -423,10 +423,10 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
 
         // expect revert if not authorized
         vm.expectRevert(
-            abi.encodeWithSelector(IOrbInvocationRegistry.ContractNotAuthorized.selector, address(orbTipJar))
+            abi.encodeWithSelector(OrbInvocationRegistry.ContractNotAuthorized.selector, address(orbTipJar))
         );
         vm.prank(keeper);
-        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithHashAndCall(
+        OrbInvocationRegistry(orbInvocationRegistry).invokeWithHashAndCall(
             orbAddress, invocationHash, address(orbTipJar), claimCalldata
         );
 
@@ -448,7 +448,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         vm.expectEmit();
         emit TipsClaim(orbAddress, invocationHash, keeper, 0.95 ether);
         vm.prank(keeper);
-        IOrbInvocationRegistry(orbInvocationRegistry).invokeWithCleartextAndCall(
+        OrbInvocationRegistry(orbInvocationRegistry).invokeWithCleartextAndCall(
             orbAddress, invocation, address(orbTipJar), claimCalldata
         );
 
