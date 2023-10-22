@@ -134,9 +134,8 @@ contract LocalDeploy is Script {
             auctionKeeperMinimumDuration,
             auctionBidExtension
         );
-        orb.setFees(keeperTaxNumerator, royaltyNumerator);
-        orb.setCooldown(cooldown, flaggingPeriod);
-        orb.setCleartextMaximumLength(cleartextMaximumLength);
+        orb.setFees(keeperTaxNumerator, royaltyNumerator, royaltyNumerator);
+        orb.setInvocationParameters(cooldown, cooldown, flaggingPeriod, cleartextMaximumLength);
 
         orb.transferOwnership(creatorAddress);
         console.log("Orb ownership transferred to: ", creatorAddress);
