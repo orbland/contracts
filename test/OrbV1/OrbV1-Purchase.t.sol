@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
 
-import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "../src/IOrb.sol";
+import {OrbTestBase} from "./OrbV1.t.sol";
+import {Orb} from "../../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract SetPriceTest is OrbTestBase {
     function test_setPriceRevertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
         makeKeeperAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.NotKeeper.selector);
+        vm.expectRevert(Orb.NotKeeper.selector);
         vm.prank(user2);
         orb.setPrice(1 ether);
         assertEq(orb.price(), 10 ether);
@@ -26,7 +26,7 @@ contract SetPriceTest is OrbTestBase {
         makeKeeperAndWarp(user, leadingBid);
         vm.warp(block.timestamp + 600 days);
         vm.startPrank(user);
-        vm.expectRevert(IOrb.KeeperInsolvent.selector);
+        vm.expectRevert(Orb.KeeperInsolvent.selector);
         orb.setPrice(1 ether);
 
         // As the user can't deposit funds to become solvent again
@@ -52,7 +52,7 @@ contract SetPriceTest is OrbTestBase {
         uint256 leadingBid = 10 ether;
         makeKeeperAndWarp(user, leadingBid);
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InvalidNewPrice.selector, maxPrice + 1));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InvalidNewPrice.selector, maxPrice + 1));
         orb.setPrice(maxPrice + 1);
 
         vm.expectEmit(true, true, true, true);
@@ -64,7 +64,7 @@ contract SetPriceTest is OrbTestBase {
 contract PurchaseTest is OrbTestBase {
     function test_revertsIfHeldByContract() public {
         vm.prank(user);
-        vm.expectRevert(IOrb.ContractHoldsOrb.selector);
+        vm.expectRevert(Orb.ContractHoldsOrb.selector);
         orb.purchase(100, 0, 10_00, 10_00, 7 days, 280);
     }
 
@@ -72,7 +72,7 @@ contract PurchaseTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user2);
-        vm.expectRevert(IOrb.KeeperInsolvent.selector);
+        vm.expectRevert(Orb.KeeperInsolvent.selector);
         orb.purchase(100, 1 ether, 10_00, 10_00, 7 days, 280);
     }
 
@@ -89,7 +89,7 @@ contract PurchaseTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.deal(beneficiary, 1.1 ether);
         vm.prank(beneficiary);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.NotPermitted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Orb.NotPermitted.selector));
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
 
         // does not revert
@@ -102,7 +102,7 @@ contract PurchaseTest is OrbTestBase {
     function test_revertsIfWrongCurrentPrice() public {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentValueIncorrect.selector, 2 ether, 1 ether));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 2 ether, 1 ether));
         orb.purchase{value: 1.1 ether}(3 ether, 2 ether, 10_00, 10_00, 7 days, 280);
     }
 
@@ -110,19 +110,19 @@ contract PurchaseTest is OrbTestBase {
         orb.listWithPrice(1 ether);
 
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentValueIncorrect.selector, 20_00, 10_00));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 20_00, 10_00));
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 20_00, 10_00, 7 days, 280);
 
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentValueIncorrect.selector, 30_00, 10_00));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 30_00, 10_00));
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 30_00, 7 days, 280);
 
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentValueIncorrect.selector, 8 days, 7 days));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 8 days, 7 days));
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 8 days, 280);
 
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.CurrentValueIncorrect.selector, 140, 280));
+        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 140, 280));
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 7 days, 140);
 
         vm.prank(user);
@@ -131,14 +131,14 @@ contract PurchaseTest is OrbTestBase {
 
     function test_revertsIfIfAlreadyKeeper() public {
         makeKeeperAndWarp(user, 1 ether);
-        vm.expectRevert(IOrb.AlreadyKeeper.selector);
+        vm.expectRevert(Orb.AlreadyKeeper.selector);
         vm.prank(user);
         orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
     }
 
     function test_revertsIfInsufficientFunds() public {
         makeKeeperAndWarp(user, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
         vm.prank(user2);
         orb.purchase{value: 1 ether - 1}(3 ether, 1 ether, 10_00, 10_00, 7 days, 280);
     }
@@ -147,7 +147,7 @@ contract PurchaseTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user);
         orb.setPrice(0);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.PurchasingNotPermitted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Orb.PurchasingNotPermitted.selector));
         vm.prank(user2);
         orb.purchase(1 ether, 0, 10_00, 10_00, 7 days, 280);
     }

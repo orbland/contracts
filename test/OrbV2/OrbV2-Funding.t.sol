@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
 
-import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "../src/IOrb.sol";
+import {OrbTestBase} from "./OrbV2.t.sol";
+import {Orb} from "../../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract EffectiveFundsOfTest is OrbTestBase {
@@ -145,7 +145,7 @@ contract DepositTest is OrbTestBase {
         assertEq(orb.fundsOf(user2), 1 ether);
 
         // if the insolvent keeper deposits, it should not work
-        vm.expectRevert(IOrb.KeeperInsolvent.selector);
+        vm.expectRevert(Orb.KeeperInsolvent.selector);
         vm.prank(user);
         orb.deposit{value: 1 ether}();
     }
@@ -158,11 +158,11 @@ contract WithdrawTest is OrbTestBase {
         uint256 bidAmount = 1 ether;
         orb.startAuction();
         prankAndBid(user, bidAmount);
-        vm.expectRevert(IOrb.NotPermittedForLeadingBidder.selector);
+        vm.expectRevert(Orb.NotPermittedForLeadingBidder.selector);
         vm.prank(user);
         orb.withdraw(1);
 
-        vm.expectRevert(IOrb.NotPermittedForLeadingBidder.selector);
+        vm.expectRevert(Orb.NotPermittedForLeadingBidder.selector);
         vm.prank(user);
         orb.withdrawAll();
 
@@ -347,7 +347,7 @@ contract WithdrawTest is OrbTestBase {
         vm.startPrank(user);
         orb.deposit{value: 1 ether}();
         assertEq(orb.fundsOf(user), 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(IOrb.InsufficientFunds.selector, 1 ether, 1 ether + 1));
+        vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, 1 ether, 1 ether + 1));
         orb.withdraw(1 ether + 1);
         assertEq(orb.fundsOf(user), 1 ether);
         vm.expectEmit(true, true, true, true);
@@ -361,7 +361,7 @@ contract SettleTest is OrbTestBase {
     event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
 
     function test_settleOnlyIfKeeperHeld() public {
-        vm.expectRevert(IOrb.ContractHoldsOrb.selector);
+        vm.expectRevert(Orb.ContractHoldsOrb.selector);
         orb.settle();
         assertEq(orb.lastSettlementTime(), 0);
         makeKeeperAndWarp(user, 1 ether);
@@ -370,6 +370,7 @@ contract SettleTest is OrbTestBase {
     }
 
     function testFuzz_settleCorrect(uint96 bid, uint96 time) public {
+        orb.swearOath(keccak256(abi.encodePacked("test oath")), 100_000_000);
         uint256 amount = bound(bid, orb.auctionStartingPrice(), orb.workaround_maximumPrice());
         // warp ahead a random amount of time
         // remain under 1 year in total, so solvent
@@ -442,8 +443,8 @@ contract OwedSinceLastSettlementTest is OrbTestBase {
     function test_owedSinceLastSettlementCorrectMath() public {
         // _lastSettlementTime = 0
         // secondsSinceLastSettlement = block.timestamp - _lastSettlementTime
-        // KEEPER_TAX_NUMERATOR = 1_000
-        // feeDenominator = 10_000
+        // KEEPER_TAX_NUMERATOR = 10_00
+        // feeDenominator = 100_00
         // keeperTaxPeriod  = 365 days = 31_536_000 seconds
         // owed = _price * KEEPER_TAX_NUMERATOR * secondsSinceLastSettlement)
         // / (keeperTaxPeriod * feeDenominator);
@@ -451,9 +452,12 @@ contract OwedSinceLastSettlementTest is OrbTestBase {
         // _price = 17 ether = 17_000_000_000_000_000_000 wei
         // block.timestamp = 167710711
         // owed = 90.407.219.961.314.053.779,8072044647
+        vm.prank(owner);
+        orb.setFees(10_00, 0, 0);
         orb.workaround_setPrice(17 ether);
         vm.warp(167710711);
         // calculation done off-solidity to verify precision with another environment
         assertEq(orb.workaround_owedSinceLastSettlement(), 9_040_721_990_740_740_740);
+        // 108488663888888888888
     }
 }

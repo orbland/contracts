@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Test} from "../lib/forge-std/src/Test.sol";
+import {Test} from "../../lib/forge-std/src/Test.sol";
 
-import {OrbTestBase} from "./Orb.t.sol";
-import {IOrb} from "../src/IOrb.sol";
+import {OrbTestBase} from "./OrbV1.t.sol";
+import {Orb} from "../../src/Orb.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract RelinquishmentTest is OrbTestBase {
     function test_revertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
         makeKeeperAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.NotKeeper.selector);
+        vm.expectRevert(Orb.NotKeeper.selector);
         vm.prank(user2);
         orb.relinquish(false);
 
@@ -24,7 +24,7 @@ contract RelinquishmentTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
-        vm.expectRevert(IOrb.KeeperInsolvent.selector);
+        vm.expectRevert(Orb.KeeperInsolvent.selector);
         orb.relinquish(false);
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
@@ -64,7 +64,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
     function test_revertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
         makeKeeperAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.NotKeeper.selector);
+        vm.expectRevert(Orb.NotKeeper.selector);
         vm.prank(user2);
         orb.relinquish(true);
 
@@ -77,7 +77,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user);
-        vm.expectRevert(IOrb.KeeperInsolvent.selector);
+        vm.expectRevert(Orb.KeeperInsolvent.selector);
         orb.relinquish(true);
         vm.warp(block.timestamp - 1300 days);
         vm.prank(user);
@@ -87,7 +87,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
 
     function test_revertsIfCreator() public {
         orb.listWithPrice(1 ether);
-        vm.expectRevert(IOrb.NotPermitted.selector);
+        vm.expectRevert(Orb.NotPermitted.selector);
         orb.relinquish(true);
     }
 
@@ -139,7 +139,7 @@ contract RelinquishmentWithAuctionTest is OrbTestBase {
 
 contract ForecloseTest is OrbTestBase {
     function test_revertsIfNotKeeperHeld() public {
-        vm.expectRevert(IOrb.ContractHoldsOrb.selector);
+        vm.expectRevert(Orb.ContractHoldsOrb.selector);
         vm.prank(user2);
         orb.foreclose();
 
@@ -159,7 +159,7 @@ contract ForecloseTest is OrbTestBase {
     function test_revertsifKeeperSolvent() public {
         uint256 leadingBid = 10 ether;
         makeKeeperAndWarp(user, leadingBid);
-        vm.expectRevert(IOrb.KeeperSolvent.selector);
+        vm.expectRevert(Orb.KeeperSolvent.selector);
         orb.foreclose();
         vm.warp(block.timestamp + 10000 days);
         vm.expectEmit(true, true, true, true);
