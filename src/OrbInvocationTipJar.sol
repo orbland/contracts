@@ -5,8 +5,8 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
-import {IOrb} from "./IOrb.sol";
-import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
+import {Orb} from "./Orb.sol";
+import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
 import {OrbPond} from "./OrbPond.sol";
 
 /// @title   Orb Invocation Tip Jar - A contract for suggesting Orb invocations and tipping Orb keepers
@@ -135,10 +135,10 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationIndex  The invocation id to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
     function claimTipsForInvocation(address orb, uint256 invocationIndex, uint256 minimumTipTotal) external virtual {
-        address pondAddress = IOrb(orb).pond();
+        address pondAddress = Orb(orb).pond();
         address invocationRegistryAddress = OrbPond(pondAddress).registry();
         (address invoker, bytes32 contentHash,) =
-            IOrbInvocationRegistry(invocationRegistryAddress).invocations(orb, invocationIndex);
+            OrbInvocationRegistry(invocationRegistryAddress).invocations(orb, invocationIndex);
 
         if (contentHash == bytes32(0)) {
             revert InvocationNotInvoked();
@@ -213,7 +213,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orb              The address of the Orb
     /// @param   minimumTipValue  The minimum tip value
     function setMinimumTip(address orb, uint256 minimumTipValue) external virtual {
-        if (msg.sender != IOrb(orb).keeper()) {
+        if (msg.sender != Orb(orb).keeper()) {
             revert NotKeeper();
         }
         uint256 previousMinimumTip = minimumTips[orb];

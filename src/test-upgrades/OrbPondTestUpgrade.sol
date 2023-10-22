@@ -6,7 +6,7 @@ import {ClonesUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/co
 
 import {PaymentSplitter} from "../CustomPaymentSplitter.sol";
 import {IOwnershipTransferrable} from "../IOwnershipTransferrable.sol";
-import {IOrb} from "../IOrb.sol";
+import {Orb} from "../Orb.sol";
 import {OrbPond} from "../OrbPond.sol";
 
 /// @title   Orb Pond - The Orb Factory
@@ -51,7 +51,7 @@ contract OrbPondTestUpgrade is OrbPond {
         PaymentSplitter(payable(beneficiary)).initialize(beneficiaryAddresses, beneficiaryShares);
 
         bytes memory initializeCalldata =
-            abi.encodeWithSelector(IOrb.initialize.selector, beneficiary, name, symbol, tokenURI);
+            abi.encodeWithSelector(Orb.initialize.selector, beneficiary, name, symbol, tokenURI);
         ERC1967Proxy proxy = new ERC1967Proxy(versions[1], initializeCalldata);
         orbs[orbCount] = address(proxy);
         IOwnershipTransferrable(orbs[orbCount]).transferOwnership(msg.sender);

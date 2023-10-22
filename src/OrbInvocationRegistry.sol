@@ -9,15 +9,57 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
-import {IOrb} from "./IOrb.sol";
-import {IOrbInvocationRegistry} from "./IOrbInvocationRegistry.sol";
+import {Orb} from "./Orb.sol";
 
 /// @title   Orb Invocation Registry - Record-keeping contract for Orb invocations and responses
 /// @author  Jonas Lekevicius
 /// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
-/// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `IOrb` interface. Uses `Ownable`'s `owner()` to
+/// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `Orb` interface. Uses `Ownable`'s `owner()` to
 ///          guard upgrading.
-contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    event Invocation(
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed invoker,
+        uint256 timestamp,
+        bytes32 contentHash
+    );
+    event Response(
+        address indexed orb,
+        uint256 indexed invocationId,
+        address indexed responder,
+        uint256 timestamp,
+        bytes32 contentHash
+    );
+    event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
+    event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
+
+    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ERRORS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Authorization Errors
+    error NotKeeper();
+    error NotCreator();
+    error ContractHoldsOrb();
+    error KeeperInsolvent();
+    error ContractNotAuthorized(address externalContract);
+
+    // Invoking and Responding Errors
+    error CooldownIncomplete(uint256 timeRemaining);
+    error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
+    error InvocationNotFound(address orb, uint256 invocationId);
+    error ResponseNotFound(address orb, uint256 invocationId);
+    error ResponseExists(address orb, uint256 invocationId);
+    error FlaggingPeriodExpired(address orb, uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
+    error ResponseAlreadyFlagged(address orb, uint256 invocationId);
+
     /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
     /// InvocationData is used to determine if the response can be flagged by the keeper.
     /// Invocation timestamp and invoker address is tracked for the benefit of other contracts.
@@ -74,17 +116,17 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
         __UUPSUpgradeable_init();
     }
 
-    /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and IOrb interfaces.
+    /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and Orb interfaces.
     /// @param   interfaceId           Interface id to check for support.
     /// @return  isInterfaceSupported  If interface with given 4 bytes id is supported.
     function supportsInterface(bytes4 interfaceId)
         public
         view
         virtual
-        override(ERC165Upgradeable, IERC165Upgradeable)
+        override(ERC165Upgradeable)
         returns (bool isInterfaceSupported)
     {
-        return interfaceId == type(IOrbInvocationRegistry).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == 0x767dfef3 || super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +137,7 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
     ///         external functions, otherwise does not make sense.
     /// @param  orb  Address of the Orb.
     modifier onlyKeeper(address orb) virtual {
-        if (msg.sender != IOrb(orb).keeper()) {
+        if (msg.sender != Orb(orb).keeper()) {
             revert NotKeeper();
         }
         _;
@@ -104,7 +146,7 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
     /// @dev    Ensures that the Orb belongs to someone, not the contract itself.
     /// @param  orb  Address of the Orb.
     modifier onlyKeeperHeld(address orb) virtual {
-        if (orb == IOrb(orb).keeper()) {
+        if (orb == Orb(orb).keeper()) {
             revert ContractHoldsOrb();
         }
         _;
@@ -113,7 +155,7 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
     /// @dev    Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
     /// @param  orb  Address of the Orb.
     modifier onlyKeeperSolvent(address orb) virtual {
-        if (!IOrb(orb).keeperSolvent()) {
+        if (!Orb(orb).keeperSolvent()) {
             revert KeeperInsolvent();
         }
         _;
@@ -122,7 +164,7 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
     /// @dev    Ensures that the caller is the creator of the Orb.
     /// @param  orb  Address of the Orb.
     modifier onlyCreator(address orb) virtual {
-        if (msg.sender != IOrb(orb).creator()) {
+        if (msg.sender != Orb(orb).creator()) {
             revert NotCreator();
         }
         _;
@@ -137,7 +179,7 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
     /// @param   orb        Address of the Orb.
     /// @param   cleartext  Invocation cleartext.
     function invokeWithCleartext(address orb, string memory cleartext) public virtual {
-        uint256 cleartextMaximumLength = IOrb(orb).cleartextMaximumLength();
+        uint256 cleartextMaximumLength = Orb(orb).cleartextMaximumLength();
 
         uint256 length = bytes(cleartext).length;
         if (length > cleartextMaximumLength) {
@@ -176,8 +218,8 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
         onlyKeeperHeld(orb)
         onlyKeeperSolvent(orb)
     {
-        uint256 lastInvocationTime = IOrb(orb).lastInvocationTime();
-        uint256 cooldown = IOrb(orb).cooldown();
+        uint256 lastInvocationTime = Orb(orb).lastInvocationTime();
+        uint256 cooldown = Orb(orb).cooldown();
 
         if (block.timestamp < lastInvocationTime + cooldown) {
             revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
@@ -187,7 +229,7 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
         uint256 invocationId = invocationCount[orb]; // starts at 1
 
         invocations[orb][invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
-        IOrb(orb).setLastInvocationTime(block.timestamp);
+        Orb(orb).setLastInvocationTime(block.timestamp);
 
         emit Invocation(orb, invocationId, msg.sender, block.timestamp, contentHash);
     }
@@ -252,8 +294,8 @@ contract OrbInvocationRegistry is IOrbInvocationRegistry, ERC165Upgradeable, Own
     /// @param   orb           Address of the Orb.
     /// @param   invocationId  Id of an invocation to which the response is being flagged.
     function flagResponse(address orb, uint256 invocationId) external virtual onlyKeeper(orb) onlyKeeperSolvent(orb) {
-        uint256 keeperReceiveTime = IOrb(orb).keeperReceiveTime();
-        uint256 flaggingPeriod = IOrb(orb).flaggingPeriod();
+        uint256 keeperReceiveTime = Orb(orb).keeperReceiveTime();
+        uint256 flaggingPeriod = Orb(orb).flaggingPeriod();
 
         if (!_responseExists(orb, invocationId)) {
             revert ResponseNotFound(orb, invocationId);
