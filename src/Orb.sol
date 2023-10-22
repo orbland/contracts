@@ -48,7 +48,6 @@ import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 
 import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
 import {OrbPond} from "./OrbPond.sol";
-import {IOrb} from "./IOrb.sol";
 
 /// @title   Orb - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
@@ -67,7 +66,111 @@ import {IOrb} from "./IOrb.sol";
 ///          allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
 ///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
-contract Orb is IERC721MetadataUpgradeable, IOrb, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    event Creation();
+
+    // Auction Events
+    event AuctionStart(
+        uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, address indexed auctionBeneficiary
+    );
+    event AuctionBid(address indexed bidder, uint256 indexed bid);
+    event AuctionExtension(uint256 indexed newAuctionEndTime);
+    event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
+
+    // Funding Events
+    event Deposit(address indexed depositor, uint256 indexed amount);
+    event Withdrawal(address indexed recipient, uint256 indexed amount);
+    event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
+
+    // Purchasing Events
+    event PriceUpdate(uint256 previousPrice, uint256 indexed newPrice);
+    event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
+
+    // Orb Ownership Events
+    event Foreclosure(address indexed formerKeeper);
+    event Relinquishment(address indexed formerKeeper);
+
+    // Orb Parameter Events
+    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
+    event HonoredUntilUpdate(uint256 previousHonoredUntil, uint256 indexed newHonoredUntil);
+    event AuctionParametersUpdate(
+        uint256 previousStartingPrice,
+        uint256 indexed newStartingPrice,
+        uint256 previousMinimumBidStep,
+        uint256 indexed newMinimumBidStep,
+        uint256 previousMinimumDuration,
+        uint256 indexed newMinimumDuration,
+        uint256 previousKeeperMinimumDuration,
+        uint256 newKeeperMinimumDuration,
+        uint256 previousBidExtension,
+        uint256 newBidExtension
+    );
+    event FeesUpdate(
+        uint256 previousKeeperTaxNumerator,
+        uint256 indexed newKeeperTaxNumerator,
+        uint256 previousRoyaltyNumerator,
+        uint256 indexed newRoyaltyNumerator
+    );
+    event CooldownUpdate(
+        uint256 previousCooldown,
+        uint256 indexed newCooldown,
+        uint256 previousFlaggingPeriod,
+        uint256 indexed newFlaggingPeriod
+    );
+    event CleartextMaximumLengthUpdate(
+        uint256 previousCleartextMaximumLength, uint256 indexed newCleartextMaximumLength
+    );
+
+    // Upgrading Events
+    event UpgradeRequest(address indexed requestedImplementation);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ERRORS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // ERC-721 Errors
+    error NotSupported();
+
+    // Authorization Errors
+    error NotPermitted();
+    error AlreadyKeeper();
+    error NotKeeper();
+    error ContractHoldsOrb();
+    error ContractDoesNotHoldOrb();
+    error CreatorDoesNotControlOrb();
+
+    // Auction Errors
+    error AuctionNotRunning();
+    error AuctionRunning();
+    error AuctionNotStarted();
+    error NotPermittedForLeadingBidder();
+    error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
+
+    // Funding Errors
+    error KeeperSolvent();
+    error KeeperInsolvent();
+    error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
+
+    // Purchasing Errors
+    error CurrentValueIncorrect(uint256 valueProvided, uint256 currentValue);
+    error PurchasingNotPermitted();
+    error InvalidNewPrice(uint256 priceProvided);
+
+    // Orb Parameter Errors
+    error HonoredUntilNotDecreasable();
+    error InvalidAuctionDuration(uint256 auctionDuration);
+    error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
+    error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDuration);
+    error InvalidCleartextMaximumLength(uint256 cleartextMaximumLength);
+
+    // Upgradding Errors
+    error NoUpgradeRequested();
+    error NotNextVersion();
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,6 +315,7 @@ contract Orb is IERC721MetadataUpgradeable, IOrb, ERC165Upgradeable, OwnableUpgr
     /// @param  tokenURI_      Initial value for tokenURI JSONs.
     function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
         public
+        virtual
         initializer
     {
         __Ownable_init();
@@ -252,7 +356,7 @@ contract Orb is IERC721MetadataUpgradeable, IOrb, ERC165Upgradeable, OwnableUpgr
         override(ERC165Upgradeable, IERC165Upgradeable)
         returns (bool isInterfaceSupported)
     {
-        return interfaceId == type(IOrb).interfaceId || interfaceId == type(IERC721Upgradeable).interfaceId
+        return interfaceId == 0x4645e06f || interfaceId == type(IERC721Upgradeable).interfaceId
             || interfaceId == type(IERC721MetadataUpgradeable).interfaceId || super.supportsInterface(interfaceId);
     }
 
