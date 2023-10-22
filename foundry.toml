@@ -5,13 +5,13 @@ remappings = [ # Libraries that we use from node_modules and are used by the sma
     "forge-std/=lib/forge-std/src/",
     "ds-test/=lib/forge-std/lib/ds-test/src/",
     "openzeppelin-contracts/=lib/openzeppelin-contracts/",
-    "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/"
+    "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/",
 ]
 optimizer = true # Enable or disable the solc optimizer
 optimizer_runs = 20_000 # The number of optimizer runs
 verbosity = 3 # The verbosity of tests
 bytecode_hash = "none" # For deterministic code
-block_timestamp = 1_622_400_000 # Timestamp for tests (non-zero)
+block_timestamp = 10_000_000 # Timestamp for tests (non-zero)
 
 src = 'src'
 out = 'out'
