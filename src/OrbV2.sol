@@ -61,6 +61,14 @@ contract OrbV2 is Orb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event FeesUpdate(
+        uint256 previousKeeperTaxNumerator,
+        uint256 indexed newKeeperTaxNumerator,
+        uint256 previousPurchaseRoyaltyNumerator,
+        uint256 indexed newPurchaseRoyaltyNumerator,
+        uint256 previousAuctionRoyaltyNumerator,
+        uint256 indexed newAuctionRoyaltyNumerator
+    );
     event InvocationParametersUpdate(
         uint256 previousCooldown,
         uint256 indexed newCooldown,
@@ -124,6 +132,55 @@ contract OrbV2 is Orb {
 
     /// @dev  Previous `swearOath()` overriden to revert.
     function swearOath(bytes32, uint256, uint256) external pure override {
+        revert NotSupported();
+    }
+
+    /// @notice  Allows the Orb creator to set the new keeper tax and royalty. This function can only be called by the
+    ///          Orb creator when the Orb is in their control.
+    /// @dev     Emits `FeesUpdate`.
+    ///          V2 changes to allow setting Keeper auction royalty separately from purchase royalty, with releated
+    ///          parameter and event changes.
+    /// @param   newKeeperTaxNumerator        New keeper tax numerator, in relation to `feeDenominator()`.
+    /// @param   newPurchaseRoyaltyNumerator  New royalty numerator for royalties from `purchase()`, in relation to
+    ///                                       `feeDenominator()`. Cannot be larger than `feeDenominator()`.
+    /// @param   newAuctionRoyaltyNumerator   New royalty numerator for royalties from keeper auctions, in relation to
+    ///                                       `feeDenominator()`. Cannot be larger than `feeDenominator()`.
+    function setFees(
+        uint256 newKeeperTaxNumerator,
+        uint256 newPurchaseRoyaltyNumerator,
+        uint256 newAuctionRoyaltyNumerator
+    ) external virtual onlyOwner onlyCreatorControlled {
+        if (keeper != address(this)) {
+            _settle();
+        }
+        if (newPurchaseRoyaltyNumerator > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(newPurchaseRoyaltyNumerator, _FEE_DENOMINATOR);
+        }
+        if (newAuctionRoyaltyNumerator > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(newAuctionRoyaltyNumerator, _FEE_DENOMINATOR);
+        }
+
+        uint256 previousKeeperTaxNumerator = keeperTaxNumerator;
+        keeperTaxNumerator = newKeeperTaxNumerator;
+
+        uint256 previousPurchaseRoyaltyNumerator = royaltyNumerator;
+        royaltyNumerator = newPurchaseRoyaltyNumerator;
+
+        uint256 previousAuctionRoyaltyNumerator = auctionRoyaltyNumerator;
+        auctionRoyaltyNumerator = newAuctionRoyaltyNumerator;
+
+        emit FeesUpdate(
+            previousKeeperTaxNumerator,
+            newKeeperTaxNumerator,
+            previousPurchaseRoyaltyNumerator,
+            newPurchaseRoyaltyNumerator,
+            previousAuctionRoyaltyNumerator,
+            newAuctionRoyaltyNumerator
+        );
+    }
+
+    /// @dev  Previous `setFees()` overriden to revert.
+    function setFees(uint256, uint256) external pure override {
         revert NotSupported();
     }
 
@@ -208,7 +265,8 @@ contract OrbV2 is Orb {
     /// @dev     Critical state transition function. Called after `auctionEndTime`, but only if it's not 0. Can be
     ///          called by anyone, although probably will be called by the creator or the winner. Emits `PriceUpdate`
     ///          and `AuctionFinalization`.
-    ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime.
+    ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyaltyNumerator`
+    ///          instead of `royaltyNumerator` for auction royalty (only relevant for Keeper auctions).
     function finalizeAuction() external virtual override notDuringAuction {
         if (auctionEndTime == 0) {
             revert AuctionNotStarted();
@@ -222,8 +280,9 @@ contract OrbV2 is Orb {
 
             uint256 auctionMinimumRoyaltyNumerator =
                 (keeperTaxNumerator * auctionKeeperMinimumDuration) / _KEEPER_TAX_PERIOD;
-            uint256 auctionRoyalty =
-                auctionMinimumRoyaltyNumerator > royaltyNumerator ? auctionMinimumRoyaltyNumerator : royaltyNumerator;
+            uint256 auctionRoyalty = auctionMinimumRoyaltyNumerator > auctionRoyaltyNumerator
+                ? auctionMinimumRoyaltyNumerator
+                : auctionRoyaltyNumerator;
             _splitProceeds(_leadingBid, auctionBeneficiary, auctionRoyalty);
 
             lastSettlementTime = block.timestamp;
