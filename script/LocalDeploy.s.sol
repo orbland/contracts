@@ -121,7 +121,9 @@ contract LocalDeploy is Script {
         beneficiaryShares[0] = 95;
         beneficiaryShares[1] = 5;
 
-        orbPond.createOrb(beneficiaryAddresses, beneficiaryShares, orbName, orbSymbol, "https://static.orb.land/orb/");
+        orbPond.createOrb(
+            beneficiaryAddresses, beneficiaryShares, orbName, orbSymbol, "https://static.orb.land/localhost/metadata"
+        );
         orb = OrbV2(orbPond.orbs(0));
         console.log("Orb (V2): ", address(orb));
         orbBeneficiary = PaymentSplitter(payable(orb.beneficiary()));
