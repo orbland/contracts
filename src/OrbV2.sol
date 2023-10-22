@@ -114,6 +114,50 @@ contract OrbV2 is Orb {
     /// Gap used to prevent storage collisions.
     uint256[100] private __gap;
 
+    /// @dev    When deployed, contract mints the only token that will ever exist, to itself.
+    ///         This token represents the Orb and is called the Orb elsewhere in the contract.
+    ///         `Ownable` sets the deployer to be the `owner()`, and also the creator in the Orb context.
+    ///         V2 changes initial values and sets `auctionKeeperMinimumDuration`.
+    /// @param  beneficiary_   Address to receive all Orb proceeds.
+    /// @param  name_          Orb name, used in ERC-721 metadata.
+    /// @param  symbol_        Orb symbol or ticker, used in ERC-721 metadata.
+    /// @param  tokenURI_      Initial value for tokenURI JSONs.
+    function initialize(address beneficiary_, string memory name_, string memory symbol_, string memory tokenURI_)
+        public
+        virtual
+        override
+        initializer
+    {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
+        name = name_;
+        symbol = symbol_;
+        beneficiary = beneficiary_;
+        _tokenURI = tokenURI_;
+
+        keeper = address(this);
+        pond = msg.sender;
+
+        // Initial values. Can be changed by creator before selling the Orb.
+
+        keeperTaxNumerator = 120_00;
+        royaltyNumerator = 10_00;
+        auctionRoyaltyNumerator = 30_00;
+
+        auctionStartingPrice = 0.05 ether;
+        auctionMinimumBidStep = 0.05 ether;
+        auctionMinimumDuration = 1 days;
+        auctionKeeperMinimumDuration = 1 days;
+        auctionBidExtension = 4 minutes;
+
+        cooldown = 7 days;
+        responsePeriod = 7 days;
+        flaggingPeriod = 7 days;
+        cleartextMaximumLength = 300;
+
+        emit Creation();
+    }
 
     /// @notice  Re-initializes the contract after upgrade, sets initial `auctionRoyaltyNumerator` value and sets
     ///          `responsePeriod` to `cooldown` if it was not set before.
