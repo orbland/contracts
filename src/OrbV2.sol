@@ -56,6 +56,12 @@ import {Orb} from "./Orb.sol";
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
 ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime.
 contract OrbV2 is Orb {
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ERRORS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    error NotHonored();
     /// Orb version. Value: 2.
     uint256 private constant _VERSION = 2;
 
@@ -77,6 +83,34 @@ contract OrbV2 is Orb {
             revert AuctionRunning();
         }
         _;
+    }
+
+    /// @dev  Ensures that the Orb Oath is still honored (`honoredUntil` is in the future). Used to enforce Oath
+    ///       swearing before starting the auction or listing the Orb for sale.
+    modifier onlyHonored() virtual {
+        if (honoredUntil < block.timestamp) {
+            revert NotHonored();
+        }
+        _;
+    }
+
+    /// @notice  Allow the Orb creator to start the Orb auction. Will run for at least `auctionMinimumDuration`.
+    /// @dev     Prevents repeated starts by checking the `auctionEndTime`. Important to set `auctionEndTime` to 0
+    ///          after auction is finalized. Emits `AuctionStart`.
+    ///          V2 adds `onlyHonored` modifier to require active Oath to start auction.
+    function startAuction() external virtual override onlyOwner notDuringAuction onlyHonored {
+        if (address(this) != keeper) {
+            revert ContractDoesNotHoldOrb();
+        }
+
+        if (auctionEndTime > 0) {
+            revert AuctionRunning();
+        }
+
+        auctionEndTime = block.timestamp + auctionMinimumDuration;
+        auctionBeneficiary = beneficiary;
+
+        emit AuctionStart(block.timestamp, auctionEndTime, auctionBeneficiary);
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
@@ -123,5 +157,26 @@ contract OrbV2 is Orb {
         }
 
         auctionEndTime = 0;
+    }
+
+    /// @notice  Lists the Orb for sale at the given price to buy directly from the Orb creator. This is an alternative
+    ///          to the auction mechanism, and can be used to simply have the Orb for sale at a fixed price, waiting
+    ///          for the buyer. Listing is only allowed if the auction has not been started and the Orb is held by the
+    ///          contract. When the Orb is purchased from the creator, all proceeds go to the beneficiary and the Orb
+    ///          comes fully charged, with no cooldown.
+    /// @dev     Emits `Transfer` and `PriceUpdate`.
+    ///          V2 adds `onlyHonored` modifier to require active Oath to list Orb for sale.
+    /// @param   listingPrice  The price to buy the Orb from the creator.
+    function listWithPrice(uint256 listingPrice) external virtual override onlyOwner onlyHonored {
+        if (address(this) != keeper) {
+            revert ContractDoesNotHoldOrb();
+        }
+
+        if (auctionEndTime > 0) {
+            revert AuctionRunning();
+        }
+
+        _transferOrb(address(this), msg.sender);
+        _setPrice(listingPrice);
     }
 }
