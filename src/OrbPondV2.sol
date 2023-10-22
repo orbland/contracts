@@ -16,8 +16,12 @@ import {Orb} from "./Orb.sol";
 ///          implementations, and keeps a reference to an Orb Invocation Registry used by all Orbs created with this
 ///          Orb Pond.
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.
-///          V2 adds a new `orbInitialVersion` field for new Orb creation, and a new `setOrbInitialVersion()` function
-///          to set it.
+///          V2 adds these changes:
+///          - `orbInitialVersion` field for new Orb creation and `setOrbInitialVersion()` function to set it. This
+///            allows to specify which version of the Orb implementation to use for new Orbs.
+///          - `beneficiaryWithdrawalAddresses` mapping to authorize addresses to be used as
+///            `beneficiaryWithdrawalAddress` on Orbs, `authorizeWithdrawalAddress()` function to set it, and
+///            `beneficiaryWithdrawalAddressPermitted()` function to check if address is authorized.
 contract OrbPondV2 is OrbPond {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
