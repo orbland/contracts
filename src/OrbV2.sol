@@ -56,6 +56,21 @@ import {Orb} from "./Orb.sol";
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
 ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime.
 contract OrbV2 is Orb {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  EVENTS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
+    event InvocationParametersUpdate(
+        uint256 previousCooldown,
+        uint256 indexed newCooldown,
+        uint256 previousResponsePeriod,
+        uint256 indexed newResponsePeriod,
+        uint256 previousFlaggingPeriod,
+        uint256 indexed newFlaggingPeriod,
+        uint256 previousCleartextMaximumLength,
+        uint256 newCleartextMaximumLength
+    );
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -92,6 +107,78 @@ contract OrbV2 is Orb {
             revert NotHonored();
         }
         _;
+    }
+
+    /// @notice  Allows re-swearing of the Orb Oath and set a new `honoredUntil` date. This function can only be called
+    ///          by the Orb creator when the Orb is in their control. With `swearOath()`, `honoredUntil` date can be
+    ///          decreased, unlike with the `extendHonoredUntil()` function.
+    /// @dev     Emits `OathSwearing`.
+    ///          V2 changes to allow re-swearing even during Keeper control, if Oath has expired, and moves
+    ///          `responsePeriod` setting to `setInvocationParameters()`.
+    /// @param   oathHash           Hash of the Oath taken to create the Orb.
+    /// @param   newHonoredUntil    Date until which the Orb creator will honor the Oath for the Orb keeper.
+    function swearOath(bytes32 oathHash, uint256 newHonoredUntil) external virtual onlyOwner onlyCreatorControlled {
+        honoredUntil = newHonoredUntil;
+        emit OathSwearing(oathHash, newHonoredUntil);
+    }
+
+    /// @dev  Previous `swearOath()` overriden to revert.
+    function swearOath(bytes32, uint256, uint256) external pure override {
+        revert NotSupported();
+    }
+
+    /// @notice  Allows the Orb creator to set the new cooldown duration, response period, flagging period (duration for
+    ///          how long Orb keeper may flag a response) and cleartext maximum length. This function can only be called
+    ///          by the Orb creator when the Orb is in their control.
+    /// @dev     Emits `InvocationParametersUpdate`.
+    ///          V2 merges `setCooldown()` and `setCleartextMaximumLength()` into one function, and moves
+    ///          `responsePeriod` setting here. Events `CooldownUpdate` and `CleartextMaximumLengthUpdate` are merged
+    ///          into `InvocationParametersUpdate`.
+    /// @param   newCooldown        New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
+    /// @param   newFlaggingPeriod  New flagging period in seconds.
+    /// @param   newResponsePeriod  New flagging period in seconds.
+    /// @param   newCleartextMaximumLength  New cleartext maximum length. Cannot be 0.
+    function setInvocationParameters(
+        uint256 newCooldown,
+        uint256 newResponsePeriod,
+        uint256 newFlaggingPeriod,
+        uint256 newCleartextMaximumLength
+    ) external virtual onlyOwner onlyCreatorControlled {
+        if (newCooldown > _COOLDOWN_MAXIMUM_DURATION) {
+            revert CooldownExceedsMaximumDuration(newCooldown, _COOLDOWN_MAXIMUM_DURATION);
+        }
+        if (newCleartextMaximumLength == 0) {
+            revert InvalidCleartextMaximumLength(newCleartextMaximumLength);
+        }
+
+        uint256 previousCooldown = cooldown;
+        cooldown = newCooldown;
+        uint256 previousResponsePeriod = responsePeriod;
+        responsePeriod = newResponsePeriod;
+        uint256 previousFlaggingPeriod = flaggingPeriod;
+        flaggingPeriod = newFlaggingPeriod;
+        uint256 previousCleartextMaximumLength = cleartextMaximumLength;
+        cleartextMaximumLength = newCleartextMaximumLength;
+        emit InvocationParametersUpdate(
+            previousCooldown,
+            newCooldown,
+            previousResponsePeriod,
+            newResponsePeriod,
+            previousFlaggingPeriod,
+            newFlaggingPeriod,
+            previousCleartextMaximumLength,
+            newCleartextMaximumLength
+        );
+    }
+
+    /// @dev  Previous `setCooldown()` overriden to revert.
+    function setCooldown(uint256, uint256) external pure override {
+        revert NotSupported();
+    }
+
+    /// @dev  Previous `setCleartextMaximumLength()` overriden to revert.
+    function setCleartextMaximumLength(uint256) external pure override {
+        revert NotSupported();
     }
 
     /// @notice  Allow the Orb creator to start the Orb auction. Will run for at least `auctionMinimumDuration`.
