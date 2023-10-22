@@ -65,6 +65,20 @@ contract OrbV2 is Orb {
         return _VERSION;
     }
 
+    /// @dev  Ensures that the Orb belongs to the contract itself or the creator, and the auction hasn't been started.
+    ///       Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
+    ///       modified while it is held by the keeper or users can bid on the Orb.
+    ///       V2 changes to allow setting parameters even during Keeper control, if Oath has expired.
+    modifier onlyCreatorControlled() virtual override {
+        if (address(this) != keeper && owner() != keeper && honoredUntil >= block.timestamp) {
+            revert CreatorDoesNotControlOrb();
+        }
+        if (auctionEndTime > 0) {
+            revert AuctionRunning();
+        }
+        _;
+    }
+
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
     ///          If the auction was started by previous Keeper with `relinquishWithAuction()`, then most of the auction
     ///          proceeds (minus the royalty) will be sent to the previous Keeper. Sets `lastInvocationTime` so that
