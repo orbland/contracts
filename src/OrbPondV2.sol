@@ -24,6 +24,7 @@ contract OrbPondV2 is OrbPond {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     event OrbInitialVersionUpdate(uint256 previousInitialVersion, uint256 indexed newInitialVersion);
+    event WithdrawalAddressAuthorization(address indexed withdrawalAddress, bool indexed authorized);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -34,6 +35,9 @@ contract OrbPondV2 is OrbPond {
 
     /// New Orb version
     uint256 public orbInitialVersion;
+
+    /// Addresses authorized to be used as beneficiaryWithdrawal address
+    mapping(address withdrawalAddress => bool isPermitted) public beneficiaryWithdrawalAddresses;
 
     /// Gap used to prevent storage collisions.
     uint256[100] private __gap;
@@ -99,5 +103,28 @@ contract OrbPondV2 is OrbPond {
     /// @return  orbPondVersion  Version of the Orb Pond contract.
     function version() public view virtual override returns (uint256 orbPondVersion) {
         return _VERSION;
+    }
+
+    /// @notice Returns if address can be used as beneficiary withdrawal address on Orbs.
+    /// @param beneficiaryWithdrawalAddress Address to check. Zero address is always permitted.
+    function beneficiaryWithdrawalAddressPermitted(address beneficiaryWithdrawalAddress)
+        external
+        virtual
+        returns (bool isBeneficiaryWithdrawalAddressPermitted)
+    {
+        return
+            beneficiaryWithdrawalAddress == address(0) || beneficiaryWithdrawalAddresses[beneficiaryWithdrawalAddress];
+    }
+
+    /// @notice  Allows the owner to authorize permitted beneficiary withdrawal addresses.
+    /// @param   addressToAuthorize  Address to authorize (likely contract).
+    /// @param   authorizationValue  Boolean value to set the authorization to.
+    function authorizeWithdrawalAddress(address addressToAuthorize, bool authorizationValue)
+        external
+        virtual
+        onlyOwner
+    {
+        beneficiaryWithdrawalAddresses[addressToAuthorize] = authorizationValue;
+        emit WithdrawalAddressAuthorization(addressToAuthorize, authorizationValue);
     }
 }
