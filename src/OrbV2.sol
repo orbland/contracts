@@ -85,8 +85,34 @@ contract OrbV2 is Orb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     error NotHonored();
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  STORAGE
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // CONSTANTS
+
     /// Orb version. Value: 2.
     uint256 private constant _VERSION = 2;
+
+    // STATE
+
+    /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
+    uint256 public auctionRoyaltyNumerator;
+
+
+    /// Gap used to prevent storage collisions.
+    uint256[100] private __gap;
+
+
+    /// @notice  Re-initializes the contract after upgrade, sets initial `auctionRoyaltyNumerator` value and sets
+    ///          `responsePeriod` to `cooldown` if it was not set before.
+    function initializeV2() public reinitializer(2) {
+        auctionRoyaltyNumerator = royaltyNumerator;
+        if (responsePeriod == 0) {
+            responsePeriod = cooldown;
+        }
+    }
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
     /// @return  orbVersion  Version of the Orb.
