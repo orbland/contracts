@@ -473,4 +473,22 @@ contract OrbV2 is Orb {
         revert NotSupported();
     }
 
+    /// @notice  Function to withdraw all beneficiary funds on the contract. Settles if possible.
+    /// @dev     Allowed for anyone at any time, does not use `msg.sender` in its execution.
+    ///          Emits `Withdrawal`.
+    ///          V2 changes to withdraw to `beneficiaryWithdrawalAddress` if set to a non-zero address, and copies
+    ///          `_withdraw()` functionality to this function, as it modifies funds of a different address (always
+    ///          `beneficiary`) than the withdrawal destination (potentially `beneficiaryWithdrawalAddress`).
+    function withdrawAllForBeneficiary() external virtual override {
+        if (keeper != address(this)) {
+            _settle();
+        }
+        address withdrawalAddress =
+            beneficiaryWithdrawalAddress == address(0) ? beneficiary : beneficiaryWithdrawalAddress;
+        uint256 amount = fundsOf[beneficiary];
+        fundsOf[beneficiary] = 0;
+
+        emit Withdrawal(withdrawalAddress, amount);
+        AddressUpgradeable.sendValue(payable(withdrawalAddress), amount);
+    }
 }
