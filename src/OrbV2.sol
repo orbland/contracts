@@ -57,7 +57,19 @@ import {OrbPondV2} from "./OrbPondV2.sol";
 ///          allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
 ///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
-///          V2 fixes a bug with Keeper auctions changing lastInvocationTime.
+///          V2 adds these changes:
+///          - Fixes a bug with Keeper auctions changing `lastInvocationTime`. Now only creator auctions charge the Orb.
+///          - Allows setting Keeper auction royalty as different from purchase royalty.
+///          - Purchase function requires to provide Keeper auction royalty in addition to other parameters.
+///          - Response period setting moved from `swearOath` to `setCooldown` and renamed to `setInvocationParameters`.
+///          - Active Oath is now required to start Orb auction or list Orb for sale.
+///          - Orb parameters can now be updated even during Keeper control, if Oath has expired.
+///          - `beneficiaryWithdrawalAddress` can now be set by the Creator to withdraw funds to a different address, if
+///            the address is authorized on the OrbPond.
+///          - Overriden `initialize()` to allow using V2 as initial implementation, with new default values.
+///          - Event changes: `OathSwearing` parameter change, `InvocationParametersUpdate` added (replaces
+///            `CooldownUpdate` and `CleartextMaximumLengthUpdate`), `FeesUpdate` parameter change,
+///            `BeneficiaryWithdrawalAddressUpdate` added.
 contract OrbV2 is Orb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
