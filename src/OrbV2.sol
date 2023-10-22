@@ -325,4 +325,95 @@ contract OrbV2 is Orb {
         _transferOrb(address(this), msg.sender);
         _setPrice(listingPrice);
     }
+
+    /// @notice  Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
+    ///          from its keeper. Purchasing is only allowed while the keeper is solvent. If not, the Orb has to be
+    ///          foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
+    ///          required, but purchasing without any reserve would leave the new owner immediately foreclosable.
+    ///          Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
+    /// @dev     Requires to provide key Orb parameters (current price, Harberger tax rate, royalty, cooldown and
+    ///          cleartext maximum length) to prevent front-running: without these parameters Orb creator could
+    ///          front-run purcaser and change Orb parameters before the purchase; and without current price anyone
+    ///          could purchase the Orb ahead of the purchaser, set the price higher, and profit from the purchase.
+    ///          Does not modify `lastInvocationTime` unless buying from the creator.
+    ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
+    ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
+    ///          V2 changes to require providing Keeper auction royalty to prevent front-running.
+    /// @param   newPrice                        New price to use after the purchase.
+    /// @param   currentPrice                    Current price, to prevent front-running.
+    /// @param   currentKeeperTaxNumerator       Current keeper tax numerator, to prevent front-running.
+    /// @param   currentRoyaltyNumerator         Current royalty numerator, to prevent front-running.
+    /// @param   currentAuctionRoyaltyNumerator  Current keeper auction royalty numerator, to prevent front-running.
+    /// @param   currentCooldown                 Current cooldown, to prevent front-running.
+    /// @param   currentCleartextMaximumLength   Current cleartext maximum length, to prevent front-running.
+    function purchase(
+        uint256 newPrice,
+        uint256 currentPrice,
+        uint256 currentKeeperTaxNumerator,
+        uint256 currentRoyaltyNumerator,
+        uint256 currentAuctionRoyaltyNumerator,
+        uint256 currentCooldown,
+        uint256 currentCleartextMaximumLength
+    ) external payable virtual onlyKeeperHeld onlyKeeperSolvent {
+        if (currentPrice != price) {
+            revert CurrentValueIncorrect(currentPrice, price);
+        }
+        if (currentKeeperTaxNumerator != keeperTaxNumerator) {
+            revert CurrentValueIncorrect(currentKeeperTaxNumerator, keeperTaxNumerator);
+        }
+        if (currentRoyaltyNumerator != royaltyNumerator) {
+            revert CurrentValueIncorrect(currentRoyaltyNumerator, royaltyNumerator);
+        }
+        if (currentAuctionRoyaltyNumerator != auctionRoyaltyNumerator) {
+            revert CurrentValueIncorrect(currentAuctionRoyaltyNumerator, auctionRoyaltyNumerator);
+        }
+        if (currentCooldown != cooldown) {
+            revert CurrentValueIncorrect(currentCooldown, cooldown);
+        }
+        if (currentCleartextMaximumLength != cleartextMaximumLength) {
+            revert CurrentValueIncorrect(currentCleartextMaximumLength, cleartextMaximumLength);
+        }
+
+        if (lastSettlementTime >= block.timestamp) {
+            revert PurchasingNotPermitted();
+        }
+
+        _settle();
+
+        address _keeper = keeper;
+
+        if (msg.sender == _keeper) {
+            revert AlreadyKeeper();
+        }
+        if (msg.sender == beneficiary) {
+            revert NotPermitted();
+        }
+
+        fundsOf[msg.sender] += msg.value;
+        uint256 totalFunds = fundsOf[msg.sender];
+
+        if (totalFunds < currentPrice) {
+            revert InsufficientFunds(totalFunds, currentPrice);
+        }
+
+        fundsOf[msg.sender] -= currentPrice;
+        if (owner() == _keeper) {
+            lastInvocationTime = block.timestamp - cooldown;
+            fundsOf[beneficiary] += currentPrice;
+        } else {
+            _splitProceeds(currentPrice, _keeper, royaltyNumerator);
+        }
+
+        _setPrice(newPrice);
+
+        emit Purchase(_keeper, msg.sender, currentPrice);
+
+        _transferOrb(_keeper, msg.sender);
+    }
+
+    /// @dev  Previous `purchase()` overriden to revert.
+    function purchase(uint256, uint256, uint256, uint256, uint256, uint256) external payable virtual override {
+        revert NotSupported();
+    }
+
 }
