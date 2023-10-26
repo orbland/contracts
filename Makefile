@@ -37,3 +37,6 @@ deploy-anvil :; WITH_OATH=true forge script script/LocalDeploy.s.sol:LocalDeploy
 deploy-anvil-oathless :; WITH_OATH=false forge script script/LocalDeploy.s.sol:LocalDeploy --rpc-url http://localhost:8545 --broadcast
 
 deploy-anvil-upgradeless :; forge script script/LocalDeployUpgradeless.s.sol:LocalDeployUpgradeless --rpc-url http://localhost:8545 --broadcast
+
+deploy-anvil-shared :; forge script script/LocalDeployShared.s.sol:LocalDeployShared --rpc-url http://localhost:8545 --broadcast
+
