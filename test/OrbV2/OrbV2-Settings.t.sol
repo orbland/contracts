@@ -302,13 +302,13 @@ contract SettingFeesTest is OrbTestBase {
         orb.setFees(largeNumerator, orb.feeDenominator(), orb.feeDenominator());
 
         assertEq(orb.keeperTaxNumerator(), largeNumerator);
-        assertEq(orb.royaltyNumerator(), orb.feeDenominator());
+        assertEq(orb.purchaseRoyaltyNumerator(), orb.feeDenominator());
         assertEq(orb.auctionRoyaltyNumerator(), orb.feeDenominator());
     }
 
     function test_setFeesSucceedsCorrectly() public {
         assertEq(orb.keeperTaxNumerator(), 120_00);
-        assertEq(orb.royaltyNumerator(), 10_00);
+        assertEq(orb.purchaseRoyaltyNumerator(), 10_00);
         assertEq(orb.auctionRoyaltyNumerator(), 30_00);
 
         vm.prank(owner);
@@ -317,7 +317,7 @@ contract SettingFeesTest is OrbTestBase {
 
         orb.setFees(100_00, 100_00, 100_00);
         assertEq(orb.keeperTaxNumerator(), 100_00);
-        assertEq(orb.royaltyNumerator(), 100_00);
+        assertEq(orb.purchaseRoyaltyNumerator(), 100_00);
         assertEq(orb.auctionRoyaltyNumerator(), 100_00);
     }
 
@@ -337,7 +337,7 @@ contract SettingFeesTest is OrbTestBase {
         orb.setFees(200_00, 90_00, 90_00);
 
         assertTrue(orb.keeperTaxNumerator() != 200_00);
-        assertTrue(orb.royaltyNumerator() != 90_00);
+        assertTrue(orb.purchaseRoyaltyNumerator() != 90_00);
         assertTrue(orb.auctionRoyaltyNumerator() != 90_00);
 
         vm.warp(orb.honoredUntil() + 1);
@@ -351,7 +351,7 @@ contract SettingFeesTest is OrbTestBase {
         vm.prank(owner);
         orb.setFees(200_00, 90_00, 90_00);
         assertEq(orb.keeperTaxNumerator(), 200_00);
-        assertEq(orb.royaltyNumerator(), 90_00);
+        assertEq(orb.purchaseRoyaltyNumerator(), 90_00);
         assertEq(orb.auctionRoyaltyNumerator(), 90_00);
     }
 
@@ -360,14 +360,14 @@ contract SettingFeesTest is OrbTestBase {
         orb.listWithPrice(1 ether);
 
         assertTrue(orb.keeperTaxNumerator() != 200_00);
-        assertTrue(orb.royaltyNumerator() != 90_00);
+        assertTrue(orb.purchaseRoyaltyNumerator() != 90_00);
         assertTrue(orb.auctionRoyaltyNumerator() != 90_00);
         assertGt(orb.honoredUntil(), block.timestamp);
 
         vm.prank(owner);
         orb.setFees(200_00, 90_00, 90_00);
         assertEq(orb.keeperTaxNumerator(), 200_00);
-        assertEq(orb.royaltyNumerator(), 90_00);
+        assertEq(orb.purchaseRoyaltyNumerator(), 90_00);
         assertEq(orb.auctionRoyaltyNumerator(), 90_00);
     }
 

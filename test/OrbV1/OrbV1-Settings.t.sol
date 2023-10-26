@@ -211,18 +211,18 @@ contract SettingFeesTest is OrbTestBase {
         orb.setFees(largeNumerator, orb.feeDenominator());
 
         assertEq(orb.keeperTaxNumerator(), largeNumerator);
-        assertEq(orb.royaltyNumerator(), orb.feeDenominator());
+        assertEq(orb.purchaseRoyaltyNumerator(), orb.feeDenominator());
     }
 
     function test_setFeesSucceedsCorrectly() public {
         assertEq(orb.keeperTaxNumerator(), 10_00);
-        assertEq(orb.royaltyNumerator(), 10_00);
+        assertEq(orb.purchaseRoyaltyNumerator(), 10_00);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit FeesUpdate(10_00, 100_00, 10_00, 100_00);
         orb.setFees(100_00, 100_00);
         assertEq(orb.keeperTaxNumerator(), 100_00);
-        assertEq(orb.royaltyNumerator(), 100_00);
+        assertEq(orb.purchaseRoyaltyNumerator(), 100_00);
     }
 }
 

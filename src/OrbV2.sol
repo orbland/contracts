@@ -155,7 +155,7 @@ contract OrbV2 is Orb {
         // Initial values. Can be changed by creator before selling the Orb.
 
         keeperTaxNumerator = 120_00;
-        royaltyNumerator = 10_00;
+        purchaseRoyaltyNumerator = 10_00;
         auctionRoyaltyNumerator = 30_00;
 
         auctionStartingPrice = 0.05 ether;
@@ -175,7 +175,7 @@ contract OrbV2 is Orb {
     /// @notice  Re-initializes the contract after upgrade, sets initial `auctionRoyaltyNumerator` value and sets
     ///          `responsePeriod` to `cooldown` if it was not set before.
     function initializeV2() public reinitializer(2) {
-        auctionRoyaltyNumerator = royaltyNumerator;
+        auctionRoyaltyNumerator = purchaseRoyaltyNumerator;
         if (responsePeriod == 0) {
             responsePeriod = cooldown;
         }
@@ -256,8 +256,8 @@ contract OrbV2 is Orb {
         uint256 previousKeeperTaxNumerator = keeperTaxNumerator;
         keeperTaxNumerator = newKeeperTaxNumerator;
 
-        uint256 previousPurchaseRoyaltyNumerator = royaltyNumerator;
-        royaltyNumerator = newPurchaseRoyaltyNumerator;
+        uint256 previousPurchaseRoyaltyNumerator = purchaseRoyaltyNumerator;
+        purchaseRoyaltyNumerator = newPurchaseRoyaltyNumerator;
 
         uint256 previousAuctionRoyaltyNumerator = auctionRoyaltyNumerator;
         auctionRoyaltyNumerator = newAuctionRoyaltyNumerator;
@@ -380,7 +380,7 @@ contract OrbV2 is Orb {
     ///          called by anyone, although probably will be called by the creator or the winner. Emits `PriceUpdate`
     ///          and `AuctionFinalization`.
     ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyaltyNumerator`
-    ///          instead of `royaltyNumerator` for auction royalty (only relevant for Keeper auctions).
+    ///          instead of `purchaseRoyaltyNumerator` for auction royalty (only relevant for Keeper auctions).
     function finalizeAuction() external virtual override notDuringAuction {
         if (auctionEndTime == 0) {
             revert AuctionNotStarted();
@@ -453,12 +453,19 @@ contract OrbV2 is Orb {
     ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
     ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
     ///          V2 changes to require providing Keeper auction royalty to prevent front-running.
+    /// @param   newPrice                         New price to use after the purchase.
+    /// @param   currentPrice                     Current price, to prevent front-running.
+    /// @param   currentKeeperTaxNumerator        Current keeper tax numerator, to prevent front-running.
+    /// @param   currentPurchaseRoyaltyNumerator  Current royalty numerator, to prevent front-running.
+    /// @param   currentAuctionRoyaltyNumerator   Current keeper auction royalty numerator, to prevent front-running.
+    /// @param   currentCooldown                  Current cooldown, to prevent front-running.
+    /// @param   currentCleartextMaximumLength    Current cleartext maximum length, to prevent front-running.
     /// @param   currentHonoredUntil              Current honored until timestamp, to prevent front-running.
     function purchase(
         uint256 newPrice,
         uint256 currentPrice,
         uint256 currentKeeperTaxNumerator,
-        uint256 currentRoyaltyNumerator,
+        uint256 currentPurchaseRoyaltyNumerator,
         uint256 currentAuctionRoyaltyNumerator,
         uint256 currentCooldown,
         uint256 currentCleartextMaximumLength,
@@ -470,8 +477,8 @@ contract OrbV2 is Orb {
         if (currentKeeperTaxNumerator != keeperTaxNumerator) {
             revert CurrentValueIncorrect(currentKeeperTaxNumerator, keeperTaxNumerator);
         }
-        if (currentRoyaltyNumerator != royaltyNumerator) {
-            revert CurrentValueIncorrect(currentRoyaltyNumerator, royaltyNumerator);
+        if (currentPurchaseRoyaltyNumerator != purchaseRoyaltyNumerator) {
+            revert CurrentValueIncorrect(currentPurchaseRoyaltyNumerator, purchaseRoyaltyNumerator);
         }
         if (currentAuctionRoyaltyNumerator != auctionRoyaltyNumerator) {
             revert CurrentValueIncorrect(currentAuctionRoyaltyNumerator, auctionRoyaltyNumerator);
@@ -513,7 +520,7 @@ contract OrbV2 is Orb {
             lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
-            _splitProceeds(currentPrice, _keeper, royaltyNumerator);
+            _splitProceeds(currentPrice, _keeper, purchaseRoyaltyNumerator);
         }
 
         _setPrice(newPrice);
