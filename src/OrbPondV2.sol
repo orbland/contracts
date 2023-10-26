@@ -81,8 +81,7 @@ contract OrbPondV2 is OrbPond {
         address beneficiary = ClonesUpgradeable.clone(paymentSplitterImplementation);
         PaymentSplitter(payable(beneficiary)).initialize(payees_, shares_);
 
-        bytes memory initializeCalldata =
-            abi.encodeWithSelector(Orb.initialize.selector, beneficiary, name, symbol, tokenURI);
+        bytes memory initializeCalldata = abi.encodeCall(Orb.initialize, (beneficiary, name, symbol, tokenURI));
         ERC1967Proxy proxy = new ERC1967Proxy(versions[orbInitialVersion], initializeCalldata);
         orbs[orbCount] = address(proxy);
         IOwnershipTransferrable(orbs[orbCount]).transferOwnership(msg.sender);
