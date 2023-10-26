@@ -138,7 +138,7 @@ contract OrbV2 is Orb {
         public
         virtual
         override
-        initializer
+        reinitializer(2)
     {
         __Ownable_init();
         __UUPSUpgradeable_init();

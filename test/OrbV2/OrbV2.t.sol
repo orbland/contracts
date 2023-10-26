@@ -212,6 +212,11 @@ contract InitialStateTest is OrbTestBase {
         orb.initialize(address(0), "", "", "");
     }
 
+    function test_revertsV2Initializer() public {
+        vm.expectRevert("Initializable: contract is already initialized");
+        orb.initializeV2();
+    }
+
     function test_initializerSuccess() public {
         ERC1967Proxy orbProxy = new ERC1967Proxy(
             address(orbV2Implementation), ""
