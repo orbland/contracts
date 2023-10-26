@@ -17,6 +17,7 @@ import {Orb} from "./Orb.sol";
 ///          implementations, and keeps a reference to an Orb Invocation Registry used by all Orbs created with this
 ///          Orb Pond.
 /// @dev     Uses `Ownable`'s `owner()` to limit the creation of new Orbs to the administrator and for upgrades.
+/// @custom:security-contact security@orb.land
 contract OrbPond is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS

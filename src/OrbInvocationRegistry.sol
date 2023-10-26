@@ -16,6 +16,7 @@ import {Orb} from "./Orb.sol";
 /// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
 /// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `Orb` interface. Uses `Ownable`'s `owner()` to
 ///          guard upgrading.
+/// @custom:security-contact security@orb.land
 contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS

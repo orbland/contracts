@@ -13,6 +13,7 @@ import {OrbPond} from "./OrbPond.sol";
 /// @author  Jonas Lekevicius
 /// @author  Oren Yomtov
 /// @notice  This contract allows anyone to suggest an invocation to an Orb and optionally tip the Orb keeper.
+/// @custom:security-contact security@orb.land
 contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE

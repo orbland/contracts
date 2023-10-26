@@ -10,6 +10,7 @@ import {PaymentSplitterUpgradeable} from
 ///          implements an initializer, and has a constructor to disable the initializer on base deployment. Meant to be
 ///          used as an implementation to a EIP-1167 clone factory. This contract is not actually upgradeable despite
 ///          the name of the base contract.
+/// @custom:security-contact security@orb.land
 contract PaymentSplitter is PaymentSplitterUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

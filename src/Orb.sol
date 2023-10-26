@@ -66,6 +66,7 @@ import {OrbPond} from "./OrbPond.sol";
 ///          allow upgrades, if they are requested by the Creator and executed by the Keeper. The Orb is created as an
 ///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
+/// @custom:security-contact security@orb.land
 contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
