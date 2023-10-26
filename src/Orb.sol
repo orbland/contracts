@@ -241,7 +241,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
     /// Harberger tax for holding. Initial value is 10.00%.
     uint256 public keeperTaxNumerator;
     /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
-    uint256 public royaltyNumerator;
+    uint256 public purchaseRoyaltyNumerator;
     /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
     /// the contract and the auction is not running.
     uint256 public price;
@@ -333,7 +333,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
         // Initial values. Can be changed by creator before selling the Orb.
 
         keeperTaxNumerator = 10_00;
-        royaltyNumerator = 10_00;
+        purchaseRoyaltyNumerator = 10_00;
 
         auctionMinimumBidStep = 1;
         auctionMinimumDuration = 1 days;
@@ -608,8 +608,8 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
         uint256 previousKeeperTaxNumerator = keeperTaxNumerator;
         keeperTaxNumerator = newKeeperTaxNumerator;
 
-        uint256 previousRoyaltyNumerator = royaltyNumerator;
-        royaltyNumerator = newRoyaltyNumerator;
+        uint256 previousRoyaltyNumerator = purchaseRoyaltyNumerator;
+        purchaseRoyaltyNumerator = newRoyaltyNumerator;
 
         emit FeesUpdate(
             previousKeeperTaxNumerator, newKeeperTaxNumerator, previousRoyaltyNumerator, newRoyaltyNumerator
@@ -758,8 +758,9 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
             fundsOf[leadingBidder] -= leadingBid;
             uint256 auctionMinimumRoyaltyNumerator =
                 (keeperTaxNumerator * auctionKeeperMinimumDuration) / _KEEPER_TAX_PERIOD;
-            uint256 auctionRoyalty =
-                auctionMinimumRoyaltyNumerator > royaltyNumerator ? auctionMinimumRoyaltyNumerator : royaltyNumerator;
+            uint256 auctionRoyalty = auctionMinimumRoyaltyNumerator > purchaseRoyaltyNumerator
+                ? auctionMinimumRoyaltyNumerator
+                : purchaseRoyaltyNumerator;
             _splitProceeds(leadingBid, auctionBeneficiary, auctionRoyalty);
 
             lastSettlementTime = block.timestamp;
@@ -974,8 +975,8 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
         if (currentKeeperTaxNumerator != keeperTaxNumerator) {
             revert CurrentValueIncorrect(currentKeeperTaxNumerator, keeperTaxNumerator);
         }
-        if (currentRoyaltyNumerator != royaltyNumerator) {
-            revert CurrentValueIncorrect(currentRoyaltyNumerator, royaltyNumerator);
+        if (currentRoyaltyNumerator != purchaseRoyaltyNumerator) {
+            revert CurrentValueIncorrect(currentRoyaltyNumerator, purchaseRoyaltyNumerator);
         }
         if (currentCooldown != cooldown) {
             revert CurrentValueIncorrect(currentCooldown, cooldown);
@@ -1011,7 +1012,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
             lastInvocationTime = block.timestamp - cooldown;
             fundsOf[beneficiary] += currentPrice;
         } else {
-            _splitProceeds(currentPrice, _keeper, royaltyNumerator);
+            _splitProceeds(currentPrice, _keeper, purchaseRoyaltyNumerator);
         }
 
         _setPrice(newPrice);

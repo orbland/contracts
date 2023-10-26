@@ -330,7 +330,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         assertEq(orb.fundsOf(user2), funds);
         assertEq(orb.fundsOf(address(orb)), 0);
 
-        uint256 beneficiaryRoyalty = (amount * orb.royaltyNumerator()) / orb.feeDenominator();
+        uint256 beneficiaryRoyalty = (amount * orb.purchaseRoyaltyNumerator()) / orb.feeDenominator();
         uint256 auctionBeneficiaryShare = amount - beneficiaryRoyalty;
         uint256 userFunds = orb.fundsOf(user);
         uint256 beneficiaryFunds = orb.fundsOf(beneficiary);
@@ -370,7 +370,7 @@ contract FinalizeAuctionTest is OrbTestBase {
         vm.warp(orb.auctionEndTime() + 1);
         uint256 minBeneficiaryNumerator =
             orb.keeperTaxNumerator() * orb.auctionKeeperMinimumDuration() / orb.keeperTaxPeriod();
-        assertTrue(minBeneficiaryNumerator > orb.royaltyNumerator());
+        assertTrue(minBeneficiaryNumerator > orb.purchaseRoyaltyNumerator());
         uint256 minBeneficiaryRoyalty = (amount * minBeneficiaryNumerator) / orb.feeDenominator();
         uint256 auctionBeneficiaryShare = amount - minBeneficiaryRoyalty;
         uint256 userFunds = orb.fundsOf(user);

@@ -231,7 +231,7 @@ contract PurchaseTest is OrbTestBase {
         // that the user transfers when calling `purchase()`
         vm.prank(user2);
         orb.purchase{value: purchaseAmount + 1}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
-        uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
+        uint256 beneficiaryRoyalty = ((bidAmount * orb.purchaseRoyaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + bidAmount - (beneficiaryRoyalty + expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
@@ -280,7 +280,7 @@ contract PurchaseTest is OrbTestBase {
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         vm.prank(user2);
         orb.purchase{value: purchaseAmount}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
-        uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
+        uint256 beneficiaryRoyalty = ((bidAmount * orb.purchaseRoyaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + bidAmount - (beneficiaryRoyalty + expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);

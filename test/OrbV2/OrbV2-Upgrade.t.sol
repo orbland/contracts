@@ -267,7 +267,7 @@ contract UpgradeFromV1Test is OrbTestBase {
 
         assertEq(testOrb.version(), 1);
         assertEq(testOrb.responsePeriod(), 0);
-        assertEq(testOrb.royaltyNumerator(), 10_00);
+        assertEq(testOrb.purchaseRoyaltyNumerator(), 10_00);
         bytes4 auctionRoyaltyNumeratorSelector = bytes4(keccak256("auctionRoyaltyNumerator()"));
         // solhint-disable-next-line avoid-low-level-calls
         (bool successBefore,) = address(testOrb).call(abi.encodeWithSelector(auctionRoyaltyNumeratorSelector));
