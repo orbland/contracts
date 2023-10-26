@@ -65,7 +65,7 @@ contract PurchaseTest is OrbTestBase {
     function test_revertsIfHeldByContract() public {
         vm.prank(user);
         vm.expectRevert(Orb.ContractHoldsOrb.selector);
-        orb.purchase(100, 0, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase(100, 0, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     function test_revertsIfKeeperInsolvent() public {
@@ -73,7 +73,7 @@ contract PurchaseTest is OrbTestBase {
         vm.warp(block.timestamp + 1300 days);
         vm.prank(user2);
         vm.expectRevert(Orb.KeeperInsolvent.selector);
-        orb.purchase(100, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase(100, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     function test_purchaseSettlesFirst() public {
@@ -81,7 +81,7 @@ contract PurchaseTest is OrbTestBase {
         // after making `user` the current keeper of the Orb, `makeKeeperAndWarp(user, )` warps 30 days into the future
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user2);
-        orb.purchase{value: 1.1 ether}(2 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(2 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
@@ -90,12 +90,12 @@ contract PurchaseTest is OrbTestBase {
         vm.deal(beneficiary, 1.1 ether);
         vm.prank(beneficiary);
         vm.expectRevert(abi.encodeWithSelector(Orb.NotPermitted.selector));
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
 
         // does not revert
         assertEq(orb.lastSettlementTime(), block.timestamp - 30 days);
         vm.prank(user2);
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
         assertEq(orb.lastSettlementTime(), block.timestamp);
     }
 
@@ -103,7 +103,7 @@ contract PurchaseTest is OrbTestBase {
         makeKeeperAndWarp(user, 1 ether);
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 2 ether, 1 ether));
-        orb.purchase{value: 1.1 ether}(3 ether, 2 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 2 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     function test_revertsIfWrongCurrentValues() public {
@@ -111,40 +111,44 @@ contract PurchaseTest is OrbTestBase {
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 200_00, 120_00));
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 200_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 200_00, 10_00, 30_00, 7 days, 300, 20_000_000);
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 30_00, 10_00));
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 30_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 30_00, 30_00, 7 days, 300, 20_000_000);
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 10_00, 30_00));
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 10_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 10_00, 7 days, 300, 20_000_000);
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 8 days, 7 days));
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 8 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 8 days, 300, 20_000_000);
 
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 150, 300));
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 150);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 150, 20_000_000);
 
         vm.prank(user);
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        vm.expectRevert(abi.encodeWithSelector(Orb.CurrentValueIncorrect.selector, 10_000_000, 20_000_000));
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 10_000_000);
+
+        vm.prank(user);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     function test_revertsIfIfAlreadyKeeper() public {
         makeKeeperAndWarp(user, 1 ether);
         vm.expectRevert(Orb.AlreadyKeeper.selector);
         vm.prank(user);
-        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1.1 ether}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     function test_revertsIfInsufficientFunds() public {
         makeKeeperAndWarp(user, 1 ether);
         vm.expectRevert(abi.encodeWithSelector(Orb.InsufficientFunds.selector, 1 ether - 1, 1 ether));
         vm.prank(user2);
-        orb.purchase{value: 1 ether - 1}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: 1 ether - 1}(3 ether, 1 ether, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     function test_revertsIfPurchasingAfterSetPrice() public {
@@ -153,7 +157,7 @@ contract PurchaseTest is OrbTestBase {
         orb.setPrice(0);
         vm.expectRevert(abi.encodeWithSelector(Orb.PurchasingNotPermitted.selector));
         vm.prank(user2);
-        orb.purchase(1 ether, 0, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase(1 ether, 0, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
     }
 
     event Purchase(address indexed seller, address indexed buyer, uint256 indexed price);
@@ -183,7 +187,7 @@ contract PurchaseTest is OrbTestBase {
         // The Orb is purchased with purchaseAmount
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
-        orb.purchase{value: purchaseAmount + 1}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: purchaseAmount + 1}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
         uint256 beneficiaryRoyalty = bidAmount;
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty);
         assertEq(orb.fundsOf(owner), ownerBefore);
@@ -226,7 +230,7 @@ contract PurchaseTest is OrbTestBase {
         // It uses both the existing funds of the user and the funds
         // that the user transfers when calling `purchase()`
         vm.prank(user2);
-        orb.purchase{value: purchaseAmount + 1}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: purchaseAmount + 1}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
         uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + bidAmount - (beneficiaryRoyalty + expectedSettlement));
@@ -275,7 +279,7 @@ contract PurchaseTest is OrbTestBase {
         // that the user transfers when calling `purchase()`
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         vm.prank(user2);
-        orb.purchase{value: purchaseAmount}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300);
+        orb.purchase{value: purchaseAmount}(newPrice, bidAmount, 120_00, 10_00, 30_00, 7 days, 300, 20_000_000);
         uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + bidAmount - (beneficiaryRoyalty + expectedSettlement));
