@@ -452,13 +452,7 @@ contract OrbV2 is Orb {
     ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
     ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
     ///          V2 changes to require providing Keeper auction royalty to prevent front-running.
-    /// @param   newPrice                        New price to use after the purchase.
-    /// @param   currentPrice                    Current price, to prevent front-running.
-    /// @param   currentKeeperTaxNumerator       Current keeper tax numerator, to prevent front-running.
-    /// @param   currentRoyaltyNumerator         Current royalty numerator, to prevent front-running.
-    /// @param   currentAuctionRoyaltyNumerator  Current keeper auction royalty numerator, to prevent front-running.
-    /// @param   currentCooldown                 Current cooldown, to prevent front-running.
-    /// @param   currentCleartextMaximumLength   Current cleartext maximum length, to prevent front-running.
+    /// @param   currentHonoredUntil              Current honored until timestamp, to prevent front-running.
     function purchase(
         uint256 newPrice,
         uint256 currentPrice,
@@ -466,7 +460,8 @@ contract OrbV2 is Orb {
         uint256 currentRoyaltyNumerator,
         uint256 currentAuctionRoyaltyNumerator,
         uint256 currentCooldown,
-        uint256 currentCleartextMaximumLength
+        uint256 currentCleartextMaximumLength,
+        uint256 currentHonoredUntil
     ) external payable virtual onlyKeeperHeld onlyKeeperSolvent {
         if (currentPrice != price) {
             revert CurrentValueIncorrect(currentPrice, price);
@@ -485,6 +480,9 @@ contract OrbV2 is Orb {
         }
         if (currentCleartextMaximumLength != cleartextMaximumLength) {
             revert CurrentValueIncorrect(currentCleartextMaximumLength, cleartextMaximumLength);
+        }
+        if (currentHonoredUntil != honoredUntil) {
+            revert CurrentValueIncorrect(currentHonoredUntil, honoredUntil);
         }
 
         if (lastSettlementTime >= block.timestamp) {
