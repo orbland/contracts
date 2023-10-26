@@ -70,6 +70,7 @@ import {OrbPondV2} from "./OrbPondV2.sol";
 ///          - Event changes: `OathSwearing` parameter change, `InvocationParametersUpdate` added (replaces
 ///            `CooldownUpdate` and `CleartextMaximumLengthUpdate`), `FeesUpdate` parameter change,
 ///            `BeneficiaryWithdrawalAddressUpdate` added.
+/// @custom:security-contact security@orb.land
 contract OrbV2 is Orb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS

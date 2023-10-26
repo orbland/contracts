@@ -22,6 +22,7 @@ import {Orb} from "./Orb.sol";
 ///          - `beneficiaryWithdrawalAddresses` mapping to authorize addresses to be used as
 ///            `beneficiaryWithdrawalAddress` on Orbs, `authorizeWithdrawalAddress()` function to set it, and
 ///            `beneficiaryWithdrawalAddressPermitted()` function to check if address is authorized.
+/// @custom:security-contact security@orb.land
 contract OrbPondV2 is OrbPond {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS

@@ -15,6 +15,7 @@ import {ERC1967UpgradeUpgradeable} from
 ///          modified version of the OpenZeppelin Contract `UUPSUpgradeable` contract that does not expose any public
 ///          functions, to allow custom upgradeability logic to be implemented in the `Orb` contract.
 ///          Also, replaces string errors with custom errors.
+/// @custom:security-contact security@orb.land
 abstract contract UUPSUpgradeable is IERC1822ProxiableUpgradeable, ERC1967UpgradeUpgradeable {
     // Errors
     error RequiresCallViaDelegatecall();
