@@ -27,6 +27,10 @@ describe("Orb Pond Upgrade", function () {
         const OrbPondV2 = await ethers.getContractFactory("OrbPondV2")
         const orbPondUpgradedV2 = await upgrades.upgradeProxy(orbPondAddress, OrbPondV2, {
             kind: "uups",
+            call: {
+                fn: "initializeV2",
+                args: [1], // initial version 1
+            },
         })
         // console.log("Orb Pond upgraded")
         await orbPondUpgradedV2.waitForDeployment()
@@ -35,6 +39,9 @@ describe("Orb Pond Upgrade", function () {
         // console.log("Upgraded Pond address:", orbAddressUpgraded)
         expect(orbAddressUpgradedV2).to.equal(orbPondAddress)
         expect(await orbPond.version()).to.equal(2n)
+
+        const orbPondV2 = await ethers.getContractAt("OrbPondV2", orbPondAddress)
+        expect(await orbPondV2.orbInitialVersion()).to.equal(1n)
 
         const OrbPondTestUpgrade = await ethers.getContractFactory("OrbPondTestUpgrade")
         const orbPondUpgradedTest = await upgrades.upgradeProxy(orbPondAddress, OrbPondTestUpgrade, {
