@@ -137,7 +137,7 @@ contract LocalDeploy is Script {
             auctionBidExtension
         );
         orb.setFees(keeperTaxNumerator, royaltyNumerator, royaltyNumerator);
-        orb.setInvocationParameters(cooldown, cooldown, flaggingPeriod, cleartextMaximumLength);
+        orb.setInvocationParameters(cooldown, responsePeriod, flaggingPeriod, cleartextMaximumLength);
 
         orb.transferOwnership(creatorAddress);
         console.log("Orb ownership transferred to: ", creatorAddress);
@@ -154,7 +154,7 @@ contract LocalDeploy is Script {
         if (vm.envBool("WITH_OATH")) {
             vm.startBroadcast(creatorKey);
 
-            orb.swearOath(oathHash, honoredUntil, responsePeriod);
+            orb.swearOath(oathHash, honoredUntil);
             orb.listWithPrice(50 ether);
             orbInvocationTipJar.setMinimumTip(address(orb), 0.05 ether);
             orb.relinquish(false);
