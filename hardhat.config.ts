@@ -31,9 +31,22 @@ const config: HardhatUserConfig = {
     },
     defaultNetwork: "hardhat",
     networks: {
-        hardhat: {},
+        anvil: {
+            url: "http://127.0.0.1:8545",
+            accounts: {
+                mnemonic: "test test test test test test test test test test test junk",
+                path: "m/44'/60'/0'/0",
+                initialIndex: 0,
+                count: 20,
+                passphrase: "",
+            },
+        },
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
+            accounts: [deployerPrivateKey],
+        },
+        sepolia: {
+            url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
             accounts: [deployerPrivateKey],
         },
         mainnet: {
