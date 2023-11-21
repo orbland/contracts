@@ -398,6 +398,12 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
     ///       modified while it is held by the keeper or users can bid on the Orb.
     modifier onlyCreatorControlled() virtual {
         if (address(this) != keeper && owner() != keeper) {
+            // Creator CAN control (does not revert) if any of these are false:
+            // - Orb is not held by the contract itself
+            // - Orb is not held by the creator
+            // Inverted, this means that the creator CAN control if any of these are true:
+            // - Orb is held by the contract itself OR
+            // - Orb is held by the creator
             revert CreatorDoesNotControlOrb();
         }
         if (auctionEndTime > 0) {
