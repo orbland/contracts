@@ -193,6 +193,14 @@ contract OrbV2 is Orb {
     ///       V2 changes to allow setting parameters even during Keeper control, if Oath has expired.
     modifier onlyCreatorControlled() virtual override {
         if (address(this) != keeper && owner() != keeper && honoredUntil >= block.timestamp) {
+            // Creator CAN control Orb (does not revert) if any of these FALSE:
+            // - Orb is not held by the contract itself
+            // - Orb is not held by the creator
+            // - Oath is still honored
+            // Inverted, this means that the creator CAN control if any of these are TRUE:
+            // - Orb is held by the contract itself
+            // - Orb is held by the creator
+            // - Oath is not honored (even if Orb is held by the Keeper)
             revert CreatorDoesNotControlOrb();
         }
         if (auctionEndTime > 0) {
