@@ -5,6 +5,7 @@ import {Test} from "../../lib/forge-std/src/Test.sol";
 
 import {OrbTestBase} from "./OrbV2.t.sol";
 import {Orb} from "../../src/Orb.sol";
+import {OrbV2} from "../../src/OrbV2.sol";
 
 /* solhint-disable func-name-mixedcase */
 contract RelinquishmentTest is OrbTestBase {
@@ -192,6 +193,67 @@ contract ForecloseTest is OrbTestBase {
         orb.foreclose();
         assertEq(orb.auctionBeneficiary(), user);
         assertEq(orb.auctionEndTime(), exepectedEndTime);
+        assertEq(orb.keeper(), address(orb));
+        assertEq(orb.price(), 0);
+    }
+}
+
+contract RecallTest is OrbTestBase {
+    event Recall(address indexed formerKeeper);
+
+    function test_revertsWhenNotOwner() public {
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user);
+        orb.recall();
+    }
+
+    function test_revertsIfNotKeeperHeld() public {
+        vm.expectRevert(OrbV2.KeeperDoesNotHoldOrb.selector);
+        orb.recall();
+
+        orb.listWithPrice(1 ether);
+        vm.expectRevert(OrbV2.KeeperDoesNotHoldOrb.selector);
+        orb.recall();
+    }
+
+    function test_revertsIfOathHonored() public {
+        makeKeeperAndWarp(user, 1 ether);
+        vm.expectRevert(OrbV2.OathStillHonored.selector);
+        orb.recall();
+
+        vm.warp(20_000_000);
+        vm.expectRevert(OrbV2.OathStillHonored.selector);
+        orb.recall();
+
+        vm.warp(20_000_001);
+        vm.expectEmit(true, true, true, true);
+        emit Recall(user);
+        orb.recall();
+    }
+
+    event Settlement(address indexed keeper, address indexed beneficiary, uint256 indexed amount);
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+
+    function test_succeeds() public {
+        makeKeeperAndWarp(user, 10 ether);
+        vm.warp(20_000_001);
+
+        assertEq(orb.lastSettlementTime(), 10_086_401); // 10M + 1 day + 1
+        assertEq(orb.keeper(), user);
+        assertEq(orb.price(), 10 ether);
+
+        uint256 owed = orb.workaround_owedSinceLastSettlement();
+
+        vm.expectEmit(true, true, true, true);
+        emit Settlement(user, beneficiary, owed);
+        vm.expectEmit(true, true, true, true);
+        emit Recall(user);
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(user, address(orb), 1);
+
+        orb.recall();
+
+        assertEq(orb.lastSettlementTime(), block.timestamp);
         assertEq(orb.keeper(), address(orb));
         assertEq(orb.price(), 0);
     }
