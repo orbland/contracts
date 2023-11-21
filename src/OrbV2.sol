@@ -98,13 +98,16 @@ contract OrbV2 is Orb {
     event BeneficiaryWithdrawalAddressUpdate(
         address previousBeneficiaryWithdrawalAddress, address indexed newBeneficiaryWithdrawalAddress
     );
+    event Recall(address indexed formerKeeper);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    error NotHonored();
     error AddressNotPermitted(address unauthorizedAddress);
+    error KeeperDoesNotHoldOrb();
+    error NotHonored();
+    error OathStillHonored();
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -541,6 +544,23 @@ contract OrbV2 is Orb {
     /// @dev  Previous `purchase()` overriden to revert.
     function purchase(uint256, uint256, uint256, uint256, uint256, uint256) external payable virtual override {
         revert NotSupported();
+    }
+    function recall() external virtual onlyOwner {
+        address _keeper = keeper;
+        if (address(this) == _keeper || owner() == _keeper) {
+            revert KeeperDoesNotHoldOrb();
+        }
+        if (honoredUntil >= block.timestamp) {
+            revert OathStillHonored();
+        }
+        // Auction cannot be running while held by Keeper, no check needed
+
+        _settle();
+
+        price = 0;
+        emit Recall(_keeper);
+
+        _transferOrb(_keeper, address(this));
     }
 
     /// @notice  Function to withdraw all beneficiary funds on the contract. Settles if possible.
