@@ -66,10 +66,12 @@ import {OrbPondV2} from "./OrbPondV2.sol";
 ///          - Orb parameters can now be updated even during Keeper control, if Oath has expired.
 ///          - `beneficiaryWithdrawalAddress` can now be set by the Creator to withdraw funds to a different address, if
 ///            the address is authorized on the OrbPond.
+///          - `recall()` allows Orb creator to transfer the Orb from the Keeper back to the contract, if Oath has
+///            expired, allowing for re-auctioning.
 ///          - Overriden `initialize()` to allow using V2 as initial implementation, with new default values.
 ///          - Event changes: `OathSwearing` parameter change, `InvocationParametersUpdate` added (replaces
 ///            `CooldownUpdate` and `CleartextMaximumLengthUpdate`), `FeesUpdate` parameter change,
-///            `BeneficiaryWithdrawalAddressUpdate` added.
+///            `BeneficiaryWithdrawalAddressUpdate`, `Recall` added.
 /// @custom:security-contact security@orb.land
 contract OrbV2 is Orb {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -545,6 +547,13 @@ contract OrbV2 is Orb {
     function purchase(uint256, uint256, uint256, uint256, uint256, uint256) external payable virtual override {
         revert NotSupported();
     }
+
+    /// @notice  Allows the Orb creator to recall the Orb from the Keeper, if the Oath is no longer honored. This is an
+    ///          alternative to just extending the Oath or swearing it while held by Keeper. It benefits the Orb creator
+    ///          as they can set a new Oath and run a new auction. This acts as an alternative to just abandoning the
+    ///          Orb after Oath expires.
+    /// @dev     Emits `Recall`. Does not transfer remaining funds to the Keeper to allow recalling even if the Keeper
+    ///          is a smart contract rejecting ether transfers.
     function recall() external virtual onlyOwner {
         address _keeper = keeper;
         if (address(this) == _keeper || owner() == _keeper) {
