@@ -260,9 +260,9 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
     /// Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
     /// cannot be set to zero, as it would prevent any bids from being made.
     uint256 public auctionMinimumDuration;
-    /// Keeper's Auction minimum duration: auction started by the keeper via `relinquishWithAuction()` will run for at
-    /// least this long. Initial value is 1 day, and this value cannot be set to zero, as it would prevent any bids
-    /// from being made.
+    /// Keeper's Auction minimum duration: auction started by the keeper via `relinquish(true)` will run for at least
+    /// this long. Initial value is 1 day, and this value cannot be set to zero, as it would prevent any bids from being
+    /// made.
     uint256 public auctionKeeperMinimumDuration;
     /// Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
@@ -552,8 +552,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
     /// @param   newMinimumBidStep         New minimum bid step for the auction. Will always be set to at least 1.
     /// @param   newMinimumDuration        New minimum duration for the auction. Must be > 0.
     /// @param   newKeeperMinimumDuration  New minimum duration for the auction is started by the keeper via
-    ///                                    `relinquishWithAuction()`. Setting to 0 effectively disables keeper
-    ///                                    auctions.
+    ///                                    `relinquish(true)`. Setting to 0 effectively disables keeper auctions.
     /// @param   newBidExtension           New bid extension for the auction. Can be 0.
     function setAuctionParameters(
         uint256 newStartingPrice,
@@ -748,7 +747,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
-    ///          If the auction was started by previous Keeper with `relinquishWithAuction()`, then most of the auction
+    ///          If the auction was started by previous Keeper with `relinquish(true)`, then most of the auction
     ///          proceeds (minus the royalty) will be sent to the previous Keeper. Sets `lastInvocationTime` so that
     ///          the Orb could be invoked immediately. The price has been set when bidding, now becomes relevant. If no
     ///          bids were made, resets the state to allow the auction to be started again later.

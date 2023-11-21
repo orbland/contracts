@@ -380,7 +380,7 @@ contract OrbV2 is Orb {
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
-    ///          If the auction was started by previous Keeper with `relinquishWithAuction()`, then most of the auction
+    ///          If the auction was started by previous Keeper with `relinquish(true)`, then most of the auction
     ///          proceeds (minus the royalty) will be sent to the previous Keeper. Sets `lastInvocationTime` so that
     ///          the Orb could be invoked immediately. The price has been set when bidding, now becomes relevant. If no
     ///          bids were made, resets the state to allow the auction to be started again later.
