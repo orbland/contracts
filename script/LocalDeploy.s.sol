@@ -56,7 +56,7 @@ contract LocalDeploy is Script {
     OrbV2 public orb;
 
     bytes32 public immutable oathHash = 0x21144ebccf78f508f97c58c356209917be7cc4f7f8466da7b3bbacc1132af54c;
-    uint256 public immutable honoredUntil = 1_700_000_000;
+    uint256 public immutable honoredUntil = 1_750_000_000;
     uint256 public immutable responsePeriod = 7 * 24 * 60 * 60;
 
     function deployContracts() public {
