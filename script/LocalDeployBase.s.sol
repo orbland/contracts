@@ -14,32 +14,11 @@ import {OrbInvocationTipJar} from "../src/OrbInvocationTipJar.sol";
 import {Orb} from "../src/Orb.sol";
 import {OrbV2} from "../src/OrbV2.sol";
 
-contract LocalDeployUpgradeless is Script {
-    address public immutable creatorAddress = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc;
+contract LocalDeployBase is Script {
     address public immutable orbLandAddress = 0x9F49230672c52A2b958F253134BB17Ac84d30833;
 
-    string public orbName = "Test Orb";
-    string public orbSymbol = "ORB";
-    uint256 public immutable tokenId = 1;
-
-    uint256 public immutable auctionStartingPrice = 0.1 ether;
-    uint256 public immutable auctionMinimumBidStep = 0.1 ether;
-    uint256 public immutable auctionMinimumDuration = 2 minutes;
-    uint256 public immutable auctionKeeperMinimumDuration = 1 minutes;
-    uint256 public immutable auctionBidExtension = 30 seconds;
-
-    uint256 public immutable keeperTaxNumerator = 10_00;
-    uint256 public immutable royaltyNumerator = 10_00;
-
-    uint256 public immutable cooldown = 2 minutes;
-    uint256 public immutable flaggingPeriod = 5 minutes;
-
-    uint256 public immutable cleartextMaximumLength = 280;
-
-    // Deploy addresses.
+    // Deploy addresses
     PaymentSplitter public paymentSplitterImplementation;
-
-    PaymentSplitter public orbBeneficiary;
 
     OrbInvocationRegistry public orbInvocationRegistryImplementation;
     OrbInvocationRegistry public orbInvocationRegistry;
@@ -53,11 +32,6 @@ contract LocalDeployUpgradeless is Script {
 
     Orb public orbImplementation;
     OrbV2 public orbV2Implementation;
-    OrbV2 public orb;
-
-    bytes32 public immutable oathHash = 0x21144ebccf78f508f97c58c356209917be7cc4f7f8466da7b3bbacc1132af54c;
-    uint256 public immutable honoredUntil = 1_700_000_000;
-    uint256 public immutable responsePeriod = 7 * 24 * 60 * 60;
 
     function deployContracts() public {
         orbInvocationRegistryImplementation = new OrbInvocationRegistry();
@@ -104,48 +78,19 @@ contract LocalDeployUpgradeless is Script {
         bytes memory orbPondV1InitializeCalldata =
             abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
         OrbPond(address(orbPondProxy)).registerVersion(1, address(orbImplementation), orbPondV1InitializeCalldata);
+
         bytes memory orbPondV2InitializeCalldata = abi.encodeWithSelector(OrbV2.initializeV2.selector);
         OrbPond(address(orbPondProxy)).registerVersion(2, address(orbV2Implementation), orbPondV2InitializeCalldata);
 
         OrbPond(address(orbPondProxy)).upgradeToAndCall(
-            address(orbPondV2Implementation), abi.encodeWithSelector(OrbPondV2.initializeV2.selector, 1)
+            address(orbPondV2Implementation), abi.encodeWithSelector(OrbPondV2.initializeV2.selector, 2)
         );
         orbPond = OrbPondV2(address(orbPondProxy));
         console.log("OrbPond (V2): ", address(orbPond));
-
-        address[] memory beneficiaryAddresses = new address[](2);
-        beneficiaryAddresses[0] = creatorAddress;
-        beneficiaryAddresses[1] = orbLandAddress;
-        uint256[] memory beneficiaryShares = new uint256[](2);
-        beneficiaryShares[0] = 95;
-        beneficiaryShares[1] = 5;
-
-        orbPond.createOrb(
-            beneficiaryAddresses, beneficiaryShares, orbName, orbSymbol, "https://static.orb.land/localhost/metadata"
-        );
-        orb = OrbV2(orbPond.orbs(0));
-        console.log("Orb (V1): ", address(orb));
-        orbBeneficiary = PaymentSplitter(payable(orb.beneficiary()));
-        console.log("Orb beneficiary: ", address(orbBeneficiary));
-
-        orb.setAuctionParameters(
-            auctionStartingPrice,
-            auctionMinimumBidStep,
-            auctionMinimumDuration,
-            auctionKeeperMinimumDuration,
-            auctionBidExtension
-        );
-        orb.setFees(keeperTaxNumerator, royaltyNumerator);
-        orb.setCooldown(cooldown, flaggingPeriod);
-        orb.setCleartextMaximumLength(cleartextMaximumLength);
-
-        orb.transferOwnership(creatorAddress);
-        console.log("Orb ownership transferred to: ", creatorAddress);
     }
 
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-
         vm.startBroadcast(deployerKey);
         deployContracts();
         vm.stopBroadcast();
