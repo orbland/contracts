@@ -193,7 +193,7 @@ contract PurchaseTest is OrbTestBase {
     function test_succeedsCorrectly() public {
         uint256 bidAmount = 1 ether;
         uint256 newPrice = 3 ether;
-        uint256 expectedSettlement = bidAmount * orb.purchaseRoyaltyNumerator() / orb.feeDenominator();
+        uint256 expectedSettlement = bidAmount * orb.royaltyNumerator() / orb.feeDenominator();
         uint256 purchaseAmount = bidAmount / 2;
         uint256 depositAmount = bidAmount / 2;
         // bidAmount will be the `_price` of the Orb
@@ -223,7 +223,7 @@ contract PurchaseTest is OrbTestBase {
         // that the user transfers when calling `purchase()`
         vm.prank(user2);
         orb.purchase{value: purchaseAmount + 1}(newPrice, bidAmount, 10_00, 10_00, 7 days, 280);
-        uint256 beneficiaryRoyalty = ((bidAmount * orb.purchaseRoyaltyNumerator()) / orb.feeDenominator());
+        uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty - expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
@@ -238,7 +238,7 @@ contract PurchaseTest is OrbTestBase {
         newPrice = bound(newPrice, 1, orb.workaround_maximumPrice());
         buyPrice = bound(buyPrice, bidAmount + 1, orb.workaround_maximumPrice());
         diff = bound(diff, 1, buyPrice);
-        uint256 expectedSettlement = bidAmount * orb.purchaseRoyaltyNumerator() / orb.feeDenominator();
+        uint256 expectedSettlement = bidAmount * orb.royaltyNumerator() / orb.feeDenominator();
         vm.deal(user2, buyPrice);
         /// Break up the amount between depositing and purchasing to test more scenarios
         uint256 purchaseAmount = buyPrice - diff;
@@ -272,7 +272,7 @@ contract PurchaseTest is OrbTestBase {
         // We bound the purchaseAmount to be higher than the current price (bidAmount)
         vm.prank(user2);
         orb.purchase{value: purchaseAmount}(newPrice, bidAmount, 10_00, 10_00, 7 days, 280);
-        uint256 beneficiaryRoyalty = ((bidAmount * orb.purchaseRoyaltyNumerator()) / orb.feeDenominator());
+        uint256 beneficiaryRoyalty = ((bidAmount * orb.royaltyNumerator()) / orb.feeDenominator());
         assertEq(orb.fundsOf(beneficiary), beneficiaryBefore + beneficiaryRoyalty + expectedSettlement);
         assertEq(orb.fundsOf(user), userBefore + (bidAmount - beneficiaryRoyalty - expectedSettlement));
         assertEq(orb.fundsOf(owner), ownerBefore);
