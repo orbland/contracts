@@ -73,6 +73,9 @@ contract LocalDeployOrb is Script {
         orbBeneficiary = PaymentSplitter(payable(orb.beneficiary()));
         console.log("Orb beneficiary: ", address(orbBeneficiary));
 
+        console.log("Orb version: ", orb.version());
+        console.log("Orb implementation: ", orbPond.versions(orb.version()));
+
         orb.setAuctionParameters(
             auctionStartingPrice,
             auctionMinimumBidStep,
@@ -111,6 +114,7 @@ contract LocalDeployOrb is Script {
         vm.stopBroadcast();
 
         if (vm.envBool("SWEAR_OATH")) {
+            console.log("Swearing Oath");
             vm.startBroadcast(creatorKey);
             if (createAsV1) {
                 Orb orbV1 = Orb(orb);
