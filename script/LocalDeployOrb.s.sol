@@ -11,7 +11,7 @@ import {OrbPond} from "../src/OrbPond.sol";
 import {OrbPondV2} from "../src/OrbPondV2.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {OrbInvocationTipJar} from "../src/OrbInvocationTipJar.sol";
-import {Orb} from "../src/Orb.sol";
+import {Orb} from "../src/OrbV1Renamed.sol";
 import {OrbV2} from "../src/OrbV2.sol";
 
 contract LocalDeployOrb is Script {

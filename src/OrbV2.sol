@@ -37,7 +37,7 @@ pragma solidity 0.8.20;
 
 import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
 
-import {Orb} from "./Orb.sol";
+import {Orb} from "./OrbV1Renamed.sol";
 import {OrbPondV2} from "./OrbPondV2.sol";
 
 /// @title   Orb v2 - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
