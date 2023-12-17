@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {Test} from "../../lib/forge-std/src/Test.sol";
-
 import {OrbHarness} from "./OrbV2Harness.sol";
 import {OrbTestBase} from "./OrbV2.t.sol";
 import {Orb} from "../../src/Orb.sol";
@@ -263,24 +262,26 @@ contract UpgradeFromV1Test is OrbTestBase {
         orbPond.createOrb(beneficiaryPayees, beneficiaryShares, "Orb", "ORB", "https://static.orb.land/orb/");
 
         assertEq(orbPond.orbCount(), 2);
-        OrbHarness testOrb = OrbHarness(orbPond.orbs(1));
+        Orb testOrbV1 = Orb(orbPond.orbs(1));
 
-        assertEq(testOrb.version(), 1);
-        assertEq(testOrb.responsePeriod(), 0);
-        assertEq(testOrb.purchaseRoyaltyNumerator(), 10_00);
+        assertEq(testOrbV1.version(), 1);
+        assertEq(testOrbV1.responsePeriod(), 0);
+        assertEq(testOrbV1.royaltyNumerator(), 10_00);
         bytes4 auctionRoyaltyNumeratorSelector = bytes4(keccak256("auctionRoyaltyNumerator()"));
         // solhint-disable-next-line avoid-low-level-calls
-        (bool successBefore,) = address(testOrb).call(abi.encodeWithSelector(auctionRoyaltyNumeratorSelector));
+        (bool successBefore,) = address(testOrbV1).call(abi.encodeWithSelector(auctionRoyaltyNumeratorSelector));
         assertEq(successBefore, false);
 
-        testOrb.requestUpgrade(address(orbV2Implementation));
-        testOrb.upgradeToNextVersion();
+        testOrbV1.requestUpgrade(address(orbV2Implementation));
+        testOrbV1.upgradeToNextVersion();
 
-        assertEq(testOrb.version(), 2);
-        assertEq(testOrb.responsePeriod(), 7 days);
+        OrbHarness testOrbV2 = OrbHarness(orbPond.orbs(1));
+
+        assertEq(testOrbV2.version(), 2);
+        assertEq(testOrbV2.responsePeriod(), 7 days);
         // solhint-disable-next-line avoid-low-level-calls
-        (bool successAfter,) = address(testOrb).call(abi.encodeWithSelector(auctionRoyaltyNumeratorSelector));
+        (bool successAfter,) = address(testOrbV2).call(abi.encodeWithSelector(auctionRoyaltyNumeratorSelector));
         assertEq(successAfter, true);
-        assertEq(testOrb.auctionRoyaltyNumerator(), 10_00);
+        assertEq(testOrbV2.auctionRoyaltyNumerator(), 10_00);
     }
 }

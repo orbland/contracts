@@ -128,10 +128,10 @@ describe("Orb Invocation Tip Jar Upgrade", function () {
 })
 
 describe("Orb Upgrade", function () {
-    it("Should be deploy directly", async function () {
+    it("Should deploy directly", async function () {
         const [admin, creator, keeper, beneficiary] = await ethers.getSigners()
 
-        const Orb = await ethers.getContractFactory("Orb")
+        const Orb = await ethers.getContractFactory("src/Orb.sol:Orb")
         const orb = await upgrades.deployProxy(Orb, [beneficiary.address, "Orb", "ORB", "https://example.com/"], {
             kind: "uups",
             initializer: "initialize",
@@ -179,7 +179,7 @@ describe("Orb Upgrade", function () {
         // console.log("Pond address:", orbPondAddress)
 
         // const Orb = await ethers.getContractFactory("Orb")
-        const Orb = await ethers.getContractFactory("Orb")
+        const Orb = await ethers.getContractFactory("src/Orb.sol:Orb")
         const orbImplementation = await upgrades.deployImplementation(Orb, {
             unsafeAllow: ["delegatecall"],
         })
@@ -200,7 +200,7 @@ describe("Orb Upgrade", function () {
 
         await orbPond.createOrb([beneficiary1, beneficiary2], [95, 5], "Orb", "ORB", "https://example.com/")
         const firstOrbAddress = await orbPond.orbs(0)
-        const orb = await ethers.getContractAt("Orb", firstOrbAddress)
+        const orb = await ethers.getContractAt("src/Orb.sol:Orb", firstOrbAddress)
 
         // 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
         // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
