@@ -35,16 +35,13 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity 0.8.20;
 
-import {IERC165Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
+import {IERC165} from "../lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 import {ERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
-import {IERC721Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/IERC721Upgradeable.sol";
-import {IERC721MetadataUpgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
+import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {IERC721Metadata} from "../lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
+import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
 import {OrbPond} from "./OrbPond.sol";
@@ -67,7 +64,7 @@ import {OrbPond} from "./OrbPond.sol";
 ///          ERC-1967 proxy to an `Orb` implementation by the `OrbPond` contract, which is also used to track allowed
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
 /// @custom:security-contact security@orb.land
-contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract Orb is IERC721Metadata, ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +316,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
         virtual
         initializer
     {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
 
         name = name_;
@@ -354,11 +351,11 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
         public
         view
         virtual
-        override(ERC165Upgradeable, IERC165Upgradeable)
+        override(ERC165Upgradeable, IERC165)
         returns (bool isInterfaceSupported)
     {
-        return interfaceId == 0x4645e06f || interfaceId == type(IERC721Upgradeable).interfaceId
-            || interfaceId == type(IERC721MetadataUpgradeable).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == 0x4645e06f || interfaceId == type(IERC721).interfaceId
+            || interfaceId == type(IERC721Metadata).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @dev     Function exposing creator address as part of IOrb interface.
@@ -887,7 +884,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
 
         emit Withdrawal(recipient_, amount_);
 
-        AddressUpgradeable.sendValue(payable(recipient_), amount_);
+        Address.sendValue(payable(recipient_), amount_);
     }
 
     /// @dev  Keeper might owe more than they have funds available: it means that the keeper is foreclosable.
@@ -1183,7 +1180,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
             revert NotNextVersion();
         }
 
-        _upgradeToAndCallUUPS(nextVersionImplementation, OrbPond(pond).upgradeCalldata(version() + 1), false);
+        _upgradeToAndCallUUPS(nextVersionImplementation, OrbPond(pond).upgradeCalldata(version() + 1));
         requestedUpgradeImplementation = address(0);
     }
 }

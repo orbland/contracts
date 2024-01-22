@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {ClonesUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
+import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
 
 import {PaymentSplitter} from "./CustomPaymentSplitter.sol";
 import {IOwnershipTransferrable} from "./IOwnershipTransferrable.sol";
@@ -74,7 +74,7 @@ contract OrbPond is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   registry_                        The address of the Orb Invocation Registry.
     /// @param   paymentSplitterImplementation_   The address of the PaymentSplitter implementation contract.
     function initialize(address registry_, address paymentSplitterImplementation_) public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
 
         registry = registry_;
@@ -98,7 +98,7 @@ contract OrbPond is OwnableUpgradeable, UUPSUpgradeable {
         string memory symbol,
         string memory tokenURI
     ) external virtual onlyOwner {
-        address beneficiary = ClonesUpgradeable.clone(paymentSplitterImplementation);
+        address beneficiary = Clones.clone(paymentSplitterImplementation);
         PaymentSplitter(payable(beneficiary)).initialize(payees_, shares_);
 
         bytes memory initializeCalldata = abi.encodeCall(Orb.initialize, (beneficiary, name, symbol, tokenURI));

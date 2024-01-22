@@ -35,7 +35,7 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity 0.8.20;
 
-import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
+import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {Orb} from "./OrbV1Renamed.sol";
 import {OrbPondV2} from "./OrbPondV2.sol";
@@ -146,7 +146,7 @@ contract OrbV2 is Orb {
         override
         reinitializer(2)
     {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
 
         name = name_;
@@ -588,6 +588,6 @@ contract OrbV2 is Orb {
         fundsOf[beneficiary] = 0;
 
         emit Withdrawal(withdrawalAddress, amount);
-        AddressUpgradeable.sendValue(payable(withdrawalAddress), amount);
+        Address.sendValue(payable(withdrawalAddress), amount);
     }
 }

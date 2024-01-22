@@ -5,7 +5,7 @@ import {ERC165Upgradeable} from
     "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
+import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {Orb} from "./Orb.sol";
 
@@ -111,7 +111,7 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
 
     /// @dev  Initializes the contract.
     function initialize() public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
     }
 
@@ -255,7 +255,7 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
         if (authorizedContracts[addressToCall] == false) {
             revert ContractNotAuthorized(addressToCall);
         }
-        AddressUpgradeable.functionCall(addressToCall, dataToCall);
+        Address.functionCall(addressToCall, dataToCall);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

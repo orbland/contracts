@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {Orb} from "../Orb.sol";
 import {OrbInvocationTipJar} from "../OrbInvocationTipJar.sol";
 
 /// @title   Orb Invocation Tip Jar Test Upgrade - A contract for suggesting Orb invocations and tipping Orb keepers

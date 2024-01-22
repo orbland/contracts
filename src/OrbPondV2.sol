@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ClonesUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
+import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
 
 import {PaymentSplitter} from "./CustomPaymentSplitter.sol";
 import {OrbPond} from "./OrbPond.sol";
@@ -79,7 +79,7 @@ contract OrbPondV2 is OrbPond {
         string memory symbol,
         string memory tokenURI
     ) external virtual override onlyOwner {
-        address beneficiary = ClonesUpgradeable.clone(paymentSplitterImplementation);
+        address beneficiary = Clones.clone(paymentSplitterImplementation);
         PaymentSplitter(payable(beneficiary)).initialize(payees_, shares_);
 
         bytes memory initializeCalldata = abi.encodeCall(Orb.initialize, (beneficiary, name, symbol, tokenURI));
