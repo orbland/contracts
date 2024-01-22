@@ -70,9 +70,7 @@ contract LocalDeployBase is Script {
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
             abi.encodeWithSelector(
-                OrbPond.initialize.selector,
-                address(orbInvocationRegistry),
-                address(paymentSplitterImplementation)
+                OrbPond.initialize.selector, address(orbInvocationRegistry), address(paymentSplitterImplementation)
             )
         );
         bytes memory orbPondV1InitializeCalldata =
