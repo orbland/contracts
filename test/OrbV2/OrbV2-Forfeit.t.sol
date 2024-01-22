@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase,one-contract-per-file
 pragma solidity 0.8.20;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 import {OrbTestBase} from "./OrbV2.t.sol";
 import {Orb} from "../../src/Orb.sol";
 import {OrbV2} from "../../src/OrbV2.sol";
 
-/* solhint-disable func-name-mixedcase */
 contract RelinquishmentTest is OrbTestBase {
     function test_revertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
@@ -202,7 +202,7 @@ contract RecallTest is OrbTestBase {
     event Recall(address indexed formerKeeper);
 
     function test_revertsWhenNotOwner() public {
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         orb.recall();
     }

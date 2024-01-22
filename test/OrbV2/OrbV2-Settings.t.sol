@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase,one-contract-per-file
 pragma solidity 0.8.20;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
-import {ClonesUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
+import {Clones} from "../../lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 import {OrbTestBase} from "./OrbV2.t.sol";
 import {Orb} from "../../src/Orb.sol";
 import {OrbV2} from "../../src/OrbV2.sol";
 import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
 
-/* solhint-disable func-name-mixedcase */
 contract SwearOathTest is OrbTestBase {
     event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);
 
     function test_swearOathOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 10_000_000);
 
         vm.prank(owner);
@@ -83,7 +83,7 @@ contract ExtendHonoredUntilTest is OrbTestBase {
 
     function test_extendHonoredUntilOnlyOwner() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.extendHonoredUntil(20_000_001);
 
         makeKeeperAndWarp(user, 1 ether);
@@ -110,7 +110,7 @@ contract ExtendHonoredUntilTest is OrbTestBase {
 contract SettingTokenURITest is OrbTestBase {
     function test_tokenURIrevertsIfUser() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setTokenURI("https://static.orb.land/new/");
     }
 
@@ -138,7 +138,7 @@ contract SettingAuctionParametersTest is OrbTestBase {
 
     function test_setAuctionParametersOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
 
         vm.prank(owner);
@@ -261,7 +261,7 @@ contract SettingFeesTest is OrbTestBase {
 
     function test_setFeesOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setFees(100_00, 100_00, 100_00);
 
         vm.prank(owner);
@@ -392,7 +392,7 @@ contract SettingInvocationParametersTest is OrbTestBase {
 
     function test_setInvocationParametersOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setInvocationParameters(1 days, 2 days, 3 days, 420);
 
         vm.prank(owner);
@@ -497,7 +497,7 @@ contract SettingBeneficiaryWithdrawalAddressTest is OrbTestBase {
 
     function test_revertsWhenNotOwner() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setBeneficiaryWithdrawalAddress(address(0xBABEFACE));
     }
 
@@ -544,7 +544,7 @@ contract SettingBeneficiaryWithdrawalAddressTest is OrbTestBase {
         newSplitterPayees[1] = address(0xFACEB00C);
         newSplitterShares[0] = 50;
         newSplitterShares[1] = 50;
-        address newSplitter = ClonesUpgradeable.clone(address(paymentSplitterImplementation));
+        address newSplitter = Clones.clone(address(paymentSplitterImplementation));
         PaymentSplitter(payable(newSplitter)).initialize(newSplitterPayees, newSplitterShares);
 
         assertEq(orbPond.beneficiaryWithdrawalAddressPermitted(newSplitter), false);
@@ -597,7 +597,7 @@ contract SettingBeneficiaryWithdrawalAddressTest is OrbTestBase {
         newSplitterPayees[1] = address(0xFACEB00C);
         newSplitterShares[0] = 50;
         newSplitterShares[1] = 50;
-        address newSplitter = ClonesUpgradeable.clone(address(paymentSplitterImplementation));
+        address newSplitter = Clones.clone(address(paymentSplitterImplementation));
         PaymentSplitter(payable(newSplitter)).initialize(newSplitterPayees, newSplitterShares);
         orbPond.authorizeWithdrawalAddress(newSplitter, true);
         vm.prank(owner);

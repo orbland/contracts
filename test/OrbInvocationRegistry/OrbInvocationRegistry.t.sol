@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable no-console,func-name-mixedcase,private-vars-leading-underscore,one-contract-per-file
 pragma solidity 0.8.20;
 
-/* solhint-disable no-console */
-import {console} from "../../lib/forge-std/src/console.sol";
 import {Test} from "../../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {Address} from "../../lib/openzeppelin-contracts/contracts/utils/Address.sol";
+import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
 import {OrbPond} from "../../src/OrbPond.sol";
@@ -15,7 +17,6 @@ import {Orb} from "../../src/Orb.sol";
 import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
 import {ExternalCallee} from "./ExternalCallee.sol";
 
-/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbInvocationRegistryTestBase is Test {
     PaymentSplitter internal paymentSplitterImplementation;
 
@@ -67,9 +68,7 @@ contract OrbInvocationRegistryTestBase is Test {
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
             abi.encodeWithSelector(
-                OrbPond.initialize.selector,
-                address(orbInvocationRegistry),
-                address(paymentSplitterImplementation)
+                OrbPond.initialize.selector, address(orbInvocationRegistry), address(paymentSplitterImplementation)
             )
         );
         orbPond = OrbPond(address(orbPondProxy));
@@ -117,14 +116,12 @@ contract InitialStateTest is OrbInvocationRegistryTestBase {
     }
 
     function test_revertsInitializer() public {
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         orbInvocationRegistry.initialize();
     }
 
     function test_initializerSuccess() public {
-        ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
-            address(orbInvocationRegistryImplementation), ""
-        );
+        ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(address(orbInvocationRegistryImplementation), "");
         OrbInvocationRegistry _orbInvocationRegistry = OrbInvocationRegistry(address(orbInvocationRegistryProxy));
         assertEq(_orbInvocationRegistry.owner(), address(0));
         _orbInvocationRegistry.initialize();
@@ -212,7 +209,7 @@ contract InvokeWithCleartextAndCallTest is OrbInvocationRegistryTestBase {
     function test_revertsFromContractIfFunctionNotFound() public {
         externalCallee = new ExternalCallee();
         orbInvocationRegistry.authorizeContract(address(externalCallee), true);
-        vm.expectRevert("Address: low-level call failed");
+        vm.expectRevert(Address.FailedInnerCall.selector);
         vm.prank(user);
         orbInvocationRegistry.invokeWithCleartextAndCall(
             address(orb),
@@ -358,7 +355,7 @@ contract InvokeWithHashAndCallTest is OrbInvocationRegistryTestBase {
     function test_revertsFromContractIfFunctionNotFound() public {
         externalCallee = new ExternalCallee();
         orbInvocationRegistry.authorizeContract(address(externalCallee), true);
-        vm.expectRevert("Address: low-level call failed");
+        vm.expectRevert(Address.FailedInnerCall.selector);
         vm.prank(user);
         orbInvocationRegistry.invokeWithHashAndCall(
             address(orb),
@@ -602,7 +599,7 @@ contract AuthorizeContractTest is OrbInvocationRegistryTestBase {
 
     function test_revertOnlyOwner() public {
         assertEq(orbInvocationRegistry.authorizedContracts(address(orb)), false);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         orbInvocationRegistry.authorizeContract(address(orb), true);
 
@@ -675,7 +672,7 @@ contract UpgradeTest is OrbInvocationRegistryTestBase {
     function test_upgrade_revertOnlyOwner() public {
         OrbInvocationRegistryTestUpgrade orbInvocationRegistryTestUpgradeImplementation =
             new OrbInvocationRegistryTestUpgrade();
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         orbInvocationRegistry.upgradeToAndCall(
             address(orbInvocationRegistryTestUpgradeImplementation),
@@ -706,7 +703,7 @@ contract UpgradeTest is OrbInvocationRegistryTestBase {
         (bool successAfter,) = address(orbInvocationRegistry).call(abi.encodeWithSelector(lateResponseFundSelector));
         assertEq(successAfter, true);
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         OrbInvocationRegistryTestUpgrade(address(orbInvocationRegistry)).initializeTestUpgrade(address(0xCAFEBABE));
     }
 }

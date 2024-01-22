@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase,one-contract-per-file
 pragma solidity 0.8.20;
-
-import {Test} from "../../lib/forge-std/src/Test.sol";
 
 import {OrbTestBase} from "./OrbV1.t.sol";
 import {Orb} from "../../src/Orb.sol";
 
-/* solhint-disable func-name-mixedcase */
 contract EffectiveFundsOfTest is OrbTestBase {
     function test_effectiveFundsCorrectCalculation() public {
         uint256 amount1 = 1 ether;

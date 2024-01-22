@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase,private-vars-leading-underscore,one-contract-per-file
 pragma solidity 0.8.20;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 import {OrbTestBase} from "./OrbV1.t.sol";
 import {Orb} from "../../src/Orb.sol";
 
-/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {
         uint256 bidAmount = 0.6 ether;
@@ -20,7 +20,8 @@ contract MinimumBidTest is OrbTestBase {
 contract StartAuctionTest is OrbTestBase {
     function test_startAuctionOnlyOrbCreator() public {
         vm.prank(address(0xBEEF));
-        vm.expectRevert("Ownable: caller is not the owner");
+        // solhint-disable-next-line max-line-length
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(0xBEEF)));
         orb.startAuction();
         orb.startAuction();
     }
@@ -430,7 +431,7 @@ contract ListingTest is OrbTestBase {
 
     function test_revertsIfCalledByUser() public {
         makeKeeperAndWarp(user, 1 ether);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         orb.listWithPrice(1 ether);
     }
