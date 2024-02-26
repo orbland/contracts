@@ -2,7 +2,7 @@ import { TransactionResponse } from "ethers"
 import { ethers, upgrades } from "hardhat"
 
 async function main() {
-    const Orb = await ethers.getContractFactory("Orb")
+    const Orb = await ethers.getContractFactory("src/Orb.sol:Orb")
     const orbDeployTx = (await upgrades.deployImplementation(Orb, {
         getTxResponse: true,
         unsafeAllow: ["delegatecall"],
