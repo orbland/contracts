@@ -1,21 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {ERC165Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
-import {Orb} from "./Orb.sol";
-
-/// @title   Orb Invocation Registry - Record-keeping contract for Orb invocations and responses
-/// @author  Jonas Lekevicius
-/// @notice  The Orb Invocation Registry is used to track invocations and responses for any Orb.
-/// @dev     `Orb`s using an `OrbInvocationRegistry` must implement `Orb` interface. Uses `Ownable`'s `owner()` to
-///          guard upgrading.
-/// @custom:security-contact security@orb.land
-contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +27,13 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
 
     event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+
+    event InvocationParametersUpdate(
+        uint256 previousCooldown,
+        uint256 indexed newCooldown,
+        uint256 previousResponsePeriod,
+        uint256 indexed newResponsePeriod
+    );
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -82,23 +78,23 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     /// Orb Invocation Registry version. Value: 1.
     uint256 private constant _VERSION = 1;
 
-    /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
-    mapping(address orb => mapping(uint256 invocationId => InvocationData invocationData)) public invocations;
     /// Count of invocations made: used to calculate invocationId of the next invocation.
-    mapping(address orb => uint256 count) public invocationCount;
-
+    mapping(uint256 orbId => uint256 count) public invocationCount;
+    /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
+    mapping(uint256 orbId => mapping(uint256 invocationId => InvocationData invocationData)) public invocations;
     /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
-    mapping(address orb => mapping(uint256 invocationId => ResponseData responseData)) public responses;
-    /// Mapping for flagged (reported) responses. Used by the keeper not satisfied with a response.
-    mapping(address orb => mapping(uint256 invocationId => bool isFlagged)) public responseFlagged;
-    /// Flagged responses count is a convencience count of total flagged responses. Not used by the contract itself.
-    mapping(address orb => uint256 count) public flaggedResponsesCount;
+    mapping(uint256 orbId => mapping(uint256 invocationId => ResponseData responseData)) public responses;
+
+    /// Cooldown: how often the Orb can be invoked.
+    mapping(uint256 orbId => uint256 cooldown) public cooldown;
+    /// Response Period: time period in which the keeper promises to respond to an invocation.
+    /// There are no penalties for being late within this contract.
+    mapping(uint256 orbId => uint256 responsePeriod) public responsePeriod;
+    /// Last invocation time: when the Orb was last invoked. Used together with `cooldown` constant.
+    mapping(uint256 orbId => uint256) public lastInvocationTime;
 
     /// Addresses authorized for external calls in invokeWithXAndCall()
     mapping(address contractAddress => bool authorizedForCalling) public authorizedContracts;
-
-    /// Gap used to prevent storage collisions.
-    uint256[100] private __gap;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
@@ -113,19 +109,6 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
-    }
-
-    /// @dev     ERC-165 supportsInterface. Orb contract supports ERC-721 and Orb interfaces.
-    /// @param   interfaceId           Interface id to check for support.
-    /// @return  isInterfaceSupported  If interface with given 4 bytes id is supported.
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC165Upgradeable)
-        returns (bool isInterfaceSupported)
-    {
-        return interfaceId == 0x767dfef3 || super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +155,59 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: INVOKING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function initializeOrb() public {
+        cooldown = 7 days;
+        responsePeriod = 7 days;
+    }
+
+    /// @notice  Allows the Orb creator to set the new cooldown duration, response period, flagging period (duration for
+    ///          how long Orb keeper may flag a response) and cleartext maximum length. This function can only be called
+    ///          by the Orb creator when the Orb is in their control.
+    /// @dev     Emits `InvocationParametersUpdate`.
+    ///          V2 merges `setCooldown()` and `setCleartextMaximumLength()` into one function, and moves
+    ///          `responsePeriod` setting here. Events `CooldownUpdate` and `CleartextMaximumLengthUpdate` are merged
+    ///          into `InvocationParametersUpdate`.
+    /// @param   newCooldown        New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
+    /// @param   newFlaggingPeriod  New flagging period in seconds.
+    /// @param   newResponsePeriod  New flagging period in seconds.
+    /// @param   newCleartextMaximumLength  New cleartext maximum length. Cannot be 0.
+    function setInvocationParameters(
+        uint256 newCooldown,
+        uint256 newResponsePeriod,
+        uint256 newFlaggingPeriod,
+        uint256 newCleartextMaximumLength
+    ) external virtual onlyOwner onlyCreatorControlled {
+        if (newCooldown > _COOLDOWN_MAXIMUM_DURATION) {
+            revert CooldownExceedsMaximumDuration(newCooldown, _COOLDOWN_MAXIMUM_DURATION);
+        }
+        if (newCleartextMaximumLength == 0) {
+            revert InvalidCleartextMaximumLength(newCleartextMaximumLength);
+        }
+
+        uint256 previousCooldown = cooldown;
+        cooldown = newCooldown;
+        uint256 previousResponsePeriod = responsePeriod;
+        responsePeriod = newResponsePeriod;
+        uint256 previousFlaggingPeriod = flaggingPeriod;
+        flaggingPeriod = newFlaggingPeriod;
+        uint256 previousCleartextMaximumLength = cleartextMaximumLength;
+        cleartextMaximumLength = newCleartextMaximumLength;
+        emit InvocationParametersUpdate(
+            previousCooldown,
+            newCooldown,
+            previousResponsePeriod,
+            newResponsePeriod,
+            previousFlaggingPeriod,
+            newFlaggingPeriod,
+            previousCleartextMaximumLength,
+            newCleartextMaximumLength
+        );
+    }
+
+    function chargeOrb() {
+        lastInvocationTime = block.timestamp - cooldown;
+    }
 
     /// @notice  Invokes the Orb. Allows the keeper to submit cleartext.
     /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
@@ -280,42 +316,6 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
         responses[orb][invocationId] = ResponseData(contentHash, block.timestamp);
 
         emit Response(orb, invocationId, msg.sender, block.timestamp, contentHash);
-    }
-
-    /// @notice  Orb keeper can flag a response during Response Flagging Period, counting from when the response is
-    ///          made. Flag indicates a "report", that the Orb keeper was not satisfied with the response provided.
-    ///          This is meant to act as a social signal to future Orb keepers. It also increments
-    ///          `flaggedResponsesCount`, allowing anyone to quickly look up how many responses were flagged.
-    /// @dev     Only existing responses (with non-zero timestamps) can be flagged. Responses can only be flagged by
-    ///          solvent keepers to keep it consistent with `invokeWithHash()` or `invokeWithCleartext()`. Also, the
-    ///          keeper must have received the Orb after the response was made; this is to prevent keepers from
-    ///          flagging responses that were made in response to others' invocations. Emits `ResponseFlagging`.
-    /// @param   orb           Address of the Orb.
-    /// @param   invocationId  Id of an invocation to which the response is being flagged.
-    function flagResponse(address orb, uint256 invocationId) external virtual onlyKeeper(orb) onlyKeeperSolvent(orb) {
-        uint256 keeperReceiveTime = Orb(orb).keeperReceiveTime();
-        uint256 flaggingPeriod = Orb(orb).flaggingPeriod();
-
-        if (!_responseExists(orb, invocationId)) {
-            revert ResponseNotFound(orb, invocationId);
-        }
-
-        // Response Flagging Period starts counting from when the response is made.
-        uint256 responseTime = responses[orb][invocationId].timestamp;
-        if (block.timestamp - responseTime > flaggingPeriod) {
-            revert FlaggingPeriodExpired(orb, invocationId, block.timestamp - responseTime, flaggingPeriod);
-        }
-        if (keeperReceiveTime >= responseTime) {
-            revert FlaggingPeriodExpired(orb, invocationId, keeperReceiveTime, responseTime);
-        }
-        if (responseFlagged[orb][invocationId]) {
-            revert ResponseAlreadyFlagged(orb, invocationId);
-        }
-
-        responseFlagged[orb][invocationId] = true;
-        flaggedResponsesCount[orb] += 1;
-
-        emit ResponseFlagging(orb, invocationId, msg.sender);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
