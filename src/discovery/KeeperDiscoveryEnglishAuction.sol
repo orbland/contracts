@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Orbs} from "../Orbs.sol";
 
 contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     // Auction Events
@@ -28,80 +29,114 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     error InvalidNewPrice(uint256 priceProvided);
     error NotPermittedForLeadingBidder();
     error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
+    error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
     error InvalidAuctionDuration(uint256 auctionDuration);
+
+    error DiscoveryActive();
+    error DiscoveryNotAcitve();
+    error DiscoveryNotStarted();
+    error ContractDoesNotHoldOrb();
+    error NotOrbsContract();
+    error NotCreator();
+
+    /// Maximum Orb price, limited to prevent potential overflows.
+    uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
+
+    // only Orbs contract can start discovery, and Orbs contract is called upon finalization
+    address public orbsContract;
 
     // Auction State Variables
 
     /// Auction starting price. Initial value is 0 - allows any bid.
-    uint256 public auctionStartingPrice;
+    mapping(uint256 ordId => uint256) public auctionStartingPrice;
     /// Auction minimum bid step: required increase between bids. Each bid has to increase over previous bid by at
     /// least this much. If trying to set as zero, will be set to 1 (wei). Initial value is also 1 wei, to disallow
     /// equal value bids.
-    uint256 public auctionNextBidIncrease;
+    mapping(uint256 ordId => uint256) public auctionNextBidIncrease;
     /// Auction minimum duration: the auction will run for at least this long. Initial value is 1 day, and this value
     /// cannot be set to zero, as it would prevent any bids from being made.
-    uint256 public auctionMinimumDuration;
+    mapping(uint256 ordId => uint256) public auctionMinimumDuration;
     /// Keeper's Auction minimum duration: auction started by the keeper via `relinquish(true)` will run for at least
     /// this long. Initial value is 1 day, and this value cannot be set to zero, as it would prevent any bids from being
     /// made.
-    uint256 public auctionKeeperMinimumDuration;
+    mapping(uint256 ordId => uint256) public auctionKeeperMinimumDuration;
     /// Auction bid extension: if auction remaining time is less than this after a bid is made, auction will continue
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
     /// long. Initial value is 5 minutes.
-    uint256 public auctionBidExtension;
+    mapping(uint256 ordId => uint256) public auctionBidExtension;
     /// Auction end time: timestamp when the auction ends, can be extended by late bids. 0 not during the auction.
-    uint256 public auctionEndTime;
+    mapping(uint256 ordId => uint256) public auctionEndTime;
     /// Leading bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
-    address public leadingBidder;
+    mapping(uint256 ordId => address) public leadingBidder;
     /// Leading bid: highest current bid. 0 not during the auction and before first bid.
-    uint256 public leadingBid;
+    mapping(uint256 ordId => uint256) public leadingBid;
 
-    modifier notDuringAuction() {
-        if (_auctionRunning()) {
-            revert AuctionRunning();
+    mapping(uint256 orbId => mapping(address => uint256 funds)) public fundsOf;
+    mapping(uint256 orbId => uint256) public price;
+
+    modifier notDuringAuction(uint256 orbId) {
+        if (discoveryActive(orbId)) {
+            revert DiscoveryActive();
         }
         _;
     }
 
-    modifier onlyHonored() {
-        if (address(this) != keeper) {
-            revert ContractDoesNotHoldOrb();
+    modifier onlyHonored(uint256 orbId) {
+        _;
+    }
+
+    modifier onlyCreator(uint256 orbId) {
+        if (_msgSender() != Orbs(orbsContract).creator(orbId)) {
+            revert NotCreator();
         }
         _;
     }
 
-    modifier onlyCreatorControlled() {
-        if (address(this) != keeper) {
-            revert ContractDoesNotHoldOrb();
+    modifier onlyCreatorControlled(uint256 orbId) {
+        _;
+    }
+
+    modifier onlyOrbsContract() {
+        if (_msgSender() != orbsContract) {
+            revert NotOrbsContract();
         }
         _;
     }
 
-    function initialize() public initializer {
-        auctionStartingPrice = 0.05 ether;
-        auctionMinimumBidStep = 0.05 ether;
-        auctionMinimumDuration = 1 days;
-        auctionKeeperMinimumDuration = 1 days;
-        auctionBidExtension = 4 minutes;
+    function initializeOrb(uint256 orbId) public initializer {
+        auctionStartingPrice[orbId] = 0.05 ether;
+        auctionNextBidIncrease[orbId] = 0.05 ether;
+        auctionMinimumDuration[orbId] = 1 days;
+        auctionKeeperMinimumDuration[orbId] = 1 days;
+        auctionBidExtension[orbId] = 4 minutes;
+    }
+
+    function discoveryActive(uint256 orbId) public view virtual returns (bool) {
+        // TODO
+        return true;
     }
 
     /// @notice  Allow the Orb creator to start the Orb auction. Will run for at least `auctionMinimumDuration`.
     /// @dev     Prevents repeated starts by checking the `auctionEndTime`. Important to set `auctionEndTime` to 0
     ///          after auction is finalized. Emits `AuctionStart`.
     ///          V2 adds `onlyHonored` modifier to require active Oath to start auction.
-    function startDiscovery() external virtual override onlyOwner notDuringAuction onlyHonored {
-        if (address(this) != keeper) {
+    function startDiscovery(uint256 orbId, bool rediscovery)
+        external
+        virtual
+        onlyOrbsContract
+        notDuringAuction(orbId)
+    {
+        if (address(this) != Orbs(orbsContract).keeper(orbId)) {
             revert ContractDoesNotHoldOrb();
         }
 
-        if (auctionEndTime > 0) {
-            revert AuctionRunning();
-        }
+        // if (auctionEndTime > 0) {
+        //     revert AuctionRunning();
+        // }
 
-        auctionEndTime = block.timestamp + auctionMinimumDuration;
-        auctionBeneficiary = beneficiary;
+        auctionEndTime[orbId] = block.timestamp + auctionMinimumDuration[orbId];
 
-        emit AuctionStart(block.timestamp, auctionEndTime, auctionBeneficiary);
+        emit AuctionStart(block.timestamp, auctionEndTime[orbId], address(0)); // TODO
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
@@ -114,84 +149,66 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     ///          and `AuctionFinalization`.
     ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyaltyNumerator`
     ///          instead of `purchaseRoyaltyNumerator` for auction royalty (only relevant for Keeper auctions).
-    function finalizeDiscovery() external virtual override notDuringAuction {
-        if (auctionEndTime == 0) {
-            revert AuctionNotStarted();
+    function finalizeDiscovery(uint256 orbId) external virtual notDuringAuction(orbId) {
+        if (auctionEndTime[orbId] == 0) {
+            revert DiscoveryNotStarted();
         }
 
-        address _leadingBidder = leadingBidder;
-        uint256 _leadingBid = leadingBid;
+        address _leadingBidder = leadingBidder[orbId];
+        uint256 _leadingBid = leadingBid[orbId];
 
-        if (_leadingBidder != address(0)) {
-            fundsOf[_leadingBidder] -= _leadingBid;
+        Orbs(orbsContract).finalizeDiscovery(
+            orbId, _leadingBidder, _leadingBid, fundsOf[orbId][_leadingBidder], price[orbId], 0
+        );
 
-            uint256 auctionMinimumRoyaltyNumerator =
-                (keeperTaxNumerator * auctionKeeperMinimumDuration) / _KEEPER_TAX_PERIOD;
-            uint256 auctionRoyalty = auctionMinimumRoyaltyNumerator > auctionRoyaltyNumerator
-                ? auctionMinimumRoyaltyNumerator
-                : auctionRoyaltyNumerator;
-            _splitProceeds(_leadingBid, auctionBeneficiary, auctionRoyalty);
-
-            lastSettlementTime = block.timestamp;
-            if (auctionBeneficiary == beneficiary) {
-                lastInvocationTime = block.timestamp - cooldown;
-            }
-
-            emit AuctionFinalization(_leadingBidder, _leadingBid);
-            emit PriceUpdate(0, price);
-            // price has been set when bidding
-            // also price is always 0 when auction starts
-
-            _transferOrb(address(this), _leadingBidder);
-            leadingBidder = address(0);
-            leadingBid = 0;
-        } else {
-            emit AuctionFinalization(address(0), 0);
-        }
-
-        auctionEndTime = 0;
+        emit AuctionFinalization(address(0), 0);
+        leadingBidder[orbId] = address(0);
+        leadingBid[orbId] = 0;
+        auctionEndTime[orbId] = 0;
     }
 
     /// @notice  Allows the Orb creator to set the auction parameters. This function can only be called by the Orb
     ///          creator when the Orb is in their control.
     /// @dev     Emits `AuctionParametersUpdate`.
+    /// @param   orbId                     ID of the Orb to set the auction parameters for.
     /// @param   newStartingPrice          New starting price for the auction. Can be 0.
-    /// @param   newMinimumBidStep         New minimum bid step for the auction. Will always be set to at least 1.
+    /// @param   newNextBidIncrease        New minimum bid step for the auction. Will always be set to at least 1.
     /// @param   newMinimumDuration        New minimum duration for the auction. Must be > 0.
     /// @param   newKeeperMinimumDuration  New minimum duration for the auction is started by the keeper via
     ///                                    `relinquish(true)`. Setting to 0 effectively disables keeper auctions.
     /// @param   newBidExtension           New bid extension for the auction. Can be 0.
     function setAuctionParameters(
+        uint256 orbId,
         uint256 newStartingPrice,
-        uint256 newMinimumBidStep,
+        uint256 newNextBidIncrease,
         uint256 newMinimumDuration,
         uint256 newKeeperMinimumDuration,
         uint256 newBidExtension
-    ) external virtual onlyOwner onlyCreatorControlled {
+    ) external virtual onlyCreator(orbId) onlyCreatorControlled(orbId) {
         if (newMinimumDuration == 0) {
             revert InvalidAuctionDuration(newMinimumDuration);
         }
 
-        uint256 previousStartingPrice = auctionStartingPrice;
-        auctionStartingPrice = newStartingPrice;
+        uint256 previousStartingPrice = auctionStartingPrice[orbId];
+        auctionStartingPrice[orbId] = newStartingPrice;
 
-        uint256 previousMinimumBidStep = auctionMinimumBidStep;
-        auctionMinimumBidStep = newMinimumBidStep > 0 ? newMinimumBidStep : 1;
+        uint256 previousNextBidIncrease = auctionNextBidIncrease[orbId];
+        auctionNextBidIncrease[orbId] = newNextBidIncrease > 0 ? newNextBidIncrease : 1;
 
-        uint256 previousMinimumDuration = auctionMinimumDuration;
-        auctionMinimumDuration = newMinimumDuration;
+        uint256 previousMinimumDuration = auctionMinimumDuration[orbId];
+        auctionMinimumDuration[orbId] = newMinimumDuration;
 
-        uint256 previousKeeperMinimumDuration = auctionKeeperMinimumDuration;
-        auctionKeeperMinimumDuration = newKeeperMinimumDuration;
+        uint256 previousKeeperMinimumDuration = auctionKeeperMinimumDuration[orbId];
+        auctionKeeperMinimumDuration[orbId] = newKeeperMinimumDuration;
 
-        uint256 previousBidExtension = auctionBidExtension;
-        auctionBidExtension = newBidExtension;
+        uint256 previousBidExtension = auctionBidExtension[orbId];
+        auctionBidExtension[orbId] = newBidExtension;
 
         emit AuctionParametersUpdate(
             previousStartingPrice,
             newStartingPrice,
-            previousMinimumBidStep,
-            auctionMinimumBidStep,
+            previousNextBidIncrease,
+            newNextBidIncrease,
             previousMinimumDuration,
             newMinimumDuration,
             previousKeeperMinimumDuration,
@@ -204,12 +221,12 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Minimum bid that would currently be accepted by `bid()`. `auctionStartingPrice` if no bids were made,
     ///          otherwise the leading bid increased by `auctionMinimumBidStep`.
     /// @return  auctionMinimumBid  Minimum bid required for `bid()`.
-    function _minimumBid() internal view virtual returns (uint256 auctionMinimumBid) {
-        if (leadingBid == 0) {
-            return auctionStartingPrice;
+    function _minimumBid(uint256 orbId) internal view virtual returns (uint256 auctionMinimumBid) {
+        if (leadingBid[orbId] == 0) {
+            return auctionStartingPrice[orbId];
         } else {
             unchecked {
-                return leadingBid + auctionMinimumBidStep;
+                return leadingBid[orbId] + auctionNextBidIncrease[orbId];
             }
         }
     }
@@ -220,19 +237,15 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Emits `AuctionBid`.
     /// @param   amount      The value to bid.
     /// @param   priceIfWon  Price if the bid wins. Must be less than `MAXIMUM_PRICE`.
-    function bid(uint256 amount, uint256 priceIfWon) external payable virtual {
-        if (!_auctionRunning()) {
-            revert AuctionNotRunning();
+    function bid(uint256 orbId, uint256 amount, uint256 priceIfWon) external payable virtual {
+        if (!discoveryActive(orbId)) {
+            revert DiscoveryNotAcitve();
         }
 
-        if (msg.sender == beneficiary) {
-            revert NotPermitted();
-        }
+        uint256 totalFunds = fundsOf[orbId][msg.sender] + msg.value;
 
-        uint256 totalFunds = fundsOf[msg.sender] + msg.value;
-
-        if (amount < _minimumBid()) {
-            revert InsufficientBid(amount, _minimumBid());
+        if (amount < _minimumBid(orbId)) {
+            revert InsufficientBid(amount, _minimumBid(orbId));
         }
 
         if (totalFunds < amount) {
@@ -243,16 +256,20 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
             revert InvalidNewPrice(priceIfWon);
         }
 
-        fundsOf[msg.sender] = totalFunds;
-        leadingBidder = msg.sender;
-        leadingBid = amount;
-        price = priceIfWon;
+        fundsOf[orbId][msg.sender] = totalFunds;
+        leadingBidder[orbId] = msg.sender;
+        leadingBid[orbId] = amount;
+        price[orbId] = priceIfWon;
 
         emit AuctionBid(msg.sender, amount);
 
-        if (block.timestamp + auctionBidExtension > auctionEndTime) {
-            auctionEndTime = block.timestamp + auctionBidExtension;
-            emit AuctionExtension(auctionEndTime);
+        if (block.timestamp + auctionBidExtension[orbId] > auctionEndTime[orbId]) {
+            auctionEndTime[orbId] = block.timestamp + auctionBidExtension[orbId];
+            emit AuctionExtension(auctionEndTime[orbId]);
         }
     }
+
+    /// @dev  Authorizes owner address to upgrade the contract.
+    // solhint-disable no-empty-blocks
+    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 }

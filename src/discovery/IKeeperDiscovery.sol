@@ -25,6 +25,11 @@ interface IKeeperDiscovery is IERC165 {
 
     function version() external view returns (uint256);
 
+    function discoveryActive(uint256 orbId) external view returns (bool);
+    function initializeOrb(uint256 orbId) external view;
+    function startDiscovery(uint256 orbId, bool rediscovery) external;
+    function rediscoveryEnabled(uint256 orbId) external returns (bool);
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
