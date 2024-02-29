@@ -2,7 +2,7 @@
 // solhint-disable func-name-mixedcase
 pragma solidity 0.8.20;
 
-import {OrbV2} from "../../src/OrbV2.sol";
+import {OrbV2} from "../../src/legacy/OrbV2.sol";
 
 contract OrbHarness is OrbV2 {
     function workaround_cooldownMaximumDuration() public pure returns (uint256) {

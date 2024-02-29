@@ -8,13 +8,13 @@ import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/c
 import {Address} from "../../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
-import {OrbPond} from "../../src/OrbPond.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {OrbInvocationRegistryTestUpgrade} from "../../src/test-upgrades/OrbInvocationRegistryTestUpgrade.sol";
-import {Orb} from "../../src/Orb.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
+import {OrbPond} from "../../src/legacy/OrbPond.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistryTestUpgrade} from "../../src/legacy/test-upgrades/OrbInvocationRegistryTestUpgrade.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
 import {ExternalCallee} from "./ExternalCallee.sol";
 
 contract OrbInvocationRegistryTestBase is Test {

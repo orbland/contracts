@@ -35,13 +35,13 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity 0.8.20;
 
-import {IERC165} from "../lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
+import {IERC165} from "../../lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 import {ERC165Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
-import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
-import {IERC721Metadata} from "../lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
+    "../../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
+import {IERC721} from "../../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {IERC721Metadata} from "../../lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {Address} from "../../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {UUPSUpgradeable} from "./CustomUUPSUpgradeable.sol";
 import {OrbPond} from "./OrbPond.sol";

@@ -8,13 +8,12 @@ import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/c
 import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 import {OrbInvocationTipJar} from "../../src/OrbInvocationTipJar.sol";
-import {OrbInvocationTipJarTestUpgrade} from "../../src/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
-import {OrbPond} from "../../src/OrbPond.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {Orb} from "../../src/Orb.sol";
-import {Orb} from "../../src/Orb.sol";
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {OrbInvocationTipJarTestUpgrade} from "../../src/legacy/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
+import {OrbPond} from "../../src/legacy/OrbPond.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
 
 contract OrbTipJarBaseTest is Test {
     OrbInvocationTipJar public orbTipJar;

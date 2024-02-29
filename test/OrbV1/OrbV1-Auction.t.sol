@@ -5,7 +5,7 @@ pragma solidity 0.8.20;
 import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 import {OrbTestBase} from "./OrbV1.t.sol";
-import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
 contract MinimumBidTest is OrbTestBase {
     function test_minimumBidReturnsCorrectValues() public {

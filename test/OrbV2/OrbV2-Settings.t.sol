@@ -6,9 +6,9 @@ import {Clones} from "../../lib/openzeppelin-contracts/contracts/proxy/Clones.so
 import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 import {OrbTestBase} from "./OrbV2.t.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbV2} from "../../src/OrbV2.sol";
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbV2} from "../../src/legacy/OrbV2.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
 
 contract SwearOathTest is OrbTestBase {
     event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil);

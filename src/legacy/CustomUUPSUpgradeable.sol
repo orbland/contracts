@@ -2,9 +2,9 @@
 // solhint-disable func-name-mixedcase
 pragma solidity 0.8.20;
 
-import {IERC1822Proxiable} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC1822.sol";
-import {ERC1967Utils} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
-import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {IERC1822Proxiable} from "../../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC1822.sol";
+import {ERC1967Utils} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 /// @title   CustomUUPSUpgradeable - UUPSUpgradeable without public functions
 /// @author  Jonas Lekevicius

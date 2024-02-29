@@ -6,13 +6,13 @@ import {Test} from "../../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
 import {OrbHarness} from "./OrbV1Harness.sol";
-import {OrbPond} from "../../src/OrbPond.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
-import {Orb} from "../../src/Orb.sol";
+import {OrbPond} from "../../src/legacy/OrbPond.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbTestUpgrade} from "../../src/legacy/test-upgrades/OrbTestUpgrade.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
 contract OrbTestBase is Test {
     PaymentSplitter internal paymentSplitterImplementation;

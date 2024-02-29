@@ -7,8 +7,8 @@ import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contra
 
 import {OrbHarness} from "./OrbV2Harness.sol";
 import {OrbTestBase} from "./OrbV2.t.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbTestUpgrade} from "../../src/legacy/test-upgrades/OrbTestUpgrade.sol";
 
 contract RequestUpgradeTest is OrbTestBase {
     event UpgradeRequest(address indexed requestedImplementation);

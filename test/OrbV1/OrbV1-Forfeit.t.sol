@@ -3,7 +3,7 @@
 pragma solidity 0.8.20;
 
 import {OrbTestBase} from "./OrbV1.t.sol";
-import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
 contract RelinquishmentTest is OrbTestBase {
     function test_revertsIfNotKeeper() public {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {OrbInvocationTipJar} from "../OrbInvocationTipJar.sol";
+import {OrbInvocationTipJar} from "../../OrbInvocationTipJar.sol";
 
 /// @title   Orb Invocation Tip Jar Test Upgrade - A contract for suggesting Orb invocations and tipping Orb keepers
 /// @author  Jonas Lekevicius
@@ -47,10 +47,10 @@ contract OrbInvocationTipJarTestUpgrade is OrbInvocationTipJar {
     }
 
     /// @notice  Tips an orb keeper to invoke their orb with a specific content hash
-    /// @param   orb             The address of the orb
+    /// @param   orbId           The address of the orb
     /// @param   invocationHash  The invocation content hash
-    function tipInvocation(address orb, bytes32 invocationHash) public payable virtual override {
-        uint256 _minimumTip = minimumTips[orb];
+    function tipInvocation(uint256 orbId, bytes32 invocationHash) public payable virtual override {
+        uint256 _minimumTip = minimumTips[orbId];
         if (msg.value < _minimumTip) {
             revert InsufficientTip(msg.value, _minimumTip);
         }
@@ -58,14 +58,14 @@ contract OrbInvocationTipJarTestUpgrade is OrbInvocationTipJar {
         if (msg.value % _tipModulo != 0) {
             revert TipNotAModuloMultiple(msg.value, _tipModulo);
         }
-        if (claimedInvocations[orb][invocationHash] > 0) {
+        if (claimedInvocations[orbId][invocationHash] > 0) {
             revert InvocationAlreadyClaimed();
         }
 
-        totalTips[orb][invocationHash] += msg.value;
-        tipperTips[msg.sender][orb][invocationHash] += msg.value;
+        totalTips[orbId][invocationHash] += msg.value;
+        tipperTips[orbId][msg.sender][invocationHash] += msg.value;
 
-        emit TipDeposit(orb, invocationHash, msg.sender, msg.value);
+        emit TipDeposit(orbId, invocationHash, msg.sender, msg.value);
     }
 
     function setTipModulo(uint256 tipModulo_) public virtual onlyOwner {
