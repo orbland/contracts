@@ -3,6 +3,8 @@ pragma solidity 0.8.20;
 
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Orbs} from "./Orbs.sol";
+import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,23 +12,20 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     event Invocation(
-        address indexed orb,
+        uint256 indexed orbId,
         uint256 indexed invocationId,
         address indexed invoker,
         uint256 timestamp,
         bytes32 contentHash
     );
     event Response(
-        address indexed orb,
+        uint256 indexed orbId,
         uint256 indexed invocationId,
         address indexed responder,
         uint256 timestamp,
         bytes32 contentHash
     );
-    event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
-    event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
-
-    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+    event CleartextRevealing(uint256 indexed orbId, uint256 indexed invocationId, string cleartext);
 
     event InvocationParametersUpdate(
         uint256 previousCooldown,
@@ -34,6 +33,7 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         uint256 previousResponsePeriod,
         uint256 indexed newResponsePeriod
     );
+    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -42,18 +42,17 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     // Authorization Errors
     error NotKeeper();
     error NotCreator();
+    error NotOrbsContract();
     error ContractHoldsOrb();
     error KeeperInsolvent();
     error ContractNotAuthorized(address externalContract);
+    error CooldownExceedsMaximumDuration(uint256 cooldown, uint256 cooldownMaximumDuration);
 
     // Invoking and Responding Errors
     error CooldownIncomplete(uint256 timeRemaining);
-    error CleartextTooLong(uint256 cleartextLength, uint256 cleartextMaximumLength);
-    error InvocationNotFound(address orb, uint256 invocationId);
-    error ResponseNotFound(address orb, uint256 invocationId);
-    error ResponseExists(address orb, uint256 invocationId);
-    error FlaggingPeriodExpired(address orb, uint256 invocationId, uint256 currentTimeValue, uint256 timeValueLimit);
-    error ResponseAlreadyFlagged(address orb, uint256 invocationId);
+    error InvocationNotFound(uint256 orbId, uint256 invocationId);
+    error ResponseNotFound(uint256 orbId, uint256 invocationId);
+    error ResponseExists(uint256 orbId, uint256 invocationId);
 
     /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
     /// InvocationData is used to determine if the response can be flagged by the keeper.
@@ -77,6 +76,10 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /// Orb Invocation Registry version. Value: 1.
     uint256 private constant _VERSION = 1;
+    /// Maximum cooldown duration, to prevent potential underflows. Value: 10 years.
+    uint256 internal constant _COOLDOWN_MAXIMUM_DURATION = 3650 days;
+
+    address public orbsContract;
 
     /// Count of invocations made: used to calculate invocationId of the next invocation.
     mapping(uint256 orbId => uint256 count) public invocationCount;
@@ -107,7 +110,7 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Initializes the contract.
     function initialize() public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
     }
 
@@ -117,38 +120,53 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev    Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
     ///         external functions, otherwise does not make sense.
-    /// @param  orb  Address of the Orb.
-    modifier onlyKeeper(address orb) virtual {
-        if (msg.sender != Orb(orb).keeper()) {
+    /// @param  orbId  Address of the Orb.
+    modifier onlyKeeper(uint256 orbId) virtual {
+        if (_msgSender() != Orbs(orbsContract).keeper(orbId)) {
             revert NotKeeper();
         }
         _;
     }
 
     /// @dev    Ensures that the Orb belongs to someone, not the contract itself.
-    /// @param  orb  Address of the Orb.
-    modifier onlyKeeperHeld(address orb) virtual {
-        if (orb == Orb(orb).keeper()) {
+    /// @param  orbId  Address of the Orb.
+    modifier onlyKeeperHeld(uint256 orbId) virtual {
+        if (orbsContract == Orbs(orbsContract).keeper(orbId)) {
             revert ContractHoldsOrb();
         }
         _;
     }
 
     /// @dev    Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
-    /// @param  orb  Address of the Orb.
-    modifier onlyKeeperSolvent(address orb) virtual {
-        if (!Orb(orb).keeperSolvent()) {
+    /// @param  orbId  Orb id
+    modifier onlyKeeperSolvent(uint256 orbId) virtual {
+        if (!Orbs(orbsContract).keeperSolvent(orbId)) {
             revert KeeperInsolvent();
         }
         _;
     }
 
     /// @dev    Ensures that the caller is the creator of the Orb.
-    /// @param  orb  Address of the Orb.
-    modifier onlyCreator(address orb) virtual {
-        if (msg.sender != Orb(orb).creator()) {
+    /// @param  orbId  Address of the Orb.
+    modifier onlyCreator(uint256 orbId) virtual {
+        if (_msgSender() != Orbs(orbsContract).creator(orbId)) {
             revert NotCreator();
         }
+        _;
+    }
+
+    modifier onlyOrbsContract() {
+        if (_msgSender() != orbsContract) {
+            revert NotOrbsContract();
+        }
+        _;
+    }
+
+    modifier onlyCreatorControlled(uint256 orbId) {
+        if (Orbs(orbsContract).keeper(orbId) != address(0)) {
+            revert ContractHoldsOrb();
+        }
+        // TODO
         _;
     }
 
@@ -156,9 +174,9 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     //  FUNCTIONS: INVOKING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function initializeOrb() public {
-        cooldown = 7 days;
-        responsePeriod = 7 days;
+    function initializeOrb(uint256 orbId) public onlyOrbsContract {
+        cooldown[orbId] = 7 days;
+        responsePeriod[orbId] = 7 days;
     }
 
     /// @notice  Allows the Orb creator to set the new cooldown duration, response period, flagging period (duration for
@@ -169,117 +187,68 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ///          `responsePeriod` setting here. Events `CooldownUpdate` and `CleartextMaximumLengthUpdate` are merged
     ///          into `InvocationParametersUpdate`.
     /// @param   newCooldown        New cooldown in seconds. Cannot be longer than `COOLDOWN_MAXIMUM_DURATION`.
-    /// @param   newFlaggingPeriod  New flagging period in seconds.
     /// @param   newResponsePeriod  New flagging period in seconds.
-    /// @param   newCleartextMaximumLength  New cleartext maximum length. Cannot be 0.
-    function setInvocationParameters(
-        uint256 newCooldown,
-        uint256 newResponsePeriod,
-        uint256 newFlaggingPeriod,
-        uint256 newCleartextMaximumLength
-    ) external virtual onlyOwner onlyCreatorControlled {
+    function setInvocationParameters(uint256 orbId, uint256 newCooldown, uint256 newResponsePeriod)
+        external
+        virtual
+        onlyCreator(orbId)
+        onlyCreatorControlled(orbId)
+    {
         if (newCooldown > _COOLDOWN_MAXIMUM_DURATION) {
             revert CooldownExceedsMaximumDuration(newCooldown, _COOLDOWN_MAXIMUM_DURATION);
         }
-        if (newCleartextMaximumLength == 0) {
-            revert InvalidCleartextMaximumLength(newCleartextMaximumLength);
-        }
 
-        uint256 previousCooldown = cooldown;
-        cooldown = newCooldown;
-        uint256 previousResponsePeriod = responsePeriod;
-        responsePeriod = newResponsePeriod;
-        uint256 previousFlaggingPeriod = flaggingPeriod;
-        flaggingPeriod = newFlaggingPeriod;
-        uint256 previousCleartextMaximumLength = cleartextMaximumLength;
-        cleartextMaximumLength = newCleartextMaximumLength;
-        emit InvocationParametersUpdate(
-            previousCooldown,
-            newCooldown,
-            previousResponsePeriod,
-            newResponsePeriod,
-            previousFlaggingPeriod,
-            newFlaggingPeriod,
-            previousCleartextMaximumLength,
-            newCleartextMaximumLength
-        );
+        uint256 previousCooldown = cooldown[orbId];
+        cooldown[orbId] = newCooldown;
+        uint256 previousResponsePeriod = responsePeriod[orbId];
+        responsePeriod[orbId] = newResponsePeriod;
+        emit InvocationParametersUpdate(previousCooldown, newCooldown, previousResponsePeriod, newResponsePeriod);
     }
 
-    function chargeOrb() {
-        lastInvocationTime = block.timestamp - cooldown;
-    }
-
-    /// @notice  Invokes the Orb. Allows the keeper to submit cleartext.
-    /// @dev     Cleartext is hashed and passed to `invokeWithHash()`. Emits `CleartextRecording`.
-    /// @param   orb        Address of the Orb.
-    /// @param   cleartext  Invocation cleartext.
-    function invokeWithCleartext(address orb, string memory cleartext) public virtual {
-        uint256 cleartextMaximumLength = Orb(orb).cleartextMaximumLength();
-
-        uint256 length = bytes(cleartext).length;
-        if (length > cleartextMaximumLength) {
-            revert CleartextTooLong(length, cleartextMaximumLength);
-        }
-        invokeWithHash(orb, keccak256(abi.encodePacked(cleartext)));
-        emit CleartextRecording(orb, invocationCount[orb], cleartext);
-    }
-
-    /// @notice  Invokes the Orb with cleartext and calls an external contract.
-    /// @dev     Calls `invokeWithCleartext()` and then calls the external contract.
-    /// @param   orb            Address of the Orb.
-    /// @param   cleartext      Invocation cleartext.
-    /// @param   addressToCall  Address of the contract to call.
-    /// @param   dataToCall     Data to call the contract with.
-    function invokeWithCleartextAndCall(
-        address orb,
-        string memory cleartext,
-        address addressToCall,
-        bytes memory dataToCall
-    ) external virtual {
-        invokeWithCleartext(orb, cleartext);
-        _callWithData(addressToCall, dataToCall);
+    function chargeOrb(uint256 orbId) external virtual onlyOrbsContract {
+        lastInvocationTime[orbId] = block.timestamp - cooldown[orbId];
     }
 
     /// @notice  Invokes the Orb. Allows the keeper to submit content hash, that represents a question to the Orb
     ///          creator. Puts the Orb on cooldown. The Orb can only be invoked by solvent keepers.
     /// @dev     Content hash is keccak256 of the cleartext. `invocationCount` is used to track the id of the next
     ///          invocation. Invocation ids start from 1. Emits `Invocation`.
-    /// @param   orb          Address of the Orb.
+    /// @param   orbId        Address of the Orb.
     /// @param   contentHash  Required keccak256 hash of the cleartext.
-    function invokeWithHash(address orb, bytes32 contentHash)
+    function invokeWithHash(uint256 orbId, bytes32 contentHash)
         public
         virtual
-        onlyKeeper(orb)
-        onlyKeeperHeld(orb)
-        onlyKeeperSolvent(orb)
+        onlyKeeper(orbId)
+        onlyKeeperHeld(orbId)
+        onlyKeeperSolvent(orbId)
     {
-        uint256 lastInvocationTime = Orb(orb).lastInvocationTime();
-        uint256 cooldown = Orb(orb).cooldown();
+        uint256 _lastInvocationTime = lastInvocationTime[orbId];
+        uint256 _cooldown = cooldown[orbId];
 
-        if (block.timestamp < lastInvocationTime + cooldown) {
-            revert CooldownIncomplete(lastInvocationTime + cooldown - block.timestamp);
+        if (block.timestamp < _lastInvocationTime + _cooldown) {
+            revert CooldownIncomplete(_lastInvocationTime + _cooldown - block.timestamp);
         }
 
-        invocationCount[orb] += 1;
-        uint256 invocationId = invocationCount[orb]; // starts at 1
+        invocationCount[orbId] += 1;
+        uint256 invocationId = invocationCount[orbId]; // starts at 1
 
-        invocations[orb][invocationId] = InvocationData(msg.sender, contentHash, block.timestamp);
-        Orb(orb).setLastInvocationTime(block.timestamp);
+        invocations[orbId][invocationId] = InvocationData(_msgSender(), contentHash, block.timestamp);
+        lastInvocationTime[orbId] = block.timestamp;
 
-        emit Invocation(orb, invocationId, msg.sender, block.timestamp, contentHash);
+        emit Invocation(orbId, invocationId, _msgSender(), block.timestamp, contentHash);
     }
 
     /// @notice  Invokes the Orb with content hash and calls an external contract.
     /// @dev     Calls `invokeWithHash()` and then calls the external contract.
-    /// @param   orb            Address of the Orb.
+    /// @param   orbId          Id of the Orb.
     /// @param   contentHash    Required keccak256 hash of the cleartext.
     /// @param   addressToCall  Address of the contract to call.
     /// @param   dataToCall     Data to call the contract with.
-    function invokeWithHashAndCall(address orb, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
+    function invokeWithHashAndCall(uint256 orbId, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
         external
         virtual
     {
-        invokeWithHash(orb, contentHash);
+        invokeWithHash(orbId, contentHash);
         _callWithData(addressToCall, dataToCall);
     }
 
@@ -302,28 +271,33 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ///          it was made. A response to an invocation can only be written once. There is no way to record response
     ///          cleartext on-chain.
     /// @dev     Emits `Response`.
-    /// @param   orb           Address of the Orb.
+    /// @param   orbId         Id of the Orb.
     /// @param   invocationId  Id of an invocation to which the response is being made.
     /// @param   contentHash   keccak256 hash of the response text.
-    function respond(address orb, uint256 invocationId, bytes32 contentHash) external virtual onlyCreator(orb) {
-        if (invocationId > invocationCount[orb] || invocationId == 0) {
-            revert InvocationNotFound(orb, invocationId);
+    function respond(uint256 orbId, uint256 invocationId, bytes32 contentHash) external virtual onlyCreator(orbId) {
+        if (invocationId > invocationCount[orbId] || invocationId == 0) {
+            revert InvocationNotFound(orbId, invocationId);
         }
-        if (_responseExists(orb, invocationId)) {
-            revert ResponseExists(orb, invocationId);
+        if (_responseExists(orbId, invocationId)) {
+            revert ResponseExists(orbId, invocationId);
         }
 
-        responses[orb][invocationId] = ResponseData(contentHash, block.timestamp);
+        responses[orbId][invocationId] = ResponseData(contentHash, block.timestamp);
 
-        emit Response(orb, invocationId, msg.sender, block.timestamp, contentHash);
+        emit Response(orbId, invocationId, _msgSender(), block.timestamp, contentHash);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
-    /// @param   orb            Address of the Orb.
+    /// @param   orbId          Id of the Orb.
     /// @param   invocationId_  Id of an invocation to which to check the existence of a response of.
     /// @return  isResponseFound  If a response to an invocation exists or not.
-    function _responseExists(address orb, uint256 invocationId_) internal view virtual returns (bool isResponseFound) {
-        if (responses[orb][invocationId_].timestamp != 0) {
+    function _responseExists(uint256 orbId, uint256 invocationId_)
+        internal
+        view
+        virtual
+        returns (bool isResponseFound)
+    {
+        if (responses[orbId][invocationId_].timestamp != 0) {
             return true;
         }
         return false;
@@ -350,5 +324,5 @@ contract OrbInvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Authorizes owner address to upgrade the contract.
     // solhint-disable no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 }

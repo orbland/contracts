@@ -5,9 +5,10 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
-import {IKeeperDiscovery} from "./keeper-discovery/IKeeperDiscovery.sol";
+import {IKeeperDiscovery} from "./discovery/IKeeperDiscovery.sol";
 
 /// @title   Orb Token Locker
 /// @author  Jonas Lekevicius
@@ -64,6 +65,8 @@ contract OrbTokenLocker is OwnableUpgradeable, UUPSUpgradeable {
     /// Address of the `OrbPond` that deployed this Orb. Pond manages permitted upgrades and provides Orb Invocation
     /// Registry address.
     address public registry;
+    /// Address of the `Orbs` contract. Used to verify Orb creation authorization.
+    address public orbsContract;
     /// Orb Land signing authority. Used to verify Orb creation authorization.
 
     /// Locked ERC-721 token. Orb creator can lock an ERC-721 token in the Orb, guaranteeing timely responses.
@@ -80,12 +83,28 @@ contract OrbTokenLocker is OwnableUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
-    function initalize(address registry_, address signingAuthority_) public initializer {
+    function initalize(address orbsContract_, address registry_) public initializer {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
+        orbsContract = orbsContract_;
         registry = registry_;
-        signingAuthority = signingAuthority_;
+    }
+
+    modifier onlyCreator(uint256 orbId) {
+        _;
+    }
+
+    modifier onlyKeeper(uint256 orbId) {
+        _;
+    }
+
+    modifier onlyKeeperSolvent(uint256 orbId) {
+        _;
+    }
+
+    modifier onlyCreatorControlled(uint256 orbId) {
+        _;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,30 +117,32 @@ contract OrbTokenLocker is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Emits `OathSwearing`.
     ///          V2 changes to allow re-swearing even during Keeper control, if Oath has expired, and moves
     ///          `responsePeriod` setting to `setInvocationParameters()`.
-    /// @param   oathHash           Hash of the Oath taken to create the Orb.
-    /// @param   newHonoredUntil    Date until which the Orb creator will honor the Oath for the Orb keeper.
-    function lockToken(uint256 orbId, bytes32 oathHash, uint256 newHonoredUntil)
+    /// @param   orbId        Orb id
+    /// @param   tokenContract Address of the ERC-721 token contract.
+    /// @param   tokenId      ID of the ERC-721 token.
+    /// @param   lockedUntil_    Date until which the Orb creator will honor the Oath for the Orb keeper.
+    function lockToken(uint256 orbId, address tokenContract, uint256 tokenId, uint256 lockedUntil_)
         external
         virtual
-        onlyCreator
-        onlyCreatorControlled
+        onlyCreator(orbId)
+        onlyCreatorControlled(orbId)
     {
-        honoredUntil = newHonoredUntil;
-        emit OathSwearing(oathHash, newHonoredUntil);
+        lockedUntil[orbId] = lockedUntil_;
+        emit TokenLocking(orbId, tokenContract, tokenId, lockedUntil_);
     }
 
     /// @notice  Allows the Orb creator to extend the `honoredUntil` date. This function can be called by the Orb
     ///          creator anytime and only allows extending the `honoredUntil` date.
     /// @dev     Emits `HonoredUntilUpdate`.
-    /// @param   newHonoredUntil  Date until which the Orb creator will honor the Oath for the Orb keeper. Must be
+    /// @param   newLockedUntil  Date until which the Orb creator will honor the Oath for the Orb keeper. Must be
     ///                           greater than the current `honoredUntil` date.
-    function extendLockedUntil(uint256 orbId, uint256 newHonoredUntil) external virtual onlyCreator {
-        if (newHonoredUntil < honoredUntil) {
-            revert HonoredUntilNotDecreasable();
+    function extendLockedUntil(uint256 orbId, uint256 newLockedUntil) external virtual onlyCreator(orbId) {
+        uint256 previousLockedUntil = lockedUntil[orbId];
+        if (newLockedUntil < previousLockedUntil) {
+            revert LockedUntilNotDecreasable();
         }
-        uint256 previousHonoredUntil = honoredUntil;
-        honoredUntil = newHonoredUntil;
-        emit HonoredUntilUpdate(previousHonoredUntil, newHonoredUntil);
+        lockedUntil[orbId] = newLockedUntil;
+        emit TokenLockedUntilUpdate(orbId, previousLockedUntil, newLockedUntil);
     }
 
     function retrieveToken(uint256 orbId) external virtual onlyCreator(orbId) {
@@ -134,7 +155,7 @@ contract OrbTokenLocker is OwnableUpgradeable, UUPSUpgradeable {
         ERC721Token memory token = lockedToken[orbId];
         lockedToken[orbId] = ERC721Token(address(0), 0);
         emit TokenLocking(orbId, token.contractAddress, token.tokenId, 0);
-        IERC721(token.contractAddress).safeTransferFrom(address(this), to, token.tokenId);
+        IERC721(token.contractAddress).safeTransferFrom(address(this), _msgSender(), token.tokenId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +167,10 @@ contract OrbTokenLocker is OwnableUpgradeable, UUPSUpgradeable {
     function version() public pure virtual returns (uint256 orbVersion) {
         return _VERSION;
     }
+
+    /// @dev  Authorizes owner address to upgrade the contract.
+    // solhint-disable no-empty-blocks
+    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 }
 
 // TODOs:
