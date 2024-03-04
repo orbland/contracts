@@ -6,24 +6,15 @@ import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contrac
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
-import {OrbTokenLocker} from "./OrbTokenLocker.sol";
-import {IKeeperDiscovery} from "./discovery/IKeeperDiscovery.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
+import {PledgeLocker} from "./PledgeLocker.sol";
+import {AllocationMethod} from "./allocation/AllocationMethod.sol";
 
 /// @title   Orbs - Shared registry for Harberger-taxed tokens with on-chain invocations
 /// @author  Jonas Lekevicius
 /// @author  Eric Wall
 /// @custom:security-contact security@orb.land
 contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  STRUCTS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    struct ERC721Token {
-        address contractAddress;
-        uint256 tokenId;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,26 +35,23 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     event Relinquishment(uint256 indexed orbId, address indexed formerKeeper);
     event Recall(uint256 indexed orbId, address indexed formerKeeper);
 
-    // Discovery
-    event DiscoveryStart(uint256 indexed orbId, address indexed discoveryBeneficiary, uint256 discoveryStartTime);
-    event DiscoveryFinalization(
-        uint256 indexed orbId,
-        address indexed discoveryBeneficiary,
-        address indexed discoveryWinner,
-        uint256 discoveryWinningAmount,
-        uint256 discoveryEndTime
+    // Allocation
+    event AllocationStart(uint256 indexed orbId, address indexed beneficiary);
+    event AllocationFinalization(
+        uint256 indexed orbId, address indexed beneficiary, address indexed recipient, uint256 proceeds
     );
 
     // Orb Parameter Events
     event FeesUpdate(
         uint256 indexed orbId,
-        uint256 previousKeeperTaxNumerator,
-        uint256 newKeeperTaxNumerator,
-        uint256 previousPurchaseRoyaltyNumerator,
-        uint256 newPurchaseRoyaltyNumerator,
-        uint256 previousDiscoveryRoyaltyNumerator,
-        uint256 newDiscoveryRoyaltyNumerator
+        uint256 previousKeeperTax,
+        uint256 newKeeperTax,
+        uint256 previousPurchaseRoyalty,
+        uint256 newPurchaseRoyalty,
+        uint256 previousReallocationRoyalty,
+        uint256 newReallocationRoyalty
     );
+    event AllocationContractUpdate(uint256 indexed orbId, address previousContract, address indexed newContract);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -72,13 +60,17 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     // Authorization Errors
     error NotCreator();
     error NotKeeper();
-    error AlreadyKeeper();
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
+    error KeeperDoesNotHoldOrb();
     error CreatorDoesNotControlOrb();
+    error AlreadyKeeper();
+    error AddressUnauthorized(address unauthorizedAddress);
+    error OrbNotReclaimable();
 
-    // Discovery Errors
-    error DiscoveryActive();
+    // Allocation Errors
+    error AllocationActive();
+    error UnrespondedInvocationExists();
 
     // Funding Errors
     error KeeperSolvent();
@@ -88,15 +80,10 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     // Purchasing Errors
     error CurrentValueIncorrect(uint256 valueProvided, uint256 currentValue);
     error PurchasingNotPermitted();
-    error InvalidNewPrice(uint256 priceProvided);
+    error InvalidPrice(uint256 price);
 
     // Orb Parameter Errors
-    error LockedUntilNotDecreasable();
-    error RoyaltyNumeratorExceedsDenominator(uint256 royaltyNumerator, uint256 feeDenominator);
-
-    error AddressNotPermitted(address unauthorizedAddress);
-    error KeeperDoesNotHoldOrb();
-    error TokenStillLocked();
+    error RoyaltyNumeratorExceedsDenominator(uint256 royalty, uint256 feeDenominator);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  STORAGE
@@ -108,12 +95,13 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     uint256 private constant _VERSION = 1;
     /// Fee Nominator: basis points (100.00%). Other fees are in relation to this, and formatted as such.
     uint256 internal constant _FEE_DENOMINATOR = 100_00;
+    /// Orb Land revenue share - 5% when withdrawing earnings
+    uint256 internal constant _PLATFORM_FEE = 5_00;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
+
     uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
-    /// Orb Land revenue share - 5% when withdrawing earnings
-    uint256 internal constant _PLATFORM_REVENUE_SHARE = 5_00;
 
     // STATE
 
@@ -125,16 +113,17 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// Orb Invocation Registry
     address public registry;
     /// Orb Token Locker
-    address public tokenLocker;
+    address public pledgeLocker;
     /// Orb Land signing authority. Used to verify Orb creation authorization.
     address public signingAuthority;
     /// Address of the Orb creator.
-    mapping(uint256 ordId => address creator) public creator;
+
+    mapping(uint256 orbId => address) public creator;
     /// Address of the Orb keeper. The keeper is the address that owns the Orb and has the right to invoke the Orb and
     /// receive a response. The keeper is also the address that pays the Harberger tax.
-    mapping(uint256 ordId => address keeper) public keeper;
-    /// Contract used for Orb Keeper Discovery process
-    mapping(uint256 orbId => address discoveryContract) public keeperDiscoveryContract;
+    mapping(uint256 orbId => address) public keeper;
+    /// Contract used for Orb Keeper Allocation process
+    mapping(uint256 orbId => address) public allocationContract;
 
     // Funds Variables
 
@@ -143,24 +132,24 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// It means effective user funds (withdrawable) would be different for keeper (subtracting
     /// `_owedSinceLastSettlement()`) and beneficiary (adding `_owedSinceLastSettlement()`). If Orb is held by the
     /// creator, funds are not subtracted, as Harberger tax does not apply to the creator.
-    mapping(uint256 orbId => mapping(address => uint256 funds)) public fundsOf;
+    mapping(uint256 orbId => mapping(address => uint256)) public fundsOf;
     /// Earnings are:
     /// - The auction winning bid amount;
     /// - Royalties from Orb purchase when not purchased from the Orb creator;
     /// - Full purchase price when purchased from the Orb creator;
     /// - Harberger tax revenue.
-    mapping(uint256 orbId => uint256 earnings) public earnings;
+    mapping(uint256 orbId => uint256) public earnings;
     /// Orb Land earnings
-    uint256 public platformFunds;
+    uint256 public platformEarnings;
 
     // Fees State Variables
 
     /// Harberger tax for holding. Initial value is 120.00%.
-    mapping(uint256 orbId => uint256) public keeperTaxNumerator;
+    mapping(uint256 orbId => uint256) public keeperTax;
     /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 10.00%.
-    mapping(uint256 orbId => uint256) public purchaseRoyaltyNumerator;
+    mapping(uint256 orbId => uint256) public purchaseRoyalty;
     /// Secondary sale royalty paid to beneficiary, based on sale price. Initial value is 30.00%.
-    mapping(uint256 orbId => uint256) public discoveryRoyaltyNumerator;
+    mapping(uint256 orbId => uint256) public reallocationRoyalty;
     /// Price of the Orb. Also used during auction to store future purchase price. Has no meaning if the Orb is held by
     /// the contract and the auction is not running.
     mapping(uint256 orbId => uint256) public price;
@@ -168,26 +157,8 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// if the Orb is held by the contract.
     mapping(uint256 orbId => uint256) public lastSettlementTime;
 
-    /// Discovery Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
-    mapping(uint256 orbId => address) public discoveryBeneficiary;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  INITIALIZER AND INTERFACE SUPPORT
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initalize(address registry_, address tokenLocker_, address signingAuthority_) public initializer {
-        __Ownable_init(_msgSender());
-        __UUPSUpgradeable_init();
-
-        registry = registry_;
-        tokenLocker = tokenLocker_;
-        signingAuthority = signingAuthority_;
-    }
+    /// Allocation Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
+    mapping(uint256 orbId => address) public allocationBeneficiary;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  MODIFIERS
@@ -223,7 +194,7 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     modifier onlyCreatorControlled(uint256 orbId) virtual {
-        if (!creatorControlled(orbId)) {
+        if (!isCreatorControlled(orbId)) {
             revert CreatorDoesNotControlOrb();
         }
         _;
@@ -233,9 +204,9 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Ensures that an auction is currently not running. Can be multiple states: auction not started, auction
     ///       over but not finalized, or auction finalized.
-    modifier notDuringDiscovery(uint256 orbId) virtual {
-        if (_discoveryActive(orbId)) {
-            revert DiscoveryActive();
+    modifier notDuringAllocation(uint256 orbId) virtual {
+        if (_isAllocationActive(orbId)) {
+            revert AllocationActive();
         }
         _;
     }
@@ -250,6 +221,24 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
         _;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  INITIALIZER AND INTERFACE SUPPORT
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initalize(address registry_, address pledgeLocker_, address signingAuthority_) public initializer {
+        __Ownable_init(_msgSender());
+        __UUPSUpgradeable_init();
+
+        registry = registry_;
+        pledgeLocker = pledgeLocker_;
+        signingAuthority = signingAuthority_;
+    }
+
     /// @dev  Ensures that the Orb belongs to the contract itself or the creator, and the auction hasn't been started.
     ///       Most setting-adjusting functions should use this modifier. It means that the Orb properties cannot be
     ///       modified while it is held by the keeper or users can bid on the Orb.
@@ -257,7 +246,7 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     ///       TODO change this considerably
     /*
         When does creator control Orb?
-        - (held by contract OR held by creator) AND discovery is not running
+        - (held by contract OR held by creator) AND allocation is not running
         - held by keeper AND a question is unanswered past the deadline
     */
     // Creator CAN control Orb (does not revert) if any of these FALSE:
@@ -268,23 +257,29 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     // - Orb is held by the contract itself
     // - Orb is held by the creator
     // - Oath is not honored (even if Orb is held by the Keeper)
-    function creatorControlled(uint256 orbId) public view virtual returns (bool) {
-        if (IKeeperDiscovery(keeperDiscoveryContract[orbId]).discoveryActive(orbId)) {
-            revert DiscoveryActive();
+    function isCreatorControlled(uint256 orbId) public view virtual returns (bool) {
+        if (AllocationMethod(allocationContract[orbId]).isAllocationActive(orbId)) {
+            return false;
         }
 
-        if (address(this) != keeper[orbId] && creator[orbId] != keeper[orbId]) {
-            revert CreatorDoesNotControlOrb();
+        if (address(this) == keeper[orbId] || creator[orbId] == keeper[orbId]) {
+            return true;
         }
-        // lockedUntil[orbId] >= block.timestamp
+
+        if (
+            InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId)
+                && InvocationRegistry(registry).hasUnrespondedInvocation(orbId)
+        ) {
+            return true;
+        }
 
         return true;
     }
 
     /// @dev     Returns if the auction is currently running. Use `auctionEndTime()` to check when it ends.
-    /// @return  isDiscoveryActive  If the auction is running.
-    function _discoveryActive(uint256 orbId) internal view virtual returns (bool isDiscoveryActive) {
-        return IKeeperDiscovery(keeperDiscoveryContract[orbId]).discoveryActive(orbId);
+    /// @return  isAllocationActive  If the auction is running.
+    function _isAllocationActive(uint256 orbId) internal view virtual returns (bool) {
+        return AllocationMethod(allocationContract[orbId]).isAllocationActive(orbId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -295,30 +290,33 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     ///         This token represents the Orb and is called the Orb elsewhere in the contract.
     ///         `Ownable` sets the deployer to be the `owner()`, and also the creator in the Orb context.
     ///         V2 changes initial values and sets `auctionKeeperMinimumDuration`.
-    function createAuthorized(address discoveryContract, bytes memory authorizationPayload)
+    function createAuthorized(address allocationContract_, bytes memory authorizationSignature_)
         public
         virtual
         initializer
     {
-        // check that authorizationPayload is signed from signing authority
-        address signingAddress =
-            ECDSA.recover(keccak256(abi.encodePacked(_msgSender(), discoveryContract)), authorizationPayload);
+        uint256 orbId = orbCount;
+
+        // check that authorizationSignature is signed from signing authority
+        // even a properly signed message can fail if an Orb is created between message signing and contract call
+        address signingAddress = ECDSA.recover(
+            keccak256(abi.encodePacked(_msgSender(), allocationContract_, orbId)), authorizationSignature_
+        );
         if (signingAddress != signingAuthority) {
-            revert AddressNotPermitted(_msgSender());
+            revert AddressUnauthorized(_msgSender());
         }
 
-        uint256 orbId = orbCount;
         creator[orbId] = _msgSender();
         keeper[orbId] = address(this);
 
-        keeperTaxNumerator[orbId] = 120_00;
-        purchaseRoyaltyNumerator[orbId] = 10_00;
-        discoveryRoyaltyNumerator[orbId] = 30_00;
+        keeperTax[orbId] = 120_00;
+        purchaseRoyalty[orbId] = 10_00;
+        reallocationRoyalty[orbId] = 30_00;
 
-        keeperDiscoveryContract[orbId] = discoveryContract;
-        IKeeperDiscovery(discoveryContract).initializeOrb(orbId);
-        OrbInvocationRegistry(registry).initializeOrb(orbId);
-        // Token Locker does not need to be initialized.
+        allocationContract[orbId] = allocationContract_;
+        AllocationMethod(allocationContract_).initializeOrb(orbId);
+        InvocationRegistry(registry).initializeOrb(orbId);
+        // Pledge Locker does not need to be initialized.
 
         orbCount++;
 
@@ -330,45 +328,54 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Emits `FeesUpdate`.
     ///          V2 changes to allow setting Keeper auction royalty separately from purchase royalty, with releated
     ///          parameter and event changes.
-    /// @param   newKeeperTaxNumerator        New keeper tax numerator, in relation to `feeDenominator()`.
-    /// @param   newPurchaseRoyaltyNumerator  New royalty numerator for royalties from `purchase()`, in relation to
+    /// @param   keeperTax_        New keeper tax numerator, in relation to `feeDenominator()`.
+    /// @param   purchaseRoyalty_  New royalty numerator for royalties from `purchase()`, in relation to
     ///                                       `feeDenominator()`. Cannot be larger than `feeDenominator()`.
-    /// @param   newAuctionRoyaltyNumerator   New royalty numerator for royalties from keeper auctions, in relation to
+    /// @param   reallocationRoyalty_   New royalty numerator for royalties from keeper auctions, in relation to
     ///                                       `feeDenominator()`. Cannot be larger than `feeDenominator()`.
-    function setFees(
-        uint256 orbId,
-        uint256 newKeeperTaxNumerator,
-        uint256 newPurchaseRoyaltyNumerator,
-        uint256 newAuctionRoyaltyNumerator
-    ) external virtual onlyCreator(orbId) onlyCreatorControlled(orbId) {
+    function setFees(uint256 orbId, uint256 keeperTax_, uint256 purchaseRoyalty_, uint256 reallocationRoyalty_)
+        external
+        virtual
+        onlyCreator(orbId)
+        onlyCreatorControlled(orbId)
+    {
         if (keeper[orbId] != address(this)) {
             _settle(orbId);
         }
-        if (newPurchaseRoyaltyNumerator > _FEE_DENOMINATOR) {
-            revert RoyaltyNumeratorExceedsDenominator(newPurchaseRoyaltyNumerator, _FEE_DENOMINATOR);
+        if (purchaseRoyalty_ > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(purchaseRoyalty_, _FEE_DENOMINATOR);
         }
-        if (newAuctionRoyaltyNumerator > _FEE_DENOMINATOR) {
-            revert RoyaltyNumeratorExceedsDenominator(newAuctionRoyaltyNumerator, _FEE_DENOMINATOR);
+        if (reallocationRoyalty_ > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(reallocationRoyalty_, _FEE_DENOMINATOR);
         }
 
-        uint256 previousKeeperTaxNumerator = keeperTaxNumerator[orbId];
-        keeperTaxNumerator[orbId] = newKeeperTaxNumerator;
+        uint256 previousKeeperTax = keeperTax[orbId];
+        keeperTax[orbId] = keeperTax_;
 
-        uint256 previousPurchaseRoyaltyNumerator = purchaseRoyaltyNumerator[orbId];
-        purchaseRoyaltyNumerator[orbId] = newPurchaseRoyaltyNumerator;
+        uint256 previousPurchaseRoyalty = purchaseRoyalty[orbId];
+        purchaseRoyalty[orbId] = purchaseRoyalty_;
 
-        uint256 previousAuctionRoyaltyNumerator = discoveryRoyaltyNumerator[orbId];
-        discoveryRoyaltyNumerator[orbId] = newAuctionRoyaltyNumerator;
+        uint256 previousAuctionRoyalty = reallocationRoyalty[orbId];
+        reallocationRoyalty[orbId] = reallocationRoyalty_;
 
         emit FeesUpdate(
             orbId,
-            previousKeeperTaxNumerator,
-            newKeeperTaxNumerator,
-            previousPurchaseRoyaltyNumerator,
-            newPurchaseRoyaltyNumerator,
-            previousAuctionRoyaltyNumerator,
-            newAuctionRoyaltyNumerator
+            previousKeeperTax,
+            keeperTax_,
+            previousPurchaseRoyalty,
+            purchaseRoyalty_,
+            previousAuctionRoyalty,
+            reallocationRoyalty_
         );
+    }
+
+    function setAllocationContract(uint256 orbId, address allocationContract_)
+        external
+        virtual
+        onlyCreator(orbId)
+        onlyCreatorControlled(orbId)
+    {
+        allocationContract[orbId] = allocationContract_;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -379,15 +386,18 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Prevents repeated starts by checking the `auctionEndTime`. Important to set `auctionEndTime` to 0
     ///          after auction is finalized. Emits `AuctionStart`.
     ///          V2 adds `onlyHonored` modifier to require active Oath to start auction.
-    function startDiscovery(uint256 orbId) external virtual onlyCreator(orbId) notDuringDiscovery(orbId) {
+    function startAllocation(uint256 orbId) external virtual onlyCreator(orbId) notDuringAllocation(orbId) {
         if (address(this) != keeper[orbId]) {
             revert ContractDoesNotHoldOrb();
         }
+        if (InvocationRegistry(registry).hasUnrespondedInvocation(orbId)) {
+            revert UnrespondedInvocationExists();
+        }
 
-        discoveryBeneficiary[orbId] = creator[orbId];
-        IKeeperDiscovery(keeperDiscoveryContract[orbId]).startDiscovery(orbId, false);
+        allocationBeneficiary[orbId] = creator[orbId];
+        AllocationMethod(allocationContract[orbId]).startAllocation(orbId, false);
 
-        emit DiscoveryStart(orbId, discoveryBeneficiary[orbId], block.timestamp);
+        emit AllocationStart(orbId, allocationBeneficiary[orbId]);
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
@@ -398,41 +408,38 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Critical state transition function. Called after `auctionEndTime`, but only if it's not 0. Can be
     ///          called by anyone, although probably will be called by the creator or the winner. Emits `PriceUpdate`
     ///          and `AuctionFinalization`.
-    ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyaltyNumerator`
-    ///          instead of `purchaseRoyaltyNumerator` for auction royalty (only relevant for Keeper auctions).
-    function finalizeDiscovery(
+    ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyalty`
+    ///          instead of `purchaseRoyalty` for auction royalty (only relevant for Keeper auctions).
+    function finalizeAllocation(
         uint256 orbId,
-        address discoveryWinner,
-        uint256 discoveryProceeds,
-        uint256 winnerFunds,
-        uint256 initialPrice,
-        uint256 discoveryDuration
-    ) external virtual notDuringDiscovery(orbId) {
-        // check that called from discovery contract
+        uint256 proceeds_,
+        uint256 duration_,
+        address recipient_,
+        uint256 recipientFunds_,
+        uint256 initialPrice_
+    ) external virtual notDuringAllocation(orbId) {
+        // check that called from allocation contract
 
-        if (discoveryWinner != address(0)) {
-            uint256 discoveryMinimumRoyaltyNumerator =
-                (keeperTaxNumerator[orbId] * discoveryDuration) / _KEEPER_TAX_PERIOD;
-            uint256 discoveryRoyalty = discoveryMinimumRoyaltyNumerator > discoveryRoyaltyNumerator[orbId]
-                ? discoveryMinimumRoyaltyNumerator
-                : discoveryRoyaltyNumerator[orbId];
-            _splitProceeds(orbId, discoveryProceeds, discoveryBeneficiary[orbId], discoveryRoyalty);
+        if (recipient_ != address(0)) {
+            uint256 _allocationMinimumRoyalty = (keeperTax[orbId] * duration_) / _KEEPER_TAX_PERIOD;
+            uint256 _actualAllocationRoyalty = _allocationMinimumRoyalty > reallocationRoyalty[orbId]
+                ? _allocationMinimumRoyalty
+                : reallocationRoyalty[orbId];
+            _splitProceeds(orbId, proceeds_, allocationBeneficiary[orbId], _actualAllocationRoyalty);
 
-            fundsOf[orbId][discoveryWinner] += winnerFunds;
+            fundsOf[orbId][recipient_] += recipientFunds_;
 
             lastSettlementTime[orbId] = block.timestamp;
-            if (discoveryBeneficiary[orbId] == creator[orbId]) {
-                OrbInvocationRegistry(registry).chargeOrb(orbId);
+            if (allocationBeneficiary[orbId] == creator[orbId]) {
+                InvocationRegistry(registry).initializeOrbInvocationPeriod(orbId);
             }
 
-            _setPrice(orbId, initialPrice);
-            emit DiscoveryFinalization(
-                orbId, discoveryBeneficiary[orbId], discoveryWinner, discoveryProceeds, block.timestamp
-            );
+            _setPrice(orbId, initialPrice_);
+            emit AllocationFinalization(orbId, allocationBeneficiary[orbId], recipient_, proceeds_);
 
-            keeper[orbId] = discoveryWinner;
+            keeper[orbId] = recipient_;
         } else {
-            emit DiscoveryFinalization(orbId, discoveryBeneficiary[orbId], address(0), 0, block.timestamp);
+            emit AllocationFinalization(orbId, allocationBeneficiary[orbId], address(0), 0);
         }
     }
 
@@ -455,9 +462,9 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice  Function to withdraw given amount from the contract. For current Orb keepers, reduces the time until
     ///          foreclosure.
     /// @dev     Not allowed for the leading auction bidder.
-    /// @param   amount  The amount to withdraw.
-    function withdraw(uint256 orbId, uint256 amount) external virtual {
-        _withdraw(orbId, _msgSender(), amount);
+    /// @param   amount_  The amount to withdraw.
+    function withdraw(uint256 orbId, uint256 amount_) external virtual {
+        _withdraw(orbId, _msgSender(), amount_);
     }
 
     /// @notice  Function to withdraw all funds on the contract. Not recommended for current Orb keepers if the price
@@ -481,19 +488,19 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
         address _creator = creator[orbId];
 
         uint256 amount = earnings[orbId];
-        uint256 platformShare = (amount * _PLATFORM_REVENUE_SHARE) / _FEE_DENOMINATOR;
+        uint256 platformShare = (amount * _PLATFORM_FEE) / _FEE_DENOMINATOR;
         uint256 creatorShare = amount - platformShare;
 
         earnings[orbId] = 0;
-        platformFunds += platformShare;
+        platformEarnings += platformShare;
 
         emit Withdrawal(orbId, _creator, creatorShare);
         Address.sendValue(payable(_creator), creatorShare);
     }
 
     function withdrawPlatformEarnings() external virtual {
-        uint256 amount = platformFunds;
-        platformFunds = 0;
+        uint256 amount = platformEarnings;
+        platformEarnings = 0;
 
         emit Withdrawal(0, owner(), amount);
         Address.sendValue(payable(owner()), amount);
@@ -523,30 +530,40 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     ///          if keeper has enough funds before transferring.
     /// @return  owedValue  Wei Orb keeper owes Orb beneficiary since the last settlement time.
     function _owedSinceLastSettlement(uint256 orbId) internal view virtual returns (uint256 owedValue) {
-        uint256 secondsSinceLastSettlement = block.timestamp - lastSettlementTime[orbId];
-        return (price[orbId] * keeperTaxNumerator[orbId] * secondsSinceLastSettlement)
-            / (_KEEPER_TAX_PERIOD * _FEE_DENOMINATOR);
+        uint256 taxedUntil = block.timestamp;
+        if (InvocationRegistry(registry).hasUnrespondedInvocation(orbId)) {
+            // Settles during response, so we only need to account for pause if an invocation has no response
+            uint256 _lastInvocationId = InvocationRegistry(registry).invocationCount(orbId);
+            uint256 invocationPeriod = InvocationRegistry(registry).invocationPeriod(orbId);
+            (,, uint256 invocationTimestamp) = InvocationRegistry(registry).invocations(orbId, _lastInvocationId);
+            if (block.timestamp > invocationTimestamp + invocationPeriod) {
+                taxedUntil = invocationTimestamp + invocationPeriod;
+            }
+        }
+        uint256 secondsSinceLastSettlement =
+            taxedUntil > lastSettlementTime[orbId] ? taxedUntil - lastSettlementTime[orbId] : 0;
+        return (price[orbId] * keeperTax[orbId] * secondsSinceLastSettlement) / (_KEEPER_TAX_PERIOD * _FEE_DENOMINATOR);
     }
 
     /// @dev    Executes the withdrawal for a given amount, does the actual value transfer from the contract to user's
     ///         wallet. The only function in the contract that sends value and has re-entrancy risk. Does not check if
     ///         the address is payable, as the Address library reverts if it is not. Emits `Withdrawal`.
-    /// @param  recipient  The address to send the value to.
-    /// @param  amount     The value in wei to withdraw from the contract.
-    function _withdraw(uint256 orbId, address recipient, uint256 amount) internal virtual {
-        if (recipient == keeper[orbId]) {
+    /// @param  recipient_  The address to send the value to.
+    /// @param  amount_     The value in wei to withdraw from the contract.
+    function _withdraw(uint256 orbId, address recipient_, uint256 amount_) internal virtual {
+        if (recipient_ == keeper[orbId]) {
             _settle(orbId);
         }
 
-        if (fundsOf[orbId][recipient] < amount) {
-            revert InsufficientFunds(fundsOf[orbId][recipient], amount);
+        if (fundsOf[orbId][recipient_] < amount_) {
+            revert InsufficientFunds(fundsOf[orbId][recipient_], amount_);
         }
 
-        fundsOf[orbId][recipient] -= amount;
+        fundsOf[orbId][recipient_] -= amount_;
 
-        emit Withdrawal(orbId, recipient, amount);
+        emit Withdrawal(orbId, recipient_, amount_);
 
-        Address.sendValue(payable(recipient), amount);
+        Address.sendValue(payable(recipient_), amount_);
     }
 
     /// @dev  Keeper might owe more than they have funds available: it means that the keeper is foreclosable.
@@ -582,30 +599,33 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     ///          can be set to zero, making foreclosure time to be never. Can only be called by a solvent keeper.
     ///          Settles before adjusting the price, as the new price will change foreclosure time.
     /// @dev     Emits `Settlement` and `PriceUpdate`. See also `_setPrice()`.
-    /// @param   newPrice  New price for the Orb.
-    function setPrice(uint256 orbId, uint256 newPrice) external virtual onlyKeeper(orbId) onlyKeeperSolvent(orbId) {
+    /// @param   newPrice_  New price for the Orb.
+    function setPrice(uint256 orbId, uint256 newPrice_) external virtual onlyKeeper(orbId) onlyKeeperSolvent(orbId) {
         _settle(orbId);
-        _setPrice(orbId, newPrice);
+        _setPrice(orbId, newPrice_);
     }
 
     /// @notice  Lists the Orb for sale at the given price to buy directly from the Orb creator. This is an alternative
     ///          to the auction mechanism, and can be used to simply have the Orb for sale at a fixed price, waiting
     ///          for the buyer. Listing is only allowed if the auction has not been started and the Orb is held by the
     ///          contract. When the Orb is purchased from the creator, all proceeds go to the beneficiary and the Orb
-    ///          comes fully charged, with no cooldown.
+    ///          comes fully charged, with no invocationPeriod.
     /// @dev     Emits `Transfer` and `PriceUpdate`.
-    /// @param   listingPrice  The price to buy the Orb from the creator.
-    function listWithPrice(uint256 orbId, uint256 listingPrice) external virtual onlyCreator(orbId) {
+    /// @param   listingPrice_  The price to buy the Orb from the creator.
+    function listForSale(uint256 orbId, uint256 listingPrice_) external virtual onlyCreator(orbId) {
         if (address(this) != keeper[orbId]) {
             revert ContractDoesNotHoldOrb();
         }
+        if (InvocationRegistry(registry).hasUnrespondedInvocation(orbId)) {
+            revert UnrespondedInvocationExists();
+        }
 
-        if (IKeeperDiscovery(keeperDiscoveryContract[orbId]).discoveryActive(orbId)) {
-            revert DiscoveryActive();
+        if (AllocationMethod(allocationContract[orbId]).isAllocationActive(orbId)) {
+            revert AllocationActive();
         }
 
         keeper[orbId] = _msgSender();
-        _setPrice(orbId, listingPrice);
+        _setPrice(orbId, listingPrice_);
     }
 
     /// @notice  Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
@@ -613,48 +633,49 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     ///          foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
     ///          required, but purchasing without any reserve would leave the new owner immediately foreclosable.
     ///          Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
-    /// @dev     Requires to provide key Orb parameters (current price, Harberger tax rate, royalty, cooldown and
-    ///          cleartext maximum length) to prevent front-running: without these parameters Orb creator could
+    /// @dev     Requires to provide key Orb parameters (current price, Harberger tax rate, royalty, invocationPeriod
+    ///          and cleartext maximum length) to prevent front-running: without these parameters Orb creator could
     ///          front-run purcaser and change Orb parameters before the purchase; and without current price anyone
     ///          could purchase the Orb ahead of the purchaser, set the price higher, and profit from the purchase.
     ///          Does not modify `lastInvocationTime` unless buying from the creator.
     ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
     ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
     ///          V2 changes to require providing Keeper auction royalty to prevent front-running.
-    /// @param   newPrice                          New price to use after the purchase.
-    /// @param   currentPrice                      Current price, to prevent front-running.
-    /// @param   currentKeeperTaxNumerator         Current keeper tax numerator, to prevent front-running.
-    /// @param   currentPurchaseRoyaltyNumerator   Current royalty numerator, to prevent front-running.
-    /// @param   currentDiscoveryRoyaltyNumerator  Current keeper auction royalty numerator, to prevent front-running.
-    /// @param   currentCooldown                   Current cooldown, to prevent front-running.
-    /// @param   currentLockedUntil                Current honored until timestamp, to prevent front-running.
+    /// @param  orbId                      ID of the Orb to purchase.
+    /// @param  newPrice_                  New price to use after the purchase.
+    /// @param  currentPrice_              Current price, to prevent front-running.
+    /// @param  currentKeeperTax_          Current keeper tax numerator, to prevent front-running.
+    /// @param  currentPurchaseRoyalty_    Current royalty numerator, to prevent front-running.
+    /// @param  currentAllocationRoyalty_  Current keeper auction royalty numerator, to prevent front-running.
+    /// @param  currentInvocationPeriod_   Current invocation period, to prevent front-running.
+    /// @param  currentPledgedUntil_       Current honored until timestamp, to prevent front-running.
     function purchase(
         uint256 orbId,
-        uint256 newPrice,
-        uint256 currentPrice,
-        uint256 currentKeeperTaxNumerator,
-        uint256 currentPurchaseRoyaltyNumerator,
-        uint256 currentDiscoveryRoyaltyNumerator,
-        uint256 currentCooldown,
-        uint256 currentLockedUntil
+        uint256 newPrice_,
+        uint256 currentPrice_,
+        uint256 currentKeeperTax_,
+        uint256 currentPurchaseRoyalty_,
+        uint256 currentAllocationRoyalty_,
+        uint256 currentInvocationPeriod_,
+        uint256 currentPledgedUntil_
     ) external payable virtual onlyKeeperHeld(orbId) onlyKeeperSolvent(orbId) {
-        if (currentPrice != price[orbId]) {
-            revert CurrentValueIncorrect(currentPrice, price[orbId]);
+        if (currentPrice_ != price[orbId]) {
+            revert CurrentValueIncorrect(currentPrice_, price[orbId]);
         }
-        if (currentKeeperTaxNumerator != keeperTaxNumerator[orbId]) {
-            revert CurrentValueIncorrect(currentKeeperTaxNumerator, keeperTaxNumerator[orbId]);
+        if (currentKeeperTax_ != keeperTax[orbId]) {
+            revert CurrentValueIncorrect(currentKeeperTax_, keeperTax[orbId]);
         }
-        if (currentPurchaseRoyaltyNumerator != purchaseRoyaltyNumerator[orbId]) {
-            revert CurrentValueIncorrect(currentPurchaseRoyaltyNumerator, purchaseRoyaltyNumerator[orbId]);
+        if (currentPurchaseRoyalty_ != purchaseRoyalty[orbId]) {
+            revert CurrentValueIncorrect(currentPurchaseRoyalty_, purchaseRoyalty[orbId]);
         }
-        if (currentDiscoveryRoyaltyNumerator != discoveryRoyaltyNumerator[orbId]) {
-            revert CurrentValueIncorrect(currentDiscoveryRoyaltyNumerator, discoveryRoyaltyNumerator[orbId]);
+        if (currentAllocationRoyalty_ != reallocationRoyalty[orbId]) {
+            revert CurrentValueIncorrect(currentAllocationRoyalty_, reallocationRoyalty[orbId]);
         }
-        if (currentCooldown != OrbInvocationRegistry(registry).cooldown(orbId)) {
-            revert CurrentValueIncorrect(currentCooldown, OrbInvocationRegistry(registry).cooldown(orbId));
+        if (currentInvocationPeriod_ != InvocationRegistry(registry).invocationPeriod(orbId)) {
+            revert CurrentValueIncorrect(currentInvocationPeriod_, InvocationRegistry(registry).invocationPeriod(orbId));
         }
-        if (currentLockedUntil != OrbTokenLocker(tokenLocker).lockedUntil(orbId)) {
-            revert CurrentValueIncorrect(currentLockedUntil, OrbTokenLocker(tokenLocker).lockedUntil(orbId));
+        if (currentPledgedUntil_ != PledgeLocker(pledgeLocker).pledgedUntil(orbId)) {
+            revert CurrentValueIncorrect(currentPledgedUntil_, PledgeLocker(pledgeLocker).pledgedUntil(orbId));
         }
 
         if (lastSettlementTime[orbId] >= block.timestamp) {
@@ -672,74 +693,80 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
         fundsOf[orbId][_msgSender()] += msg.value;
         uint256 totalFunds = fundsOf[orbId][_msgSender()];
 
-        if (totalFunds < currentPrice) {
-            revert InsufficientFunds(totalFunds, currentPrice);
+        if (totalFunds < currentPrice_) {
+            revert InsufficientFunds(totalFunds, currentPrice_);
         }
 
-        fundsOf[orbId][_msgSender()] -= currentPrice;
+        fundsOf[orbId][_msgSender()] -= currentPrice_;
         if (creator[orbId] == _keeper) {
-            OrbInvocationRegistry(registry).chargeOrb(orbId);
-            earnings[orbId] += currentPrice;
+            InvocationRegistry(registry).initializeOrbInvocationPeriod(orbId);
+            earnings[orbId] += currentPrice_;
         } else {
-            _splitProceeds(orbId, currentPrice, _keeper, purchaseRoyaltyNumerator[orbId]);
+            _splitProceeds(orbId, currentPrice_, _keeper, purchaseRoyalty[orbId]);
         }
 
-        _setPrice(orbId, newPrice);
+        _setPrice(orbId, newPrice_);
 
-        emit Purchase(orbId, _keeper, _msgSender(), currentPrice);
+        emit Purchase(orbId, _keeper, _msgSender(), currentPrice_);
 
         keeper[orbId] = _msgSender();
     }
 
-    /// @notice  Allows the Orb creator to recall the Orb from the Keeper, if the Oath is no longer honored. This is an
+    /// @notice  Allows the Orb creator to reclaim the Orb from the Keeper, if the Oath is no longer honored. This is an
     ///          alternative to just extending the Oath or swearing it while held by Keeper. It benefits the Orb creator
     ///          as they can set a new Oath and run a new auction. This acts as an alternative to just abandoning the
     ///          Orb after Oath expires.
-    /// @dev     Emits `Recall`. Does not transfer remaining funds to the Keeper to allow recalling even if the Keeper
+    /// @dev     Emits `Recall`. Does not transfer remaining funds to the Keeper to allow reclaiming even if the Keeper
     ///          is a smart contract rejecting ether transfers.
-    function recall(uint256 orbId) external virtual onlyCreator(orbId) {
+    function reclaim(uint256 orbId) external virtual onlyCreator(orbId) {
         address _keeper = keeper[orbId];
         if (address(this) == _keeper || creator[orbId] == _keeper) {
             revert KeeperDoesNotHoldOrb();
         }
-        // if (lockedUntil >= block.timestamp) {
-        //     revert OathStillHonored();
-        // } TODO
+
+        if (
+            !InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId)
+                || !InvocationRegistry(registry).hasUnrespondedInvocation(orbId)
+        ) {
+            revert OrbNotReclaimable();
+        }
         // Auction cannot be running while held by Keeper, no check needed
 
+        PledgeLocker(pledgeLocker).claimPledge(orbId);
         _settle(orbId);
 
         price[orbId] = 0;
-        emit Recall(orbId, _keeper);
-
         keeper[orbId] = address(this);
+        InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
+
+        emit Recall(orbId, _keeper);
     }
 
     /// @dev    Assigns proceeds to beneficiary and primary receiver, accounting for royalty. Used by `purchase()` and
     ///         `finalizeAuction()`. Fund deducation should happen before calling this function. Receiver might be
     ///         beneficiary if no split is needed.
-    /// @param  proceeds  Total proceeds to split between beneficiary and receiver.
-    /// @param  receiver  Address of the receiver of the proceeds minus royalty.
-    /// @param  royalty   Beneficiary royalty numerator to use for the split.
-    function _splitProceeds(uint256 orbId, uint256 proceeds, address receiver, uint256 royalty) internal virtual {
-        uint256 royaltyShare = (proceeds * royalty) / _FEE_DENOMINATOR;
-        uint256 receiverShare = proceeds - royaltyShare;
+    /// @param  proceeds_  Total proceeds to split between beneficiary and receiver.
+    /// @param  receiver_  Address of the receiver of the proceeds minus royalty.
+    /// @param  royalty_   Beneficiary royalty numerator to use for the split.
+    function _splitProceeds(uint256 orbId, uint256 proceeds_, address receiver_, uint256 royalty_) internal virtual {
+        uint256 royaltyShare = (proceeds_ * royalty_) / _FEE_DENOMINATOR;
+        uint256 receiverShare = proceeds_ - royaltyShare;
         earnings[orbId] += royaltyShare;
-        fundsOf[orbId][receiver] += receiverShare;
+        fundsOf[orbId][receiver_] += receiverShare;
     }
 
     /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
     ///         MAXIMUM_PRICE to prevent potential overflows in math. Emits `PriceUpdate`.
-    /// @param  newPrice  New price for the Orb.
-    function _setPrice(uint256 orbId, uint256 newPrice) internal virtual {
-        if (newPrice > _MAXIMUM_PRICE) {
-            revert InvalidNewPrice(newPrice);
+    /// @param  price_  New price for the Orb.
+    function _setPrice(uint256 orbId, uint256 price_) internal virtual {
+        if (price_ > _MAXIMUM_PRICE) {
+            revert InvalidPrice(price_);
         }
 
         uint256 previousPrice = price[orbId];
-        price[orbId] = newPrice;
+        price[orbId] = price_;
 
-        emit PriceUpdate(orbId, keeper[orbId], previousPrice, newPrice);
+        emit PriceUpdate(orbId, keeper[orbId], previousPrice, price_);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -761,15 +788,14 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
         price[orbId] = 0;
         emit Relinquishment(orbId, _msgSender());
 
-        if (
-            creator[orbId] != _msgSender() && IKeeperDiscovery(keeperDiscoveryContract[orbId]).rediscoveryEnabled(orbId)
-        ) {
-            discoveryBeneficiary[orbId] = _msgSender();
-            IKeeperDiscovery(keeperDiscoveryContract[orbId]).startDiscovery(orbId, true);
+        if (creator[orbId] != _msgSender() && AllocationMethod(allocationContract[orbId]).isReallocationEnabled(orbId))
+        {
+            allocationBeneficiary[orbId] = _msgSender();
+            AllocationMethod(allocationContract[orbId]).startAllocation(orbId, true);
             // TODO somehow communicate that its Keeper auction
-            // initialDiscovery and rediscovery
+            // initialAllocation and reallocation
 
-            emit DiscoveryStart(orbId, discoveryBeneficiary[orbId], block.timestamp);
+            emit AllocationStart(orbId, allocationBeneficiary[orbId]);
         }
 
         keeper[orbId] = address(this);
@@ -792,13 +818,13 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
 
         emit Foreclosure(orbId, _keeper);
 
-        if (IKeeperDiscovery(keeperDiscoveryContract[orbId]).rediscoveryEnabled(orbId)) {
-            discoveryBeneficiary[orbId] = _keeper;
-            IKeeperDiscovery(keeperDiscoveryContract[orbId]).startDiscovery(orbId, true);
+        if (AllocationMethod(allocationContract[orbId]).isReallocationEnabled(orbId)) {
+            allocationBeneficiary[orbId] = _keeper;
+            AllocationMethod(allocationContract[orbId]).startAllocation(orbId, true);
             // TODO somehow communicate that its Keeper auction
-            // initialDiscovery and rediscovery
+            // initialAllocation and reallocation
 
-            emit DiscoveryStart(orbId, discoveryBeneficiary[orbId], block.timestamp);
+            emit AllocationStart(orbId, allocationBeneficiary[orbId]);
         }
 
         keeper[orbId] = address(this);
@@ -816,13 +842,13 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Authorizes owner address to upgrade the contract.
     // solhint-disable no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation_) internal virtual override onlyOwner {}
 }
 
 // TODOs:
 // - everything about token locking
-// - indicate if discovery is initial or rediscovery
-// - discovery running check
+// - indicate if allocation is initial or reallocation
+// - allocation running check
 // - admin, upgrade functions
 // - expose is creator controlled logic
 // - establish is deadline missed logic
