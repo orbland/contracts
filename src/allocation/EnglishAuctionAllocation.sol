@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {AllocationMethod} from "./AllocationMethod.sol";
 import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Orbs} from "../Orbs.sol";
 
-contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
+contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSUpgradeable {
     // Auction Events
-    event AuctionStart(
-        uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, address indexed auctionBeneficiary
-    );
+
     event AuctionBid(address indexed bidder, uint256 indexed bid);
     event AuctionExtension(uint256 indexed newAuctionEndTime);
-    event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
     event AuctionParametersUpdate(
         uint256 previousStartingPrice,
         uint256 indexed newStartingPrice,
@@ -26,24 +24,10 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
         uint256 newBidExtension
     );
 
-    error InvalidNewPrice(uint256 priceProvided);
     error NotPermittedForLeadingBidder();
     error InsufficientBid(uint256 bidProvided, uint256 bidRequired);
     error InsufficientFunds(uint256 fundsAvailable, uint256 fundsRequired);
     error InvalidAuctionDuration(uint256 auctionDuration);
-
-    error DiscoveryActive();
-    error DiscoveryNotAcitve();
-    error DiscoveryNotStarted();
-    error ContractDoesNotHoldOrb();
-    error NotOrbsContract();
-    error NotCreator();
-
-    /// Maximum Orb price, limited to prevent potential overflows.
-    uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
-
-    // only Orbs contract can start discovery, and Orbs contract is called upon finalization
-    address public orbsContract;
 
     // Auction State Variables
 
@@ -71,39 +55,10 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     /// Leading bid: highest current bid. 0 not during the auction and before first bid.
     mapping(uint256 ordId => uint256) public leadingBid;
 
-    mapping(uint256 orbId => mapping(address => uint256 funds)) public fundsOf;
-    mapping(uint256 orbId => uint256) public price;
+    mapping(uint256 orbId => mapping(address user => uint256)) public fundsOf;
+    mapping(uint256 orbId => uint256) public initialPrice;
 
-    modifier notDuringAuction(uint256 orbId) {
-        if (discoveryActive(orbId)) {
-            revert DiscoveryActive();
-        }
-        _;
-    }
-
-    modifier onlyHonored(uint256 orbId) {
-        _;
-    }
-
-    modifier onlyCreator(uint256 orbId) {
-        if (_msgSender() != Orbs(orbsContract).creator(orbId)) {
-            revert NotCreator();
-        }
-        _;
-    }
-
-    modifier onlyCreatorControlled(uint256 orbId) {
-        _;
-    }
-
-    modifier onlyOrbsContract() {
-        if (_msgSender() != orbsContract) {
-            revert NotOrbsContract();
-        }
-        _;
-    }
-
-    function initializeOrb(uint256 orbId) public initializer {
+    function initializeOrb(uint256 orbId) public override {
         auctionStartingPrice[orbId] = 0.05 ether;
         auctionNextBidIncrease[orbId] = 0.05 ether;
         auctionMinimumDuration[orbId] = 1 days;
@@ -111,7 +66,7 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
         auctionBidExtension[orbId] = 4 minutes;
     }
 
-    function discoveryActive(uint256 orbId) public view virtual returns (bool) {
+    function allocationActive(uint256 orbId) public view virtual returns (bool) {
         // TODO
         return true;
     }
@@ -120,11 +75,12 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Prevents repeated starts by checking the `auctionEndTime`. Important to set `auctionEndTime` to 0
     ///          after auction is finalized. Emits `AuctionStart`.
     ///          V2 adds `onlyHonored` modifier to require active Oath to start auction.
-    function startDiscovery(uint256 orbId, bool rediscovery)
+    function startAllocation(uint256 orbId, bool reallocation)
         external
         virtual
+        override
         onlyOrbsContract
-        notDuringAuction(orbId)
+        notDuringAllocation(orbId)
     {
         if (address(this) != Orbs(orbsContract).keeper(orbId)) {
             revert ContractDoesNotHoldOrb();
@@ -149,17 +105,17 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     ///          and `AuctionFinalization`.
     ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyaltyNumerator`
     ///          instead of `purchaseRoyaltyNumerator` for auction royalty (only relevant for Keeper auctions).
-    function finalizeDiscovery(uint256 orbId) external virtual notDuringAuction(orbId) {
+    function finalizeAllocation(uint256 orbId) external virtual override notDuringAllocation(orbId) {
         if (auctionEndTime[orbId] == 0) {
-            revert DiscoveryNotStarted();
+            revert AllocationNotStarted();
         }
 
         address _leadingBidder = leadingBidder[orbId];
         uint256 _leadingBid = leadingBid[orbId];
 
-        Orbs(orbsContract).finalizeDiscovery(
-            orbId, _leadingBidder, _leadingBid, fundsOf[orbId][_leadingBidder], price[orbId], 0
-        );
+        Orbs(orbsContract).finalizeAllocation(
+            orbId, _leadingBid, 0, _leadingBidder, fundsOf[orbId][_leadingBidder], initialPrice[orbId]
+        ); // TODO add duration
 
         emit AuctionFinalization(address(0), 0);
         leadingBidder[orbId] = address(0);
@@ -238,8 +194,8 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   amount      The value to bid.
     /// @param   priceIfWon  Price if the bid wins. Must be less than `MAXIMUM_PRICE`.
     function bid(uint256 orbId, uint256 amount, uint256 priceIfWon) external payable virtual {
-        if (!discoveryActive(orbId)) {
-            revert DiscoveryNotAcitve();
+        if (!allocationActive(orbId)) {
+            revert AllocationNotAcitve();
         }
 
         uint256 totalFunds = fundsOf[orbId][msg.sender] + msg.value;
@@ -253,13 +209,13 @@ contract KeeperDiscoveryEnglishAuction is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (priceIfWon > _MAXIMUM_PRICE) {
-            revert InvalidNewPrice(priceIfWon);
+            revert InvalidPrice(priceIfWon);
         }
 
         fundsOf[orbId][msg.sender] = totalFunds;
         leadingBidder[orbId] = msg.sender;
         leadingBid[orbId] = amount;
-        price[orbId] = priceIfWon;
+        initialPrice[orbId] = priceIfWon;
 
         emit AuctionBid(msg.sender, amount);
 
