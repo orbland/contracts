@@ -6,8 +6,7 @@ import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contrac
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {Orb} from "./legacy/Orb.sol";
-import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
-import {OrbPond} from "./legacy/OrbPond.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
 
 /// @title   Orb Invocation Tip Jar - A contract for suggesting Orb invocations and tipping Orb keepers
 /// @author  Jonas Lekevicius
@@ -23,36 +22,27 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     uint256 private constant _VERSION = 1;
     /// Fee Nominator: basis points (100.00%). Platform fee is in relation to this.
     uint256 internal constant _FEE_DENOMINATOR = 100_00;
-
-    /// The sum of all tips for a given invocation
-    mapping(uint256 orbId => mapping(bytes32 invocationHash => uint256 tippedAmount)) public totalTips;
-
-    /// The sum of all tips for a given invocation by a given tipper
-    mapping(uint256 orbId => mapping(address tipper => mapping(bytes32 invocationHash => uint256 tippedAmount))) public
-        tipperTips;
-
-    /// Whether a certain invocation's tips have been claimed: invocationId starts from 1
-    mapping(uint256 orbId => mapping(bytes32 invocationHash => uint256 invocationId)) public claimedInvocations;
-
-    /// The minimum tip value for a given Orb
-    mapping(uint256 orbId => uint256 minimumTip) public minimumTips;
-
-    /// Orb Land revenue address. Set during contract initialization to Orb Land Revenue multisig. While there is no
-    /// function to change this address, it can be changed by upgrading the contract.
-    address public platformAddress;
-
     /// Orb Land revenue fee numerator. Set during contract initialization. While there is no function to change this
     /// value, it can be changed by upgrading the contract. The fee is in relation to `_FEE_DENOMINATOR`.
     /// Note: contract upgradability poses risks! Orb Land may upgrade this contract and set the fee to _FEE_DENOMINATOR
     /// (100.00%), taking away all future tips. This is a risk that Orb keepers must be aware of, until upgradability
     /// is removed or modified.
-    uint256 public platformFee;
+    uint256 internal constant _PLATFORM_FEE = 5_00;
+
+    /// The sum of all tips for a given invocation
+    mapping(uint256 orbId => mapping(bytes32 invocationHash => uint256)) public totalTips;
+
+    /// The sum of all tips for a given invocation by a given tipper
+    mapping(uint256 orbId => mapping(bytes32 invocationHash => mapping(address tipper => uint256))) public tipperTips;
+
+    /// Whether a certain invocation's tips have been claimed: invocationId starts from 1
+    mapping(uint256 orbId => mapping(bytes32 invocationHash => uint256 invocationId)) public claimedInvocations;
+
+    /// The minimum tip value for a given Orb
+    mapping(uint256 orbId => uint256) public minimumTip;
 
     /// Funds allocated for the Orb Land platform, withdrawable to `platformAddress`
-    uint256 public platformFunds;
-
-    /// Gap used to prevent storage collisions
-    uint256[100] private __gap;
+    uint256 public platformEarnings;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
@@ -69,8 +59,6 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    error PlatformAddressInvalid();
-    error PlatformFeeInvalid();
     error InsufficientTip(uint256 tipValue, uint256 minimumTip);
     error InvocationNotInvoked();
     error InvocationAlreadyClaimed();
@@ -90,19 +78,9 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /// @dev  Initializes the contract.
-    function initialize(address platformAddress_, uint256 platformFee_) public initializer {
-        __Ownable_init(msg.sender);
+    function initialize() public initializer {
+        __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
-
-        if (platformAddress_ == address(0)) {
-            revert PlatformAddressInvalid();
-        }
-        if (platformFee_ > _FEE_DENOMINATOR) {
-            revert PlatformFeeInvalid();
-        }
-
-        platformAddress = platformAddress_;
-        platformFee = platformFee_;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +92,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orbId             The address of the orb
     /// @param   invocationHash  The invocation content hash
     function tipInvocation(uint256 orbId, bytes32 invocationHash) external payable virtual {
-        uint256 _minimumTip = minimumTips[orbId];
+        uint256 _minimumTip = minimumTip[orbId];
         if (msg.value < _minimumTip) {
             revert InsufficientTip(msg.value, _minimumTip);
         }
@@ -123,9 +101,9 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         totalTips[orbId][invocationHash] += msg.value;
-        tipperTips[orbId][msg.sender][invocationHash] += msg.value;
+        tipperTips[orbId][invocationHash][_msgSender()] += msg.value;
 
-        emit TipDeposit(orbId, invocationHash, msg.sender, msg.value);
+        emit TipDeposit(orbId, invocationHash, _msgSender(), msg.value);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -133,14 +111,14 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @notice  Claims all tips for a given suggested invocation. Meant to be called together with the invocation
-    ///          itself, using `invokeWith*AndCall` functions on OrbInvocationRegistry.
+    ///          itself, using `invokeWith*AndCall` functions on InvocationRegistry.
     /// @param   orbId              The address of the Orb
     /// @param   invocationIndex  The invocation id to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
     function claimTipsForInvocation(uint256 orbId, uint256 invocationIndex, uint256 minimumTipTotal) external virtual {
         address invocationRegistryAddress = address(0); // TODO
         (address invoker, bytes32 contentHash,) =
-            OrbInvocationRegistry(invocationRegistryAddress).invocations(orbId, invocationIndex);
+            InvocationRegistry(invocationRegistryAddress).invocations(orbId, invocationIndex);
 
         if (contentHash == bytes32(0)) {
             revert InvocationNotInvoked();
@@ -153,11 +131,11 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
             revert InsufficientTips(minimumTipTotal, totalClaimableTips);
         }
 
-        uint256 platformPortion = (totalClaimableTips * platformFee) / _FEE_DENOMINATOR;
+        uint256 platformPortion = (totalClaimableTips * _PLATFORM_FEE) / _FEE_DENOMINATOR;
         uint256 invokerPortion = totalClaimableTips - platformPortion;
 
         claimedInvocations[orbId][contentHash] = invocationIndex;
-        platformFunds += platformPortion;
+        platformEarnings += platformPortion;
         Address.sendValue(payable(invoker), invokerPortion);
 
         emit TipsClaim(orbId, contentHash, invoker, invokerPortion);
@@ -167,7 +145,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orbId             The address of the orb
     /// @param   invocationHash  The invocation content hash
     function withdrawTip(uint256 orbId, bytes32 invocationHash) public virtual {
-        uint256 tipValue = tipperTips[orbId][msg.sender][invocationHash];
+        uint256 tipValue = tipperTips[orbId][invocationHash][_msgSender()];
         if (tipValue == 0) {
             revert TipNotFound();
         }
@@ -176,10 +154,10 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         totalTips[orbId][invocationHash] -= tipValue;
-        tipperTips[orbId][msg.sender][invocationHash] = 0;
-        Address.sendValue(payable(msg.sender), tipValue);
+        tipperTips[orbId][invocationHash][_msgSender()] = 0;
+        Address.sendValue(payable(_msgSender()), tipValue);
 
-        emit TipWithdrawal(orbId, invocationHash, msg.sender, tipValue);
+        emit TipWithdrawal(orbId, invocationHash, _msgSender(), tipValue);
     }
 
     /// @notice  Withdraws all tips from a given list of Orbs and invocations. Will revert if any given invocation has
@@ -197,14 +175,14 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @notice  Withdraws all funds set aside as the platform fee. Can be called by anyone.
     function withdrawPlatformFunds() external virtual {
-        uint256 _platformFunds = platformFunds;
-        address _platformAddress = platformAddress;
-        if (_platformFunds == 0) {
+        uint256 _platformEarnings = platformEarnings;
+        address _platformAddress = owner();
+        if (_platformEarnings == 0) {
             revert NoFundsAvailable();
         }
-        Address.sendValue(payable(_platformAddress), _platformFunds);
-        platformFunds = 0;
-        emit TipsClaim(0, bytes32(0), _platformAddress, _platformFunds);
+        Address.sendValue(payable(_platformAddress), _platformEarnings);
+        platformEarnings = 0;
+        emit TipsClaim(0, bytes32(0), _platformAddress, _platformEarnings);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,14 +191,14 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @notice  Sets the minimum tip value for a given Orb.
     /// @param   orbId              The address of the Orb
-    /// @param   minimumTipValue  The minimum tip value
-    function setMinimumTip(uint256 orbId, uint256 minimumTipValue) external virtual {
-        // if (msg.sender != Orb(orbId).keeper()) {
+    /// @param   minimumTip_  The minimum tip value
+    function setMinimumTip(uint256 orbId, uint256 minimumTip_) external virtual {
+        // if (_msgSender() != Orb(orbId).keeper()) {
         //     revert NotKeeper();
         // } // TODO
-        uint256 previousMinimumTip = minimumTips[orbId];
-        minimumTips[orbId] = minimumTipValue;
-        emit MinimumTipUpdate(orbId, previousMinimumTip, minimumTipValue);
+        uint256 previousMinimumTip = minimumTip[orbId];
+        minimumTip[orbId] = minimumTip_;
+        emit MinimumTipUpdate(orbId, previousMinimumTip, minimumTip_);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
