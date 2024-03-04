@@ -37,8 +37,6 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
 
-    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -332,14 +330,6 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: UPGRADING AND MANAGEMENT
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// @notice  Allows the owner address to authorize externally callable contracts.
-    /// @param   addressToAuthorize  Address of the contract to authorize.
-    /// @param   authorizationValue  Boolean value to set the authorization to.
-    function authorizeContract(address addressToAuthorize, bool authorizationValue) external virtual onlyOwner {
-        authorizedContracts[addressToAuthorize] = authorizationValue;
-        emit ContractAuthorization(addressToAuthorize, authorizationValue);
-    }
 
     /// @notice  Returns the version of the Orb Invocation Registry. Internal constant `_VERSION` will be increased with
     ///          each upgrade.
