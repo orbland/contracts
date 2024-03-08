@@ -258,18 +258,19 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     // - Orb is held by the creator
     // - Oath is not honored (even if Orb is held by the Keeper)
     function isCreatorControlled(uint256 orbId) public view virtual returns (bool) {
-        if (AllocationMethod(allocationContract[orbId]).isAllocationActive(orbId)) {
+        if (AllocationMethod(allocationContract[orbId]).isAllocationUnfinalized(orbId)) {
             return false;
         }
 
         if (address(this) == keeper[orbId] || creator[orbId] == keeper[orbId]) {
+            // TODO but only if pledge is not claimable???
             return true;
         }
 
-        if (
-            InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId)
-                && InvocationRegistry(registry).hasUnrespondedInvocation(orbId)
-        ) {
+        // TODO change to: has expired invocation that is no longer claimable, and missing response
+        (bool hasExpiredInvocation,) = InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId);
+        if (hasExpiredInvocation && InvocationRegistry(registry).hasUnrespondedInvocation(orbId)) {
+            // TODO add pledge is not claimable
             return true;
         }
 
@@ -531,11 +532,11 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
     /// @return  owedValue  Wei Orb keeper owes Orb beneficiary since the last settlement time.
     function _owedSinceLastSettlement(uint256 orbId) internal view virtual returns (uint256 owedValue) {
         uint256 taxedUntil = block.timestamp;
+        // TODO review
         if (InvocationRegistry(registry).hasUnrespondedInvocation(orbId)) {
             // Settles during response, so we only need to account for pause if an invocation has no response
-            uint256 _lastInvocationId = InvocationRegistry(registry).invocationCount(orbId);
+            uint256 invocationTimestamp = InvocationRegistry(registry).lastInvocationTime(orbId);
             uint256 invocationPeriod = InvocationRegistry(registry).invocationPeriod(orbId);
-            (,, uint256 invocationTimestamp) = InvocationRegistry(registry).invocations(orbId, _lastInvocationId);
             if (block.timestamp > invocationTimestamp + invocationPeriod) {
                 taxedUntil = invocationTimestamp + invocationPeriod;
             }
@@ -724,15 +725,17 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
             revert KeeperDoesNotHoldOrb();
         }
 
-        if (
-            !InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId)
-                || !InvocationRegistry(registry).hasUnrespondedInvocation(orbId)
-        ) {
+        // TODO pledge must not be claimable
+
+        // TODO add some conditions, or the whole isCreatorControlled
+
+        (bool hasExpiredInvocation,) = InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId);
+        if (!hasExpiredInvocation || !InvocationRegistry(registry).hasUnrespondedInvocation(orbId)) {
             revert OrbNotReclaimable();
+            // TODO require that NFT would not be claimable
         }
         // Auction cannot be running while held by Keeper, no check needed
 
-        PledgeLocker(pledgeLocker).claimPledge(orbId);
         _settle(orbId);
 
         price[orbId] = 0;
@@ -798,7 +801,10 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
             emit AllocationStart(orbId, allocationBeneficiary[orbId]);
         }
 
+        // TODO pledge must not be claimable
         keeper[orbId] = address(this);
+        InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
+
         _withdraw(orbId, _msgSender(), fundsOf[orbId][_msgSender()]);
     }
 
@@ -827,7 +833,9 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
             emit AllocationStart(orbId, allocationBeneficiary[orbId]);
         }
 
+        // TODO pledge must not be claimable
         keeper[orbId] = address(this);
+        InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -847,11 +855,9 @@ contract Orbs is OwnableUpgradeable, UUPSUpgradeable {
 
 // TODOs:
 // - everything about token locking
-// - indicate if allocation is initial or reallocation
 // - allocation running check
 // - admin, upgrade functions
 // - expose is creator controlled logic
-// - establish is deadline missed logic
 // - documentation
 //   - first, for myself: to understand when all actions can be taken
 //   - particularly token and settings related

@@ -16,8 +16,15 @@ contract ContractAuthorizationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     // DelegationContractAuthorization - checked by Invocation Registry
     event DelegationContractAuthorization(address indexed contractAddress, bool indexed authorized);
 
+    address public orbsContract;
+    address public invocationRegistryContract;
+    address public pledgeLockerContract;
+    address public invocationTipJarContract;
+
     /// Addresses authorized for external calls in invokeWithXAndCall()
     mapping(address contractAddress => bool) public invocationCallableContracts;
+    mapping(address contractAddress => bool) public allocationContracts;
+    mapping(address contractAddress => bool) public delegationContracts;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
@@ -44,6 +51,47 @@ contract ContractAuthorizationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     {
         invocationCallableContracts[addressToAuthorize] = authorizationValue;
         emit InvocationCallableContractAuthorization(addressToAuthorize, authorizationValue);
+    }
+
+    /// @notice  Allows the owner address to authorize allocation contracts.
+    /// @param   addressToAuthorize  Address of the contract to authorize.
+    /// @param   authorizationValue  Boolean value to set the authorization to.
+    function authorizeAllocationContract(address addressToAuthorize, bool authorizationValue)
+        external
+        virtual
+        onlyOwner
+    {
+        allocationContracts[addressToAuthorize] = authorizationValue;
+        emit AllocationContractAuthorization(addressToAuthorize, authorizationValue);
+    }
+
+    /// @notice  Allows the owner address to authorize delegation contracts.
+    /// @param   addressToAuthorize  Address of the contract to authorize.
+    /// @param   authorizationValue  Boolean value to set the authorization to.
+    function authorizeDelegationContract(address addressToAuthorize, bool authorizationValue)
+        external
+        virtual
+        onlyOwner
+    {
+        delegationContracts[addressToAuthorize] = authorizationValue;
+        emit DelegationContractAuthorization(addressToAuthorize, authorizationValue);
+    }
+
+    /// @notice  Allows the owner address to set the contract addresses.
+    /// @param   orbsContractAddress  Address of the Orbs contract.
+    /// @param   invocationRegistryContractAddress  Address of the Invocation Registry contract.
+    /// @param   pledgeLockerContractAddress  Address of the Pledge Locker contract.
+    /// @param   invocationTipJarContractAddress  Address of the Invocation Tip Jar contract.
+    function setContractAddresses(
+        address orbsContractAddress,
+        address invocationRegistryContractAddress,
+        address pledgeLockerContractAddress,
+        address invocationTipJarContractAddress
+    ) external onlyOwner {
+        orbsContract = orbsContractAddress;
+        invocationRegistryContract = invocationRegistryContractAddress;
+        pledgeLockerContract = pledgeLockerContractAddress;
+        invocationTipJarContract = invocationTipJarContractAddress;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

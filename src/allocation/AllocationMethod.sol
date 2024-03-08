@@ -6,9 +6,7 @@ import {ContextUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/c
 import {Orbs} from "../Orbs.sol";
 
 contract AllocationMethod is IERC165, ContextUpgradeable {
-    event AuctionStart(
-        uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, address indexed auctionBeneficiary
-    );
+    event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, bool reallocation);
     event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
 
     error InvalidPrice(uint256 priceProvided);
@@ -19,6 +17,7 @@ contract AllocationMethod is IERC165, ContextUpgradeable {
     error ContractDoesNotHoldOrb();
     error NotOrbsContract();
     error NotCreator();
+    error CreatorDoesNotControlOrb();
 
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
@@ -45,6 +44,9 @@ contract AllocationMethod is IERC165, ContextUpgradeable {
     }
 
     modifier onlyCreatorControlled(uint256 orbId) virtual {
+        if (!Orbs(orbsContract).isCreatorControlled(orbId)) {
+            revert CreatorDoesNotControlOrb();
+        }
         _;
     }
 
@@ -64,6 +66,10 @@ contract AllocationMethod is IERC165, ContextUpgradeable {
     function version() external view virtual returns (uint256) {}
 
     function isAllocationActive(uint256 orbId) public view virtual returns (bool) {
+        return false;
+    }
+
+    function isAllocationUnfinalized(uint256 orbId) public view virtual returns (bool) {
         return false;
     }
 

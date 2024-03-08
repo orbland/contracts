@@ -52,6 +52,8 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         uint256 indexed orbId, address indexed tokenContract, uint256 indexed tokenId, uint256 pledgedUntil
     );
     event PledgedUntilUpdate(uint256 indexed orbId, uint256 previousPledgedUntil, uint256 indexed newPledgedUntil);
+    event PledgeClaimed(uint256 indexed orbId, address indexed claimer);
+    event PledgeRetrieved(uint256 indexed orbId, address indexed retriever);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -60,6 +62,7 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     // Orb Parameter Errors
     error PledgedUntilNotDecreasable();
     error TokenStillPledged();
+    error NotInvoker();
 
     error NotCreatorControlled();
 
@@ -132,18 +135,34 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         return pledgedUntil[orbId] > block.timestamp;
     }
 
+    function isPledgeClaimable(uint256 orbId) public view returns (bool) {
+        return canClaimPledge(orbId, address(0));
+        // TODO
+
+        // Meanings of isPledgeClaimable can differ:
+        // - most of the time its about preventing some actions while
+    }
+
     function canClaimPledge(uint256 orbId, address claimer_) public view returns (bool) {
-        // has expired period invocation
-        uint256 expiredPeriodInvocationId = InvocationRegistry(registry).expiredPeriodInvocation(orbId);
-        if (expiredPeriodInvocationId > 0) {
+        if (!isPledged(orbId)) {
+            return false;
+        }
+        (bool hasExpiredInvocation, uint256 expiredPeriodInvocationId) =
+            InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId);
+        if (hasExpiredInvocation) {
             (address _invoker,, uint256 _timestamp) =
                 InvocationRegistry(registry).invocations(orbId, expiredPeriodInvocationId);
             // within 2 response periods since that invocation
-            bool isPledgeClaimable =
+            bool _isPledgeClaimable =
                 block.timestamp < _timestamp + (2 * InvocationRegistry(registry).invocationPeriod(orbId));
             bool canClaim = claimer_ == _invoker || claimer_ == address(0);
-            return isPledgeClaimable && canClaim;
+            return _isPledgeClaimable && canClaim;
         }
+        return false;
+    }
+
+    function canPledge(uint256 orbId) public view returns (bool) {
+        return !canClaimPledge(orbId, address(0)) && InvocationRegistry(registry).expiredPeriodInvocation(orbId) == 0;
     }
 
     function isPledgeRetrievable(uint256 orbId) public view returns (bool) {
@@ -230,16 +249,30 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         if (isPledgeRetrievable(orbId)) {
             _transferPledgeTo(orbId, _msgSender());
         }
-        // TODO emit PledgeRetrieval
+        emit PledgeRetrieved(orbId, _msgSender());
     }
 
     function claimPledge(uint256 orbId) external virtual {
-        if (canClaimPledge(orbId, address(0))) {
-            (address _invoker,,) = InvocationRegistry(registry).invocations(
-                orbId, InvocationRegistry(registry).expiredPeriodInvocation(orbId)
-            );
+        if (canClaimPledge(orbId, _msgSender())) {
+            (, uint256 expiredPeriodInvocationId) = InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId);
+            (address _invoker,,) = InvocationRegistry(registry).invocations(orbId, expiredPeriodInvocationId);
+
+            if (_msgSender() != _invoker) {
+                revert NotInvoker();
+            }
+
             _transferPledgeTo(orbId, _invoker);
+            InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
+
+            emit PledgeClaimed(orbId, _invoker);
         }
+    }
+
+    function resetExpiredPeriodInvocation(uint256 orbId) external virtual {
+        // TODO Pledge must not be claimable
+        // TODO require that claiming window is over and does not have an expired period invocation apart from recorded
+        // maybe same as "isCreatorControlled"
+        InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

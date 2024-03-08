@@ -6,6 +6,7 @@ import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contrac
 import {Orbs} from "./Orbs.sol";
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 import {ContractAuthorizationRegistry} from "./ContractAuthorizationRegistry.sol";
+import {PledgeLocker} from "./PledgeLocker.sol";
 
 /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
 /// InvocationData is used to determine if the response can be flagged by the keeper.
@@ -54,16 +55,19 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     // Authorization Errors
     error NotKeeper();
     error NotCreator();
+    error NotAuthorized();
     error NotOrbsContract();
     error ContractHoldsOrb();
+    error ContractDoesNotHoldOrb();
     error KeeperInsolvent();
     error CreatorDoesNotControlOrb();
     error ContractNotAuthorized(address externalContract);
     error InvocationPeriodExceedsMaximumDuration(uint256 invocationPeriod, uint256 invocationPeriodMaximumDuration);
 
     // Invoking and Responding Errors
-    error InvocationPeriodIncomplete(uint256 timeRemaining);
-    error NoUnrespondedInvocations(uint256 orbId);
+    error NotInvokable();
+    error NoUnrespondedInvocation(uint256 orbId);
+    error HasUnrespondedInvocation(uint256 orbId);
     error ResponseNotFound(uint256 orbId, uint256 invocationId);
     error ResponseExists(uint256 orbId, uint256 invocationId);
 
@@ -78,6 +82,8 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     address public orbsContract;
 
+    address public pledgeLockerContract;
+
     address public authorizationsContract;
 
     /// Count of invocations made: used to calculate invocationId of the next invocation.
@@ -88,7 +94,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     mapping(uint256 orbId => mapping(uint256 invocationId => ResponseData)) public responses;
     /// Mapping indicating if all invocations have responses
     mapping(uint256 orbId => bool) public hasUnrespondedInvocation;
-    /// Mapping of missed deadline invocation IDs
+    /// Mapping of missed deadline invocation IDs -- currently only used to allow claiming of pledges
     mapping(uint256 orbId => uint256 invocationId) public expiredPeriodInvocation;
 
     /// InvocationPeriod: how often the Orb can be invoked.
@@ -113,15 +119,15 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         __UUPSUpgradeable_init();
 
         authorizationsContract = authorizationsContract_;
+        pledgeLockerContract = ContractAuthorizationRegistry(authorizationsContract_).pledgeLockerContract();
     }
 
     function isInvokable(uint256 orbId) public view virtual returns (bool) {
-        // Can't be called by Orbs contract
-        if (Orbs(orbsContract).keeper(orbId) == orbsContract) {
-            return false; // TODO we can disable this check
-        }
-
-        // TODO check that there is not an outstanding invocation delegation
+        // Can't be called by Orbs contract - check disabled as we are trusting ourselves
+        // if (Orbs(orbsContract).keeper(orbId) == orbsContract) {
+        //     return false;
+        // }
+        // LATER check that there is not an outstanding invocation delegation
 
         // Can't be invoked if there is an unresponded invocation --
         // if invocation period has passed and there is no response, Pledge is claimable!
@@ -133,34 +139,27 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         return block.timestamp >= lastInvocationTime[orbId] + invocationPeriod[orbId];
     }
 
-    function hasExpiredPeriodInvocation(uint256 orbId) public view virtual returns (bool) {
+    function hasExpiredPeriodInvocation(uint256 orbId) public view virtual returns (bool, uint256) {
         if (expiredPeriodInvocation[orbId] != 0) {
-            return true;
+            return (true, expiredPeriodInvocation[orbId]);
         }
         if (hasUnrespondedInvocation[orbId]) {
-            uint256 _lastInvocationId = invocationCount[orbId];
-            InvocationData memory _lastInvocation = invocations[orbId][_lastInvocationId];
-            if (block.timestamp > _lastInvocation.timestamp + invocationPeriod[orbId]) {
-                return true;
+            if (block.timestamp > lastInvocationTime[orbId] + invocationPeriod[orbId]) {
+                return (true, invocationCount[orbId]);
             }
         }
         // would be set to invocationId when responding, don't need to check last invocation if every invocation is
         // responded
-        return false;
+        return (false, 0);
     }
 
-    function checkExpiredPeriodInvocation(uint256 orbId) public virtual {
-        if (expiredPeriodInvocation[orbId] == 0 && hasExpiredPeriodInvocation(orbId)) {
-            // TODO only if keeper held?
-            uint256 _lastInvocationId = invocationCount[orbId];
-            expiredPeriodInvocation[orbId] = _lastInvocationId;
-            // Settle to apply Harberger tax discount, and reset for potential discounts in the future
-            Orbs(orbsContract).settle(orbId);
+    function resetExpiredPeriodInvocation(uint256 orbId) public virtual {
+        if (_msgSender() != orbsContract && _msgSender() != pledgeLockerContract) {
+            revert NotAuthorized();
         }
-    }
-
-    function resetExpiredPeriodInvocation(uint256 orbId) public virtual onlyOrbsContract {
-        expiredPeriodInvocation[orbId] = 0;
+        if (expiredPeriodInvocation[orbId] != 0) {
+            expiredPeriodInvocation[orbId] = 0;
+        }
     }
 
     // ;
@@ -206,26 +205,14 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         _;
     }
 
-    modifier onlyOrbsContract() {
-        if (_msgSender() != orbsContract) {
-            revert NotOrbsContract();
-        }
-        _;
-    }
-
-    modifier onlyCreatorControlled(uint256 orbId) {
-        if (Orbs(orbsContract).keeper(orbId) != address(0)) {
-            revert CreatorDoesNotControlOrb();
-        }
-        // TODO
-        _;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: INVOKING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function initializeOrb(uint256 orbId) public onlyOrbsContract {
+    function initializeOrb(uint256 orbId) public {
+        if (_msgSender() != orbsContract) {
+            revert NotOrbsContract();
+        }
         invocationPeriod[orbId] = 7 days;
     }
 
@@ -238,13 +225,16 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ///          are merged into `InvocationPeriodUpdate`.
     /// @param   invocationPeriod_  New invocationPeriod in seconds. Cannot be longer than
     ///          `_INVOCATION_PERIOD_MAXIMUM_DURATION`.
-    function setInvocationPeriod(uint256 orbId, uint256 invocationPeriod_)
-        external
-        virtual
-        onlyCreator(orbId)
-        onlyCreatorControlled(orbId)
-    {
-        // TODO updating response period settles first, as it’s used there
+    function setInvocationPeriod(uint256 orbId, uint256 invocationPeriod_) external virtual onlyCreator(orbId) {
+        // Invocation period cannot be changed at all if held by a Keeper or Creator - too many complications for
+        // expired invocations
+        if (Orbs(orbsContract).keeper(orbId) != orbsContract) {
+            revert CreatorDoesNotControlOrb();
+        }
+
+        if (hasUnrespondedInvocation[orbId]) {
+            revert HasUnrespondedInvocation(orbId);
+        }
 
         if (invocationPeriod_ > _INVOCATION_PERIOD_MAXIMUM_DURATION) {
             revert InvocationPeriodExceedsMaximumDuration(invocationPeriod_, _INVOCATION_PERIOD_MAXIMUM_DURATION);
@@ -255,7 +245,11 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         emit InvocationPeriodUpdate(orbId, previousInvocationPeriod, invocationPeriod_);
     }
 
-    function initializeOrbInvocationPeriod(uint256 orbId) external virtual onlyOrbsContract {
+    function initializeOrbInvocationPeriod(uint256 orbId) external virtual {
+        if (_msgSender() != orbsContract) {
+            revert NotOrbsContract();
+        }
+
         if (lastInvocationTime[orbId] == 0) {
             lastInvocationTime[orbId] = block.timestamp - invocationPeriod[orbId];
         }
@@ -277,9 +271,8 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         uint256 _lastInvocationTime = lastInvocationTime[orbId];
         uint256 _invocationPeriod = invocationPeriod[orbId];
 
-        // TODO Repalce with isInvokable
-        if (block.timestamp < _lastInvocationTime + _invocationPeriod) {
-            revert InvocationPeriodIncomplete(_lastInvocationTime + _invocationPeriod - block.timestamp);
+        if (!isInvokable(orbId)) {
+            revert NotInvokable();
         }
 
         invocationCount[orbId] += 1;
@@ -331,22 +324,24 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         uint256 invocationId = invocationCount[orbId];
 
         if (hasUnrespondedInvocation[orbId] == false) {
-            revert NoUnrespondedInvocations(orbId);
+            revert NoUnrespondedInvocation(orbId);
         }
         if (_responseExists(orbId, invocationId)) {
             revert ResponseExists(orbId, invocationId);
         }
 
-        responses[orbId][invocationId] = ResponseData(contentHash, block.timestamp);
-
-        InvocationData memory _lastInvocation = invocations[orbId][invocationId];
-        // TODO maybe only if not already marked
-        // And only if keeper held
-        if (block.timestamp > _lastInvocation.timestamp + invocationPeriod[orbId]) {
-            expiredPeriodInvocation[orbId] = invocationId;
-            // Settle to apply Harberger tax discount, and reset for potential discounts in the future
-            Orbs(orbsContract).settle(orbId);
+        if (block.timestamp > lastInvocationTime[orbId] + invocationPeriod[orbId]) {
+            if (PledgeLocker(pledgeLockerContract).isPledged(orbId)) {
+                expiredPeriodInvocation[orbId] = invocationId;
+            }
+            if (Orbs(orbsContract).keeper(orbId) != orbsContract) {
+                // Settle to apply Harberger tax discount, and reset for potential discounts in the future
+                Orbs(orbsContract).settle(orbId);
+            }
         }
+
+        responses[orbId][invocationId] = ResponseData(contentHash, block.timestamp);
+        hasUnrespondedInvocation[orbId] = false;
 
         emit Response(orbId, invocationId, _msgSender(), block.timestamp, contentHash);
     }

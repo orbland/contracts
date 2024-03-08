@@ -5,7 +5,7 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
-import {Orb} from "./legacy/Orb.sol";
+import {Orbs} from "./Orbs.sol";
 import {InvocationRegistry} from "./InvocationRegistry.sol";
 
 /// @title   Orb Invocation Tip Jar - A contract for suggesting Orb invocations and tipping Orb keepers
@@ -44,6 +44,11 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// Funds allocated for the Orb Land platform, withdrawable to `platformAddress`
     uint256 public platformEarnings;
 
+    /// Address of the Invocation Registry contract
+    address public invocationRegistryAddress;
+    /// Address of the Orbs contract
+    address public orbsContract;
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,9 +83,12 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /// @dev  Initializes the contract.
-    function initialize() public initializer {
+    function initialize(address invocationRegistryAddress_, address orbsContract_) public initializer {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
+
+        invocationRegistryAddress = invocationRegistryAddress_;
+        orbsContract = orbsContract_;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +124,6 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationIndex  The invocation id to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
     function claimTipsForInvocation(uint256 orbId, uint256 invocationIndex, uint256 minimumTipTotal) external virtual {
-        address invocationRegistryAddress = address(0); // TODO
         (address invoker, bytes32 contentHash,) =
             InvocationRegistry(invocationRegistryAddress).invocations(orbId, invocationIndex);
 
@@ -193,9 +200,9 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orbId              The address of the Orb
     /// @param   minimumTip_  The minimum tip value
     function setMinimumTip(uint256 orbId, uint256 minimumTip_) external virtual {
-        // if (_msgSender() != Orb(orbId).keeper()) {
-        //     revert NotKeeper();
-        // } // TODO
+        if (_msgSender() != Orbs(orbsContract).keeper(orbId)) {
+            revert NotKeeper();
+        }
         uint256 previousMinimumTip = minimumTip[orbId];
         minimumTip[orbId] = minimumTip_;
         emit MinimumTipUpdate(orbId, previousMinimumTip, minimumTip_);

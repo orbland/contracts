@@ -48,6 +48,8 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
     /// for at least this long. Can be set to zero, in which case the auction will always be `auctionMinimumDuration`
     /// long. Initial value is 5 minutes.
     mapping(uint256 ordId => uint256) public auctionBidExtension;
+    /// Auction start time
+    mapping(uint256 ordId => uint256) public auctionStartTime;
     /// Auction end time: timestamp when the auction ends, can be extended by late bids. 0 not during the auction.
     mapping(uint256 ordId => uint256) public auctionEndTime;
     /// Leading bidder: address that currently has the highest bid. 0 not during the auction and before first bid.
@@ -67,8 +69,11 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
     }
 
     function allocationActive(uint256 orbId) public view virtual returns (bool) {
-        // TODO
-        return true;
+        return auctionEndTime[orbId] > block.timestamp;
+    }
+
+    function allocationUnfinalized(uint256 orbId) public view virtual returns (bool) {
+        return auctionEndTime[orbId] > 0;
     }
 
     /// @notice  Allow the Orb creator to start the Orb auction. Will run for at least `auctionMinimumDuration`.
@@ -82,17 +87,22 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
         onlyOrbsContract
         notDuringAllocation(orbId)
     {
-        if (address(this) != Orbs(orbsContract).keeper(orbId)) {
+        if (address(orbsContract) != Orbs(orbsContract).keeper(orbId)) {
             revert ContractDoesNotHoldOrb();
         }
 
-        // if (auctionEndTime > 0) {
-        //     revert AuctionRunning();
-        // }
+        if (auctionEndTime[orbId] > 0) {
+            revert AllocationActive();
+        }
 
-        auctionEndTime[orbId] = block.timestamp + auctionMinimumDuration[orbId];
+        auctionStartTime[orbId] = block.timestamp;
+        if (reallocation) {
+            auctionEndTime[orbId] = block.timestamp + auctionKeeperMinimumDuration[orbId];
+        } else {
+            auctionEndTime[orbId] = block.timestamp + auctionMinimumDuration[orbId];
+        }
 
-        emit AuctionStart(block.timestamp, auctionEndTime[orbId], address(0)); // TODO
+        emit AuctionStart(block.timestamp, auctionEndTime[orbId], reallocation);
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
@@ -114,12 +124,18 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
         uint256 _leadingBid = leadingBid[orbId];
 
         Orbs(orbsContract).finalizeAllocation(
-            orbId, _leadingBid, 0, _leadingBidder, fundsOf[orbId][_leadingBidder], initialPrice[orbId]
-        ); // TODO add duration
+            orbId,
+            _leadingBid,
+            auctionEndTime[orbId] - auctionStartTime[orbId],
+            _leadingBidder,
+            fundsOf[orbId][_leadingBidder],
+            initialPrice[orbId]
+        );
 
         emit AuctionFinalization(address(0), 0);
         leadingBidder[orbId] = address(0);
         leadingBid[orbId] = 0;
+        auctionStartTime[orbId] = 0;
         auctionEndTime[orbId] = 0;
     }
 
