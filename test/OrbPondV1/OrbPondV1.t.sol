@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable no-console,func-name-mixedcase,private-vars-leading-underscore,one-contract-per-file
 pragma solidity 0.8.20;
 
-/* solhint-disable no-console */
-import {console} from "../../lib/forge-std/src/console.sol";
 import {Test} from "../../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
-import {OrbPond} from "../../src/OrbPond.sol";
-import {OrbPondTestUpgrade} from "../../src/test-upgrades/OrbPondTestUpgrade.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
-import {Orb} from "../../src/Orb.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
+import {OrbPond} from "../../src/legacy/OrbPond.sol";
+import {OrbPondTestUpgrade} from "../../src/legacy/test-upgrades/OrbPondTestUpgrade.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbTestUpgrade} from "../../src/legacy/test-upgrades/OrbTestUpgrade.sol";
 
-/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbPondTestBase is Test {
     PaymentSplitter internal paymentSplitterImplementation;
 
@@ -53,9 +52,7 @@ contract OrbPondTestBase is Test {
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondV1Implementation),
             abi.encodeWithSelector(
-                OrbPond.initialize.selector,
-                address(orbInvocationRegistry),
-                address(paymentSplitterImplementation)
+                OrbPond.initialize.selector, address(orbInvocationRegistry), address(paymentSplitterImplementation)
             )
         );
         OrbPond orbPondV1 = OrbPond(address(orbPondProxy));
@@ -87,14 +84,12 @@ contract InitialStateTest is OrbPondTestBase {
     }
 
     function test_revertsInitializer() public {
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         orbPond.initialize(address(0), address(0));
     }
 
     function test_initializerSequenceSuccess() public {
-        ERC1967Proxy orbPondProxy = new ERC1967Proxy(
-            address(orbPondV1Implementation), ""
-        );
+        ERC1967Proxy orbPondProxy = new ERC1967Proxy(address(orbPondV1Implementation), "");
         OrbPond _orbPondV1 = OrbPond(address(orbPondProxy));
         assertEq(_orbPondV1.owner(), address(0));
         assertEq(_orbPondV1.registry(), address(0));
@@ -108,7 +103,7 @@ contract InitialStateTest is OrbPondTestBase {
 contract CreateOrbTest is OrbPondTestBase {
     function test_revertWhen_NotOwner() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orbPond.createOrb(beneficiaryPayees, beneficiaryShares, "TestOrb", "TEST", "test baseURI");
     }
 
@@ -159,7 +154,7 @@ contract PaymentSplitterTest is OrbPondTestBase {
         assertEq(paymentSplitter.releasable(address(0xC0FFEE)), 0);
         assertEq(paymentSplitter.releasable(address(0xFACEBABE)), 0);
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         paymentSplitter.initialize(beneficiaryPayees, beneficiaryShares);
 
         (bool success,) = payable(paymentSplitter).call{value: 100 ether}("");
@@ -192,7 +187,7 @@ contract RegisterVersionTest is OrbPondTestBase {
         uint256 latestVersion = orbPond.latestVersion();
 
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orbPond.registerVersion(latestVersion + 1, address(orbTestUpgradeImplementation), "");
     }
 
@@ -268,7 +263,7 @@ contract RegisterVersionTest is OrbPondTestBase {
 contract UpgradeTest is OrbPondTestBase {
     function test_upgrade_revertOnlyOwner() public {
         OrbPondTestUpgrade orbPondTestUpgradeImplementation = new OrbPondTestUpgrade();
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         orbPond.upgradeToAndCall(
             address(orbPondTestUpgradeImplementation),
@@ -297,7 +292,7 @@ contract UpgradeTest is OrbPondTestBase {
         (bool successAfter,) = address(orbPond).call(abi.encodeWithSelector(orbLandWalletSelector));
         assertEq(successAfter, true);
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         OrbPondTestUpgrade(address(orbPond)).initializeTestUpgrade(address(0xCAFEBABE));
     }
 }

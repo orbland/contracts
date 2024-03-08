@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable one-contract-per-file,func-name-mixedcase,private-vars-leading-underscore
 pragma solidity 0.8.20;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 import {OrbTestBase} from "./OrbV1.t.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbTestUpgrade} from "../../src/legacy/test-upgrades/OrbTestUpgrade.sol";
 
-/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract RequestUpgradeTest is OrbTestBase {
     event UpgradeRequest(address indexed requestedImplementation);
 
@@ -64,7 +65,7 @@ contract RequestUpgradeTest is OrbTestBase {
         );
 
         assertEq(orb.requestedUpgradeImplementation(), address(0));
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         orb.requestUpgrade(address(orbTestUpgradeImplementation));
         assertEq(orb.requestedUpgradeImplementation(), address(0));
@@ -244,7 +245,7 @@ contract CompleteUpgradeTest is OrbTestBase {
 
         assertEq(orb.requestedUpgradeImplementation(), address(0));
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         OrbTestUpgrade(address(orb)).initializeTestUpgrade("Error", "ERROR");
     }
 }

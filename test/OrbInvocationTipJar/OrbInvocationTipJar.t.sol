@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable const-name-snakecase,func-name-mixedcase,one-contract-per-file
 pragma solidity 0.8.20;
 
 import {Test} from "../../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 import {OrbInvocationTipJar} from "../../src/OrbInvocationTipJar.sol";
-import {OrbInvocationTipJarTestUpgrade} from "../../src/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
-import {OrbPond} from "../../src/OrbPond.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {Orb} from "../../src/Orb.sol";
-import {Orb} from "../../src/Orb.sol";
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {OrbInvocationTipJarTestUpgrade} from "../../src/legacy/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
+import {OrbPond} from "../../src/legacy/OrbPond.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
 
-/* solhint-disable const-name-snakecase,func-name-mixedcase */
 contract OrbTipJarBaseTest is Test {
     OrbInvocationTipJar public orbTipJar;
     OrbInvocationRegistry public orbInvocationRegistry;
@@ -53,9 +54,7 @@ contract OrbTipJarBaseTest is Test {
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
             abi.encodeWithSelector(
-                OrbPond.initialize.selector,
-                address(orbInvocationRegistry),
-                address(paymentSplitterImplementation)
+                OrbPond.initialize.selector, address(orbInvocationRegistry), address(paymentSplitterImplementation)
             )
         );
         OrbPond orbPond = OrbPond(address(orbPondProxy));
@@ -110,7 +109,7 @@ contract InitialStateTest is OrbTipJarBaseTest {
     }
 
     function test_revertsIf_alreadyInitialized() public {
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         orbTipJar.initialize(address(0), 1);
     }
 
@@ -139,9 +138,7 @@ contract InitialStateTest is OrbTipJarBaseTest {
     }
 
     function test_initializerSuccess() public {
-        ERC1967Proxy orbInvocationTipJarProxy = new ERC1967Proxy(
-            address(orbTipJarImplementation), ""
-        );
+        ERC1967Proxy orbInvocationTipJarProxy = new ERC1967Proxy(address(orbTipJarImplementation), "");
         OrbInvocationTipJar _orbInvocationTipJar = OrbInvocationTipJar(address(orbInvocationTipJarProxy));
         assertEq(_orbInvocationTipJar.owner(), address(0));
         _orbInvocationTipJar.initialize(orbland, 1);
@@ -465,7 +462,7 @@ contract UpgradeTest is OrbTipJarBaseTest {
     function test_upgrade_revertOnlyOwner() public {
         OrbInvocationTipJarTestUpgrade orbInvocationTipJarTestUpgradeImplementation =
             new OrbInvocationTipJarTestUpgrade();
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, tipper));
         vm.prank(tipper);
         orbTipJar.upgradeToAndCall(
             address(orbInvocationTipJarTestUpgradeImplementation),
@@ -494,7 +491,7 @@ contract UpgradeTest is OrbTipJarBaseTest {
         (bool successAfter,) = address(orbTipJar).call(abi.encodeWithSelector(tipModuloSelector));
         assertEq(successAfter, true);
 
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         OrbInvocationTipJarTestUpgrade(address(orbTipJar)).initializeTestUpgrade(0.05 ether);
     }
 }

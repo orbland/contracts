@@ -7,6 +7,7 @@ remappings = [ # Libraries that we use from node_modules and are used by the sma
     "openzeppelin-contracts/=lib/openzeppelin-contracts/",
     "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/",
 ]
+viaIR = true
 optimizer = true # Enable or disable the solc optimizer
 optimizer_runs = 20_000 # The number of optimizer runs
 verbosity = 3 # The verbosity of tests

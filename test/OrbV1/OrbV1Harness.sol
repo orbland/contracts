@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase
 pragma solidity 0.8.20;
 
-import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
-/* solhint-disable func-name-mixedcase */
 contract OrbHarness is Orb {
     function workaround_cooldownMaximumDuration() public pure returns (uint256) {
         return _COOLDOWN_MAXIMUM_DURATION;

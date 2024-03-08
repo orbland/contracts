@@ -6,13 +6,13 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Script} from "../lib/forge-std/src/Script.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
-import {OrbPond} from "../src/OrbPond.sol";
-import {OrbPondV2} from "../src/OrbPondV2.sol";
+import {PaymentSplitter} from "../src/legacy/CustomPaymentSplitter.sol";
+import {OrbPond} from "../src/legacy/OrbPond.sol";
+import {OrbPondV2} from "../src/legacy/OrbPondV2.sol";
 import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
 import {OrbInvocationTipJar} from "../src/OrbInvocationTipJar.sol";
-import {Orb} from "../src/OrbV1Renamed.sol";
-import {OrbV2} from "../src/OrbV2.sol";
+import {Orb} from "../src/legacy/OrbV1Renamed.sol";
+import {OrbV2} from "../src/legacy/OrbV2.sol";
 
 contract LocalDeployOrb is Script {
     address public immutable creatorAddress = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc;

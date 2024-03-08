@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase,one-contract-per-file
 pragma solidity 0.8.20;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
-
 import {OrbTestBase} from "./OrbV2.t.sol";
-import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
-/* solhint-disable func-name-mixedcase */
 contract SetPriceTest is OrbTestBase {
     function test_setPriceRevertsIfNotKeeper() public {
         uint256 leadingBid = 10 ether;
