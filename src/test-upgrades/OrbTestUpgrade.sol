@@ -35,7 +35,7 @@
 * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 pragma solidity 0.8.20;
 
-import {OrbV2} from "../OrbV2.sol";
+import {OrbV3} from "../OrbV3.sol";
 
 /// @title   Orb Test Upgrade - Oath-honored, Harberger-taxed NFT with built-in auction and on-chain invocations
 /// @author  Jonas Lekevicius
@@ -56,7 +56,7 @@ import {OrbV2} from "../OrbV2.sol";
 ///          Orb upgrades and keeps a reference to an `OrbInvocationRegistry` used by this Orb.
 ///          Test Upgrade adds a new storage variable `number`, settable with `setNumber`, changes Orb name and symbol,
 ///          and allows the Creator to set the cleartext maximum length to zero. FOR TESTING ONLY!
-contract OrbTestUpgrade is OrbV2 {
+contract OrbTestUpgrade is OrbV3 {
     /// Orb version.
     uint256 private constant _VERSION = 100;
 
