@@ -195,43 +195,11 @@ contract OrbV3 is OrbV2 {
     /// @dev     Emits `AuctionBid`.
     /// @param   amount      The value to bid.
     /// @param   priceIfWon  Price if the bid wins. Must be less than `MAXIMUM_PRICE`.
-    function bid(uint256 amount, uint256 priceIfWon) external payable virtual override {
-        if (!_auctionRunning()) {
-            revert AuctionNotRunning();
-        }
-
-        if (msg.sender == beneficiary) {
-            revert NotPermitted();
-        }
-
-        uint256 totalFunds = fundsOf[msg.sender] + msg.value;
-
-        if (amount < _minimumBid()) {
-            revert InsufficientBid(amount, _minimumBid());
-        }
-
-        if (totalFunds < amount) {
-            revert InsufficientFunds(totalFunds, amount);
-        }
-
-        if (priceIfWon > _MAXIMUM_PRICE) {
-            revert InvalidNewPrice(priceIfWon);
-        }
+    function bid(uint256 amount, uint256 priceIfWon) public payable virtual override {
         if (priceIfWon < minimumPrice) {
             revert PriceTooLow(priceIfWon, minimumPrice);
         }
-
-        fundsOf[msg.sender] = totalFunds;
-        leadingBidder = msg.sender;
-        leadingBid = amount;
-        price = priceIfWon;
-
-        emit AuctionBid(msg.sender, amount);
-
-        if (block.timestamp + auctionBidExtension > auctionEndTime) {
-            auctionEndTime = block.timestamp + auctionBidExtension;
-            emit AuctionExtension(auctionEndTime);
-        }
+        super.bid(amount, priceIfWon);
     }
 
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
