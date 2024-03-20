@@ -152,15 +152,16 @@ contract OrbV3 is OrbV2 {
         emit Creation();
     }
 
-    /// @notice  Re-initializes the contract after upgrade, sets initial `auctionRoyaltyNumerator` value and sets
-    ///          `responsePeriod` to `cooldown` if it was not set before.
+    /// @notice  Re-initializes the contract after upgrade. Only updates the reinitializer value, to prevent
+    ///          re-initializing with the new `initialize` function.
+    // solhint-disable-next-line no-empty-blocks
     function initializeV3() public reinitializer(3) {}
 
     /// @notice  Allows the Orb creator to set minimum price Orb can be sold at. This function can only be called by the
     ///          Orb creator when the Orb is in their control. Setting the minimum price does not adjust the current
     ///          price, even if it's invalid: rule will apply on future Orb price settings.
-    /// @dev     Emits `FeesUpdate`.
-    ///          V3 adds this function to set the new minimum price. Setting the
+    /// @dev     Emits `MinimumPriceUpdate`.
+    ///          V3 adds this function to set the new minimum price.
     /// @param   newMinimumPrice  New minimum price
     function setMinimumPrice(uint256 newMinimumPrice) external virtual onlyOwner onlyCreatorControlled {
         if (newMinimumPrice > _MAXIMUM_PRICE) {
