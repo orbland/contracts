@@ -138,8 +138,8 @@ contract OrbV3 is OrbV2 {
         purchaseRoyaltyNumerator = 10_00;
         auctionRoyaltyNumerator = 30_00;
 
-        auctionStartingPrice = 0.05 ether;
-        auctionMinimumBidStep = 0.05 ether;
+        auctionStartingPrice = 0.01 ether;
+        auctionMinimumBidStep = 0.01 ether;
         auctionMinimumDuration = 1 days;
         auctionKeeperMinimumDuration = 1 days;
         auctionBidExtension = 4 minutes;
@@ -147,7 +147,7 @@ contract OrbV3 is OrbV2 {
         cooldown = 7 days;
         responsePeriod = 7 days;
         flaggingPeriod = 7 days;
-        cleartextMaximumLength = 300;
+        cleartextMaximumLength = 280;
 
         emit Creation();
     }

@@ -518,10 +518,10 @@ contract SettingInvocationParametersTest is OrbTestBase {
         assertEq(orb.cooldown(), 7 days);
         assertEq(orb.responsePeriod(), 7 days);
         assertEq(orb.flaggingPeriod(), 7 days);
-        assertEq(orb.cleartextMaximumLength(), 300);
+        assertEq(orb.cleartextMaximumLength(), 280);
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
-        emit InvocationParametersUpdate(7 days, 1 days, 7 days, 2 days, 7 days, 3 days, 300, 420);
+        emit InvocationParametersUpdate(7 days, 1 days, 7 days, 2 days, 7 days, 3 days, 280, 420);
         orb.setInvocationParameters(1 days, 2 days, 3 days, 420);
         assertEq(orb.cooldown(), 1 days);
         assertEq(orb.responsePeriod(), 2 days);

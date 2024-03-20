@@ -173,7 +173,7 @@ contract InitialStateTest is OrbTestBase {
 
         assertEq(orb.workaround_tokenURI(), "https://static.orb.land/orb/");
 
-        assertEq(orb.cleartextMaximumLength(), 300);
+        assertEq(orb.cleartextMaximumLength(), 280);
 
         assertEq(orb.price(), 0);
         assertEq(orb.keeperTaxNumerator(), 120_00);
