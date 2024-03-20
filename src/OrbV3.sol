@@ -70,6 +70,11 @@ import {OrbV2} from "./OrbV2.sol";
 ///            `CooldownUpdate` and `CleartextMaximumLengthUpdate`), `FeesUpdate` parameter change,
 ///            `BeneficiaryWithdrawalAddressUpdate`, `Recall` added.
 ///          V3 adds these changes:
+///          - Adds `minimumPrice` and `setMinimumPrice` to allow the Creator to set a minimum price for the Orb,
+///            ensuring a floor for Orb tax revenue.
+///          - Changing `finalizeAuction` and `purchase` to only charge the Orb the first time.
+///          - Overriden `initialize()` to allow using V3 as initial implementation, with new default values.
+///          - Event changes: `MinimumPriceUpdate` added.
 /// @custom:security-contact security@orb.land
 contract OrbV3 is OrbV2 {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
