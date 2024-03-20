@@ -710,7 +710,7 @@ contract Orb is IERC721MetadataUpgradeable, ERC165Upgradeable, OwnableUpgradeabl
     /// @dev     Emits `AuctionBid`.
     /// @param   amount      The value to bid.
     /// @param   priceIfWon  Price if the bid wins. Must be less than `MAXIMUM_PRICE`.
-    function bid(uint256 amount, uint256 priceIfWon) external payable virtual {
+    function bid(uint256 amount, uint256 priceIfWon) public payable virtual {
         if (!_auctionRunning()) {
             revert AuctionNotRunning();
         }

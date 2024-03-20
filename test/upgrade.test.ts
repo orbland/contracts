@@ -258,6 +258,23 @@ describe("Orb Upgrade", function () {
         expect(await orbV2.auctionRoyaltyNumerator()).to.equal(10_00n)
         expect(await orb.version()).to.equal(2n)
 
+        const OrbV3 = await ethers.getContractFactory("OrbV3")
+        const orbV3Implementation = await upgrades.deployImplementation(OrbV3, {
+            unsafeAllow: ["delegatecall"],
+        })
+        if (typeof orbV3Implementation !== "string") {
+            throw new Error("Orb V3 implementation is not a string")
+        }
+        await orbPond.registerVersion(3, orbV3Implementation, OrbV3.interface.encodeFunctionData("initializeV3"))
+
+        await orbAsCreator.requestUpgrade(orbV3Implementation)
+        expect(await orb.requestedUpgradeImplementation()).to.equal(orbV3Implementation)
+
+        await orbAsKeeper.upgradeToNextVersion()
+        const orbV3 = await ethers.getContractAt("OrbV3", firstOrbAddress)
+        expect(await orbV3.minimumPrice()).to.equal(0n)
+        expect(await orb.version()).to.equal(3n)
+
         const OrbTestUpgrade = await ethers.getContractFactory("OrbTestUpgrade")
         const orbTestUpgradeImplementation = await upgrades.deployImplementation(OrbTestUpgrade, {
             unsafeAllow: ["delegatecall"],
@@ -266,7 +283,7 @@ describe("Orb Upgrade", function () {
             throw new Error("Orb implementation is not a string")
         }
         await orbPond.registerVersion(
-            3,
+            4,
             orbTestUpgradeImplementation,
             OrbTestUpgrade.interface.encodeFunctionData("initializeTestUpgrade", ["Whorb", "WHORB"])
         )
