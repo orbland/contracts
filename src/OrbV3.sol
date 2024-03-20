@@ -205,6 +205,150 @@ contract OrbV3 is OrbV2 {
         super.bid(amount, priceIfWon);
     }
 
+    /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
+    ///          If the auction was started by previous Keeper with `relinquish(true)`, then most of the auction
+    ///          proceeds (minus the royalty) will be sent to the previous Keeper. Sets `lastInvocationTime` so that
+    ///          the Orb could be invoked immediately. The price has been set when bidding, now becomes relevant. If no
+    ///          bids were made, resets the state to allow the auction to be started again later.
+    /// @dev     Critical state transition function. Called after `auctionEndTime`, but only if it's not 0. Can be
+    ///          called by anyone, although probably will be called by the creator or the winner. Emits `PriceUpdate`
+    ///          and `AuctionFinalization`.
+    ///          V2 fixes a bug with Keeper auctions changing lastInvocationTime, and uses `auctionRoyaltyNumerator`
+    ///          instead of `purchaseRoyaltyNumerator` for auction royalty (only relevant for Keeper auctions).
+    ///          V3 changes to only change `lastInvocationTime` if the auction was started by the creator, and to only
+    ///          the first time.
+    function finalizeAuction() external virtual override notDuringAuction {
+        if (auctionEndTime == 0) {
+            revert AuctionNotStarted();
+        }
+
+        address _leadingBidder = leadingBidder;
+        uint256 _leadingBid = leadingBid;
+
+        if (_leadingBidder != address(0)) {
+            fundsOf[_leadingBidder] -= _leadingBid;
+
+            uint256 auctionMinimumRoyaltyNumerator =
+                (keeperTaxNumerator * auctionKeeperMinimumDuration) / _KEEPER_TAX_PERIOD;
+            uint256 auctionRoyalty = auctionMinimumRoyaltyNumerator > auctionRoyaltyNumerator
+                ? auctionMinimumRoyaltyNumerator
+                : auctionRoyaltyNumerator;
+            _splitProceeds(_leadingBid, auctionBeneficiary, auctionRoyalty);
+
+            lastSettlementTime = block.timestamp;
+            if (auctionBeneficiary == beneficiary && lastInvocationTime == 0) {
+                lastInvocationTime = block.timestamp - cooldown;
+            }
+
+            emit AuctionFinalization(_leadingBidder, _leadingBid);
+            emit PriceUpdate(0, price);
+            // price has been set when bidding
+            // also price is always 0 when auction starts
+
+            _transferOrb(address(this), _leadingBidder);
+            leadingBidder = address(0);
+            leadingBid = 0;
+        } else {
+            emit AuctionFinalization(address(0), 0);
+        }
+
+        auctionEndTime = 0;
+    }
+
+    /// @notice  Purchasing is the mechanism to take over the Orb. With Harberger tax, the Orb can always be purchased
+    ///          from its keeper. Purchasing is only allowed while the keeper is solvent. If not, the Orb has to be
+    ///          foreclosed and re-auctioned. This function does not require the purchaser to have more funds than
+    ///          required, but purchasing without any reserve would leave the new owner immediately foreclosable.
+    ///          Beneficiary receives either just the royalty, or full price if the Orb is purchased from the creator.
+    /// @dev     Requires to provide key Orb parameters (current price, Harberger tax rate, royalty, cooldown and
+    ///          cleartext maximum length) to prevent front-running: without these parameters Orb creator could
+    ///          front-run purcaser and change Orb parameters before the purchase; and without current price anyone
+    ///          could purchase the Orb ahead of the purchaser, set the price higher, and profit from the purchase.
+    ///          Does not modify `lastInvocationTime` unless buying from the creator.
+    ///          Does not allow settlement in the same block before `purchase()` to prevent transfers that avoid
+    ///          royalty payments. Does not allow purchasing from yourself. Emits `PriceUpdate` and `Purchase`.
+    ///          V2 changes to require providing Keeper auction royalty to prevent front-running.
+    ///          V3 changes to only change `lastInvocationTime` if the auction was started by the creator, and to only
+    ///          the first time.
+    /// @param   newPrice                         New price to use after the purchase.
+    /// @param   currentPrice                     Current price, to prevent front-running.
+    /// @param   currentKeeperTaxNumerator        Current keeper tax numerator, to prevent front-running.
+    /// @param   currentPurchaseRoyaltyNumerator  Current royalty numerator, to prevent front-running.
+    /// @param   currentAuctionRoyaltyNumerator   Current keeper auction royalty numerator, to prevent front-running.
+    /// @param   currentCooldown                  Current cooldown, to prevent front-running.
+    /// @param   currentCleartextMaximumLength    Current cleartext maximum length, to prevent front-running.
+    /// @param   currentHonoredUntil              Current honored until timestamp, to prevent front-running.
+    function purchase(
+        uint256 newPrice,
+        uint256 currentPrice,
+        uint256 currentKeeperTaxNumerator,
+        uint256 currentPurchaseRoyaltyNumerator,
+        uint256 currentAuctionRoyaltyNumerator,
+        uint256 currentCooldown,
+        uint256 currentCleartextMaximumLength,
+        uint256 currentHonoredUntil
+    ) external payable virtual override onlyKeeperHeld onlyKeeperSolvent {
+        if (currentPrice != price) {
+            revert CurrentValueIncorrect(currentPrice, price);
+        }
+        if (currentKeeperTaxNumerator != keeperTaxNumerator) {
+            revert CurrentValueIncorrect(currentKeeperTaxNumerator, keeperTaxNumerator);
+        }
+        if (currentPurchaseRoyaltyNumerator != purchaseRoyaltyNumerator) {
+            revert CurrentValueIncorrect(currentPurchaseRoyaltyNumerator, purchaseRoyaltyNumerator);
+        }
+        if (currentAuctionRoyaltyNumerator != auctionRoyaltyNumerator) {
+            revert CurrentValueIncorrect(currentAuctionRoyaltyNumerator, auctionRoyaltyNumerator);
+        }
+        if (currentCooldown != cooldown) {
+            revert CurrentValueIncorrect(currentCooldown, cooldown);
+        }
+        if (currentCleartextMaximumLength != cleartextMaximumLength) {
+            revert CurrentValueIncorrect(currentCleartextMaximumLength, cleartextMaximumLength);
+        }
+        if (currentHonoredUntil != honoredUntil) {
+            revert CurrentValueIncorrect(currentHonoredUntil, honoredUntil);
+        }
+
+        if (lastSettlementTime >= block.timestamp) {
+            revert PurchasingNotPermitted();
+        }
+
+        _settle();
+
+        address _keeper = keeper;
+
+        if (msg.sender == _keeper) {
+            revert AlreadyKeeper();
+        }
+        if (msg.sender == beneficiary) {
+            revert NotPermitted();
+        }
+
+        fundsOf[msg.sender] += msg.value;
+        uint256 totalFunds = fundsOf[msg.sender];
+
+        if (totalFunds < currentPrice) {
+            revert InsufficientFunds(totalFunds, currentPrice);
+        }
+
+        fundsOf[msg.sender] -= currentPrice;
+        if (owner() == _keeper) {
+            if (lastInvocationTime == 0) {
+                lastInvocationTime = block.timestamp - cooldown;
+            }
+            fundsOf[beneficiary] += currentPrice;
+        } else {
+            _splitProceeds(currentPrice, _keeper, purchaseRoyaltyNumerator);
+        }
+
+        _setPrice(newPrice);
+
+        emit Purchase(_keeper, msg.sender, currentPrice);
+
+        _transferOrb(_keeper, msg.sender);
+    }
+
     /// @notice  Returns the version of the Orb. Internal constant `_VERSION` will be increased with each upgrade.
     /// @return  orbVersion  Version of the Orb.
     function version() public view virtual override returns (uint256 orbVersion) {
