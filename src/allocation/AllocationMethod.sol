@@ -1,87 +1,88 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IERC165} from "../../lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
-import {ContextUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol";
-import {Orbs} from "../Orbs.sol";
+import {IAllocationMethod} from "./IAllocationMethod.sol";
+import {Earnable} from "../Earnable.sol";
+import {OrbSystem} from "../OrbSystem.sol";
 
-contract AllocationMethod is IERC165, ContextUpgradeable {
-    event AuctionStart(uint256 indexed auctionStartTime, uint256 indexed auctionEndTime, bool reallocation);
-    event AuctionFinalization(address indexed winner, uint256 indexed winningBid);
-
-    error InvalidPrice(uint256 priceProvided);
-
-    error AllocationActive();
-    error AllocationNotAcitve();
-    error AllocationNotStarted();
-    error ContractDoesNotHoldOrb();
-    error NotOrbsContract();
-    error NotCreator();
-    error CreatorDoesNotControlOrb();
-
+abstract contract AllocationMethod is IAllocationMethod, Earnable {
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
 
-    // only Orbs contract can start allocation, and Orbs contract is called upon finalization
-    address public orbsContract;
+    /// Addresses of all system contracts
+    OrbSystem public os;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    modifier notDuringAllocation(uint256 orbId) virtual {
-        if (isAllocationActive(orbId)) {
+    modifier onlyOwnershipRegistry() virtual {
+        if (_msgSender() != os.ownershipRegistryAddress()) {
+            revert NotOwnershipRegistryContract();
+        }
+        _;
+    }
+
+    modifier onlyActive(uint256 orbId) virtual {
+        if (!isActive(orbId)) {
+            revert AllocationNotActive();
+        }
+        _;
+    }
+
+    modifier onlyInactive(uint256 orbId) virtual {
+        if (isActive(orbId)) {
             revert AllocationActive();
         }
         _;
     }
 
+    modifier onlyCancelable(uint256 orbId) virtual {
+        if (!isCancelable(orbId)) {
+            revert AllocationNotCancelable();
+        }
+        _;
+    }
+
+    modifier onlyFinalizable(uint256 orbId) virtual {
+        if (!isFinalizable(orbId)) {
+            revert AllocationNotFinalizable();
+        }
+        _;
+    }
+
     modifier onlyCreator(uint256 orbId) virtual {
-        if (_msgSender() != Orbs(orbsContract).creator(orbId)) {
+        if (_msgSender() != os.ownership().creator(orbId)) {
             revert NotCreator();
         }
         _;
     }
 
     modifier onlyCreatorControlled(uint256 orbId) virtual {
-        if (!Orbs(orbsContract).isCreatorControlled(orbId)) {
+        if (os.isCreatorControlled(orbId) == false) {
             revert CreatorDoesNotControlOrb();
         }
         _;
     }
 
-    modifier onlyOrbsContract() virtual {
-        if (_msgSender() != orbsContract) {
-            revert NotOrbsContract();
-        }
-        _;
-    }
-
-    function supportsInterface(bytes4 interfaceId) external view virtual returns (bool) {
-        return interfaceId == type(IERC165).interfaceId;
-    }
-
-    function initializeOrb(uint256 orbId) public virtual {}
-
-    function version() external view virtual returns (uint256) {}
-
-    function isAllocationActive(uint256 orbId) public view virtual returns (bool) {
-        return false;
-    }
-
-    function isAllocationUnfinalized(uint256 orbId) public view virtual returns (bool) {
-        return false;
-    }
-
-    function startAllocation(uint256 orbId, bool reallocation) external virtual {}
-
-    function cancelAllocation(uint256 orbId) external virtual {}
-
-    function finalizeAllocation(uint256 orbId) external virtual {}
-
-    function isReallocationEnabled(uint256 orbId) external view virtual returns (bool) {}
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function _isReallocation(uint256 orbId) internal view virtual returns (bool);
+    function isActive(uint256) public view virtual override returns (bool);
+    function isCancelable(uint256) public view virtual override returns (bool);
+    function isFinalizable(uint256) public view virtual override returns (bool);
+
+    function _platformFee() internal virtual override returns (uint256) {
+        return os.platformFee();
+    }
+
+    function _feeDenominator() internal virtual override returns (uint256) {
+        return os.feeDenominator();
+    }
+
+    function _earningsWithdrawalAddress(address user) internal virtual override returns (address) {
+        return os.earningsWithdrawalAddress(user);
+    }
 }
