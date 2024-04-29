@@ -4,13 +4,11 @@ pragma solidity 0.8.20;
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
-import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
-import {Orbs} from "./Orbs.sol";
-import {InvocationRegistry, InvocationData} from "./InvocationRegistry.sol";
-import {AllocationMethod} from "./allocation/AllocationMethod.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
+import {OrbSystem} from "./OrbSystem.sol";
 
 /// @title   Orb Pledge Locker
 /// @author  Jonas Lekevicius
@@ -44,14 +42,12 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     //  EVENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    event NativeTokenPledge(uint256 indexed orbId, uint256 tokenAmount, uint256 pledgedUntil);
+    event NativeTokenPledge(uint256 indexed orbId, uint256 tokenAmount, uint256 totalPledged);
     event ERC20TokenPledge(
-        uint256 indexed orbId, address indexed tokenContract, uint256 tokenAmount, uint256 pledgedUntil
+        uint256 indexed orbId, address indexed tokenContract, uint256 tokenAmount, uint256 totalPledged
     );
-    event ERC721TokenPledge(
-        uint256 indexed orbId, address indexed tokenContract, uint256 indexed tokenId, uint256 pledgedUntil
-    );
-    event PledgedUntilUpdate(uint256 indexed orbId, uint256 previousPledgedUntil, uint256 indexed newPledgedUntil);
+    event ERC721TokenPledge(uint256 indexed orbId, address indexed tokenContract, uint256 indexed tokenId);
+    event PledgedUntilUpdate(uint256 indexed orbId, uint256 indexed newPledgedUntil);
     event PledgeClaimed(uint256 indexed orbId, address indexed claimer);
     event PledgeRetrieved(uint256 indexed orbId, address indexed retriever);
 
@@ -63,6 +59,12 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     error PledgedUntilNotDecreasable();
     error TokenStillPledged();
     error NotInvoker();
+    error PledgedUntilInThePast();
+    error NotCreator();
+    error InsufficientPledge();
+    error NoPledge();
+    error NoClaimablePledge();
+    error NotRetrievable();
 
     error NotCreatorControlled();
 
@@ -77,18 +79,18 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
 
     // STATE
 
-    /// Address of the `Orbs` contract. Used to verify Orb creation authorization.
-    address public orbsContract;
-    /// Address of the `OrbPond` that deployed this Orb. Pond manages permitted upgrades and provides Orb Invocation
-    /// Registry address.
-    address public registry;
+    /// Addresses of all system contracts
+    OrbSystem public os;
 
+    /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
+    mapping(uint256 orbId => uint256 pledgedUntil) public pledgedUntil;
+
+    /// Pledged chain native tokens (likely ETH)
     mapping(uint256 orbId => uint256) public pledgedNativeTokens;
+    /// Pledged ERC-20 token (contract address and amount).
     mapping(uint256 orbId => ERC20Pledge) public pledgedERC20Tokens;
     /// Pledged ERC-721 token. Orb creator can lock an ERC-721 token in the Orb, guaranteeing timely responses.
     mapping(uint256 orbId => ERC721Pledge) public pledgedERC721Token;
-    /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
-    mapping(uint256 orbId => uint256 pledgedUntil) public pledgedUntil;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
@@ -99,126 +101,249 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
-    function initalize(address orbsContract_, address registry_) public initializer {
+    function initalize(address os_) external initializer {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        orbsContract = orbsContract_;
-        registry = registry_;
+        os = OrbSystem(os_);
     }
 
     modifier onlyCreator(uint256 orbId) {
+        if (_msgSender() != os.ownership().creator(orbId)) {
+            revert NotCreator();
+        }
         _;
     }
 
-    modifier onlyKeeper(uint256 orbId) {
-        _;
-    }
-
-    modifier onlyKeeperSolvent(uint256 orbId) {
+    modifier onlyActivePledge(uint256 orbId) {
+        if (!_isActive(orbId)) {
+            revert PledgedUntilInThePast();
+        }
         _;
     }
 
     modifier onlyCreatorControlled(uint256 orbId) {
-        if (!Orbs(orbsContract).isCreatorControlled(orbId)) {
+        if (os.isCreatorControlled(orbId) == false) {
             revert NotCreatorControlled();
         }
         _;
     }
 
-    function isPledged(uint256 orbId) public view returns (bool) {
+    function hasPledge(uint256 orbId) external view returns (bool) {
+        return _hasPledge(orbId);
+    }
+
+    function hasClaimablePledge(uint256 orbId) external view returns (bool) {
+        return _hasClaimablePledge(orbId);
+    }
+
+    function _isActive(uint256 orbId) internal view returns (bool) {
+        return pledgedUntil[orbId] > block.timestamp;
+    }
+
+    function _hasPledge(uint256 orbId) internal view returns (bool) {
         return pledgedNativeTokens[orbId] > 0 || pledgedERC20Tokens[orbId].contractAddress != address(0)
             || pledgedERC721Token[orbId].contractAddress != address(0);
     }
 
-    function isPledgeActive(uint256 orbId) public view returns (bool) {
-        return pledgedUntil[orbId] > block.timestamp;
-    }
+    function _isClaimable(uint256 orbId) internal view returns (bool) {
+        InvocationRegistry _invocations = os.invocations();
 
-    function isPledgeClaimable(uint256 orbId) public view returns (bool) {
-        return canClaimPledge(orbId, address(0));
-        // TODO
-
-        // Meanings of isPledgeClaimable can differ:
-        // - most of the time its about preventing some actions while
-    }
-
-    function canClaimPledge(uint256 orbId, address claimer_) public view returns (bool) {
-        if (!isPledged(orbId)) {
+        uint256 lastInvocationTime = _invocations.lastInvocationTime(orbId);
+        // The invocation must have been made before "pledged until" date expired.
+        // So, if made after, pledge is not claimable.
+        // If pledgedUntil is 0, then this is an early return.
+        if (lastInvocationTime > pledgedUntil[orbId]) {
             return false;
         }
-        (bool hasExpiredInvocation, uint256 expiredPeriodInvocationId) =
-            InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId);
-        if (hasExpiredInvocation) {
-            (address _invoker,, uint256 _timestamp) =
-                InvocationRegistry(registry).invocations(orbId, expiredPeriodInvocationId);
-            // within 2 response periods since that invocation
-            bool _isPledgeClaimable =
-                block.timestamp < _timestamp + (2 * InvocationRegistry(registry).invocationPeriod(orbId));
-            bool canClaim = claimer_ == _invoker || claimer_ == address(0);
-            return _isPledgeClaimable && canClaim;
+
+        // There has to be a late response (either already made but late, or missing and late).
+        // If there is no late response, pledge is not claimable.
+        // Note that lastInvocationResponseWasLate gets reset after a new invocation is made, so we are not letting the
+        // Keeper to invoke again before claiming the pledge.
+        if (_invocations.hasLateResponse(orbId) == false) {
+            return false;
         }
-        return false;
+
+        uint256 invocationPeriod = _invocations.invocationPeriod(orbId);
+        // Claiming window of one additional invocation period mustn’t have expired
+        // (if invocation period is 7 days, then pledge is claimable on days 7th to 14th since invocation was made)
+        if (block.timestamp > lastInvocationTime + invocationPeriod * 2) {
+            return false;
+        }
+
+        // Let's claim that pledge!
+        // Invoker / msgSender check is done in the claimPledge function
+        return true;
     }
 
-    function canPledge(uint256 orbId) public view returns (bool) {
-        return !canClaimPledge(orbId, address(0)) && InvocationRegistry(registry).expiredPeriodInvocation(orbId) == 0;
+    function _hasClaimablePledge(uint256 orbId) internal view returns (bool) {
+        return _isClaimable(orbId) && _hasPledge(orbId);
     }
 
-    function isPledgeRetrievable(uint256 orbId) public view returns (bool) {
-        // not claimable and not active
-        return !canClaimPledge(orbId, address(0)) && !isPledgeActive(orbId);
+    function _isPledgeable(uint256 orbId) internal view returns (bool) {
+        return !_isClaimable(orbId) && _isActive(orbId);
+    }
+
+    function _isRetrievable(uint256 orbId) internal view returns (bool) {
+        return !_isClaimable(orbId) && !_isActive(orbId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  FUNCTIONS: TOKEN LOCKING
+    //  FUNCTIONS: PLEDGING
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function lockERC721Token(uint256 orbId, address tokenContract_, uint256 tokenId_)
+    function pledgeNativeToken(uint256 orbId) external payable virtual onlyCreator(orbId) {
+        _pledgeNativeToken(orbId);
+    }
+
+    function pledgeERC20Token(uint256 orbId, address tokenContract_, uint256 tokenAmount_)
         external
         virtual
         onlyCreator(orbId)
     {
-        // require that locekdUntil is in the future
+        _pledgeERC20Token(orbId, tokenContract_, tokenAmount_);
     }
 
-    /// @notice  Allows re-swearing of the Orb Oath and set a new `honoredUntil` date. This function can only be called
-    ///          by the Orb creator when the Orb is in their control. With `swearOath()`, `honoredUntil` date can be
-    ///          decreased, unlike with the `extendHonoredUntil()` function.
-    /// @dev     Emits `OathSwearing`.
-    ///          V2 changes to allow re-swearing even during Keeper control, if Oath has expired, and moves
-    ///          `responsePeriod` setting to `setInvocationParameters()`.
-    /// @param   orbId        Orb id
-    /// @param   tokenContract_ Address of the ERC-721 token contract.
-    /// @param   tokenId_      ID of the ERC-721 token.
-    /// @param   pledgedUntil_    Date until which the Orb creator will honor the Oath for the Orb keeper.
-    function lockERC721TokenUntil(uint256 orbId, address tokenContract_, uint256 tokenId_, uint256 pledgedUntil_)
+    function pledgeERC721Token(uint256 orbId, address tokenContract_, uint256 tokenId_)
         external
         virtual
         onlyCreator(orbId)
     {
+        _pledgeERC721Token(orbId, tokenContract_, tokenId_);
+    }
+
+    function pledgeNativeTokenUntil(uint256 orbId, uint256 pledgedUntil_) external payable virtual onlyCreator(orbId) {
+        _pledgeUntil(orbId, pledgedUntil_);
+        _pledgeNativeToken(orbId);
+    }
+
+    function pledgeERC20TokenUntil(uint256 orbId, address tokenContract_, uint256 tokenAmount_, uint256 pledgedUntil_)
+        external
+        virtual
+        onlyCreator(orbId)
+    {
+        _pledgeUntil(orbId, pledgedUntil_);
+        _pledgeERC20Token(orbId, tokenContract_, tokenAmount_);
+    }
+
+    function pledgeERC721TokenUntil(uint256 orbId, address tokenContract_, uint256 tokenId_, uint256 pledgedUntil_)
+        external
+        virtual
+        onlyCreator(orbId)
+    {
+        _pledgeUntil(orbId, pledgedUntil_);
+        _pledgeERC721Token(orbId, tokenContract_, tokenId_);
+    }
+
+    function pledgeUntil(uint256 orbId, uint256 pledgedUntil_) external virtual onlyCreator(orbId) {
+        _pledgeUntil(orbId, pledgedUntil_);
+    }
+
+    function _pledgeUntil(uint256 orbId, uint256 pledgedUntil_) internal virtual {
+        if (os.isCreatorControlled(orbId)) {
+            // If creator controlled, can be zero or anything in the future
+            if (pledgedUntil_ > 0 && pledgedUntil_ < block.timestamp) {
+                revert PledgedUntilInThePast();
+            }
+        } else {
+            // If keeper controlled, must be greater than current
+            if (pledgedUntil_ <= pledgedUntil[orbId]) {
+                revert PledgedUntilNotDecreasable();
+            }
+        }
+
         pledgedUntil[orbId] = pledgedUntil_;
-        emit ERC721TokenPledge(orbId, tokenContract_, tokenId_, pledgedUntil_);
+        emit PledgedUntilUpdate(orbId, pledgedUntil_);
     }
 
-    /// @notice  Allows the Orb creator to extend the `honoredUntil` date. This function can be called by the Orb
-    ///          creator anytime and only allows extending the `honoredUntil` date.
-    /// @dev     Emits `HonoredUntilUpdate`.
-    /// @param   newPledgedUntil  Date until which the Orb creator will honor the Oath for the Orb keeper. Must be
-    ///                           greater than the current `honoredUntil` date.
-    function extendPledgedUntil(uint256 orbId, uint256 newPledgedUntil) external virtual onlyCreator(orbId) {
-        uint256 previousPledgedUntil = pledgedUntil[orbId];
-        if (newPledgedUntil < previousPledgedUntil) {
-            revert PledgedUntilNotDecreasable();
+    function _pledgeNativeToken(uint256 orbId) internal virtual onlyActivePledge(orbId) {
+        if (msg.value == 0) {
+            revert InsufficientPledge();
         }
-        pledgedUntil[orbId] = newPledgedUntil;
-        emit PledgedUntilUpdate(orbId, previousPledgedUntil, newPledgedUntil);
+
+        pledgedNativeTokens[orbId] += msg.value;
+
+        emit NativeTokenPledge(orbId, msg.value, pledgedNativeTokens[orbId]);
     }
 
-    function _transferPledgeTo(uint256 orbId, address newOwner) internal virtual {
+    function _pledgeERC20Token(uint256 orbId, address tokenContract_, uint256 tokenAmount_)
+        internal
+        virtual
+        onlyActivePledge(orbId)
+    {
+        address currentERC20Token = pledgedERC20Tokens[orbId].contractAddress;
+        uint256 currentERC20TokenAmount = pledgedERC20Tokens[orbId].tokenAmount;
+
+        if (currentERC20Token == tokenContract_ && currentERC20Token != address(0)) {
+            // topping up the pledge
+            IERC20(tokenContract_).transferFrom(_msgSender(), address(this), tokenAmount_);
+            pledgedERC20Tokens[orbId] = ERC20Pledge(tokenContract_, tokenAmount_ + currentERC20TokenAmount);
+            emit ERC20TokenPledge(orbId, tokenContract_, tokenAmount_, tokenAmount_ + currentERC20TokenAmount);
+        } else if (currentERC20Token != address(0)) {
+            // pledging a different token -- not supported
+            revert TokenStillPledged();
+        } else {
+            // pledging fresh
+            IERC20(tokenContract_).transferFrom(_msgSender(), address(this), tokenAmount_);
+            pledgedERC20Tokens[orbId] = ERC20Pledge(tokenContract_, tokenAmount_);
+            emit ERC20TokenPledge(orbId, tokenContract_, tokenAmount_, tokenAmount_);
+        }
+    }
+
+    function _pledgeERC721Token(uint256 orbId, address tokenContract_, uint256 tokenId_)
+        internal
+        virtual
+        onlyActivePledge(orbId)
+    {
+        if (pledgedERC721Token[orbId].contractAddress != address(0)) {
+            revert TokenStillPledged();
+        }
+
+        IERC721(tokenContract_).transferFrom(_msgSender(), address(this), tokenId_);
+        pledgedERC721Token[orbId] = ERC721Pledge(tokenContract_, tokenId_);
+
+        emit ERC721TokenPledge(orbId, tokenContract_, tokenId_);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FUNCTIONS: RETRIEVING AND CLAIMING PLEDGES
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function retrievePledge(uint256 orbId) external virtual onlyCreator(orbId) {
+        if (_isRetrievable(orbId) == false) {
+            revert NotRetrievable();
+        }
+        if (_hasPledge(orbId) == false) {
+            revert NoPledge();
+        }
+
+        _transferPledgeTo(orbId, _msgSender());
+
+        emit PledgeRetrieved(orbId, _msgSender());
+    }
+
+    function claimPledge(uint256 orbId) external virtual {
+        if (_hasClaimablePledge(orbId) == false) {
+            revert NoClaimablePledge();
+        }
+
+        uint256 lastInvocationId = os.invocations().invocationCount(orbId);
+        (address _invoker,,) = os.invocations().invocations(orbId, lastInvocationId);
+        if (_msgSender() != _invoker) {
+            revert NotInvoker();
+        }
+
+        _transferPledgeTo(orbId, _invoker);
+
+        emit PledgeClaimed(orbId, _invoker);
+    }
+
+    function _transferPledgeTo(uint256 orbId, address newOwner_) internal virtual {
         uint256 _pledgedNativeTokens = pledgedNativeTokens[orbId];
         ERC20Pledge memory _pledgedERC20Tokens = pledgedERC20Tokens[orbId];
         ERC721Pledge memory _pledgedERC721Token = pledgedERC721Token[orbId];
+
         if (pledgedNativeTokens[orbId] > 0) {
             pledgedNativeTokens[orbId] = 0;
         }
@@ -227,52 +352,19 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         }
         if (pledgedERC721Token[orbId].contractAddress != address(0)) {
             pledgedERC721Token[orbId] = ERC721Pledge(address(0), 0);
-            // we are not using safeTransferFrom here, because we are not sure if the new owner is a contract
-            // and if it has implemented onERC721Received. It means NFT can be lost, but it is more important to
-            // enabled forced pledge claiming.
         }
 
         if (_pledgedERC721Token.contractAddress != address(0)) {
-            IERC721(_pledgedERC721Token.contractAddress).safeTransferFrom(
-                address(this), newOwner, _pledgedERC721Token.tokenId
+            IERC721(_pledgedERC721Token.contractAddress).transferFrom(
+                address(this), newOwner_, _pledgedERC721Token.tokenId
             );
         }
         if (_pledgedERC20Tokens.contractAddress != address(0)) {
-            IERC20(_pledgedERC20Tokens.contractAddress).transfer(newOwner, _pledgedERC20Tokens.tokenAmount);
+            IERC20(_pledgedERC20Tokens.contractAddress).transfer(newOwner_, _pledgedERC20Tokens.tokenAmount);
         }
         if (_pledgedNativeTokens > 0) {
-            Address.sendValue(payable(newOwner), _pledgedNativeTokens);
+            Address.sendValue(payable(newOwner_), _pledgedNativeTokens);
         }
-    }
-
-    function retrievePledge(uint256 orbId) external virtual onlyCreator(orbId) {
-        if (isPledgeRetrievable(orbId)) {
-            _transferPledgeTo(orbId, _msgSender());
-        }
-        emit PledgeRetrieved(orbId, _msgSender());
-    }
-
-    function claimPledge(uint256 orbId) external virtual {
-        if (canClaimPledge(orbId, _msgSender())) {
-            (, uint256 expiredPeriodInvocationId) = InvocationRegistry(registry).hasExpiredPeriodInvocation(orbId);
-            (address _invoker,,) = InvocationRegistry(registry).invocations(orbId, expiredPeriodInvocationId);
-
-            if (_msgSender() != _invoker) {
-                revert NotInvoker();
-            }
-
-            _transferPledgeTo(orbId, _invoker);
-            InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
-
-            emit PledgeClaimed(orbId, _invoker);
-        }
-    }
-
-    function resetExpiredPeriodInvocation(uint256 orbId) external virtual {
-        // TODO Pledge must not be claimable
-        // TODO require that claiming window is over and does not have an expired period invocation apart from recorded
-        // maybe same as "isCreatorControlled"
-        InvocationRegistry(registry).resetExpiredPeriodInvocation(orbId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,15 +381,3 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     // solhint-disable no-empty-blocks
     function _authorizeUpgrade(address newImplementation_) internal virtual override onlyOwner {}
 }
-
-// TODOs:
-// - indicate if discovery is initial or rediscovery
-// - discovery running check
-// - admin, upgrade functions
-// - expose is creator controlled logic
-// - establish is deadline missed logic
-
-// - everything about token locking
-// - documentation
-//   - first, for myself: to understand when all actions can be taken
-//   - particularly token and settings related
