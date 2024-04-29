@@ -7,8 +7,8 @@ import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC
 import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {OrbInvocationTipJar} from "../../src/OrbInvocationTipJar.sol";
-import {OrbInvocationTipJarTestUpgrade} from "../../src/legacy/test-upgrades/OrbInvocationTipJarTestUpgrade.sol";
+import {InvocationTipJar} from "../../src/InvocationTipJar.sol";
+import {InvocationTipJarTestUpgrade} from "../../src/legacy/test-upgrades/InvocationTipJarTestUpgrade.sol";
 import {OrbPond} from "../../src/legacy/OrbPond.sol";
 import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
 import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
@@ -16,10 +16,10 @@ import {Orb} from "../../src/legacy/Orb.sol";
 import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
 
 contract OrbTipJarBaseTest is Test {
-    OrbInvocationTipJar public orbTipJar;
+    InvocationTipJar public orbTipJar;
     OrbInvocationRegistry public orbInvocationRegistry;
     Orb public orb;
-    OrbInvocationTipJar public orbTipJarImplementation;
+    InvocationTipJar public orbTipJarImplementation;
     address public orbAddress;
 
     // Invocations
@@ -83,16 +83,16 @@ contract OrbTipJarBaseTest is Test {
         orb.finalizeAuction();
         vm.warp(block.timestamp + 30 days);
 
-        orbTipJarImplementation = new OrbInvocationTipJar();
+        orbTipJarImplementation = new InvocationTipJar();
         ERC1967Proxy orbTipJarProxy = new ERC1967Proxy(
             address(orbTipJarImplementation),
             abi.encodeWithSelector(
-                OrbInvocationTipJar.initialize.selector,
+                InvocationTipJar.initialize.selector,
                 orbland,
                 5_00 // 5%
             )
         );
-        orbTipJar = OrbInvocationTipJar(address(orbTipJarProxy));
+        orbTipJar = InvocationTipJar(address(orbTipJarProxy));
     }
 
     function _invoke(address orbAddress_, bytes32 invocationHash_) internal {
@@ -114,11 +114,11 @@ contract InitialStateTest is OrbTipJarBaseTest {
     }
 
     function test_revertsIf_platformAddressInvalid() public {
-        vm.expectRevert(OrbInvocationTipJar.PlatformAddressInvalid.selector);
+        vm.expectRevert(InvocationTipJar.PlatformAddressInvalid.selector);
         new ERC1967Proxy(
             address(orbTipJarImplementation),
             abi.encodeWithSelector(
-                OrbInvocationTipJar.initialize.selector,
+                InvocationTipJar.initialize.selector,
                 address(0),
                 5_00 // 5%
             )
@@ -126,11 +126,11 @@ contract InitialStateTest is OrbTipJarBaseTest {
     }
 
     function test_revertsIf_platformFeeInvalid() public {
-        vm.expectRevert(OrbInvocationTipJar.PlatformFeeInvalid.selector);
+        vm.expectRevert(InvocationTipJar.PlatformFeeInvalid.selector);
         new ERC1967Proxy(
             address(orbTipJarImplementation),
             abi.encodeWithSelector(
-                OrbInvocationTipJar.initialize.selector,
+                InvocationTipJar.initialize.selector,
                 orbland,
                 100_01 // 100.01%
             )
@@ -139,7 +139,7 @@ contract InitialStateTest is OrbTipJarBaseTest {
 
     function test_initializerSuccess() public {
         ERC1967Proxy orbInvocationTipJarProxy = new ERC1967Proxy(address(orbTipJarImplementation), "");
-        OrbInvocationTipJar _orbInvocationTipJar = OrbInvocationTipJar(address(orbInvocationTipJarProxy));
+        InvocationTipJar _orbInvocationTipJar = InvocationTipJar(address(orbInvocationTipJarProxy));
         assertEq(_orbInvocationTipJar.owner(), address(0));
         _orbInvocationTipJar.initialize(orbland, 1);
         assertEq(_orbInvocationTipJar.owner(), address(this));
@@ -150,7 +150,7 @@ contract SetMinimumTipTest is OrbTipJarBaseTest {
     event MinimumTipUpdate(address indexed orb, uint256 previousMinimumTip, uint256 indexed newMinimumTip);
 
     function test_revertIf_notOrbKeeper() public {
-        vm.expectRevert(OrbInvocationTipJar.NotKeeper.selector);
+        vm.expectRevert(InvocationTipJar.NotKeeper.selector);
         vm.prank(tipper);
         orbTipJar.setMinimumTip(orbAddress, 1 ether);
     }
@@ -174,7 +174,7 @@ contract TipInvocationTest is OrbTipJarBaseTest {
         vm.prank(keeper);
         orbTipJar.setMinimumTip(orbAddress, 2 ether);
 
-        vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.InsufficientTip.selector, 1 ether, 2 ether));
+        vm.expectRevert(abi.encodeWithSelector(InvocationTipJar.InsufficientTip.selector, 1 ether, 2 ether));
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
     }
 
@@ -184,7 +184,7 @@ contract TipInvocationTest is OrbTipJarBaseTest {
         _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
-        vm.expectRevert(OrbInvocationTipJar.InvocationAlreadyClaimed.selector);
+        vm.expectRevert(InvocationTipJar.InvocationAlreadyClaimed.selector);
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
     }
 
@@ -227,7 +227,7 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
     event TipsClaim(address indexed orb, bytes32 indexed invocationHash, address indexed invoker, uint256 tipsValue);
 
     function test_revertIf_notTipped() public {
-        vm.expectRevert(OrbInvocationTipJar.TipNotFound.selector);
+        vm.expectRevert(InvocationTipJar.TipNotFound.selector);
         orbTipJar.withdrawTip(orbAddress, invocationHash);
     }
 
@@ -236,7 +236,7 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
-        vm.expectRevert(OrbInvocationTipJar.InvocationAlreadyClaimed.selector);
+        vm.expectRevert(InvocationTipJar.InvocationAlreadyClaimed.selector);
         orbTipJar.withdrawTip(orbAddress, invocationHash);
     }
 
@@ -276,7 +276,7 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         bytes32[] memory invocationHashes = new bytes32[](2);
         invocationHashes[0] = invocationHash;
         invocationHashes[1] = invocation2Hash;
-        vm.expectRevert(OrbInvocationTipJar.UnevenArrayLengths.selector);
+        vm.expectRevert(InvocationTipJar.UnevenArrayLengths.selector);
         vm.prank(tipper);
         orbTipJar.withdrawTips(orbs, invocationHashes);
     }
@@ -311,7 +311,7 @@ contract WithdrawTipTest is OrbTipJarBaseTest {
         _invoke(orbAddress, invocationHash);
 
         assertEq(orbTipJar.platformFunds(), 0);
-        vm.expectRevert(OrbInvocationTipJar.NoFundsAvailable.selector);
+        vm.expectRevert(InvocationTipJar.NoFundsAvailable.selector);
         orbTipJar.withdrawPlatformFunds();
     }
 
@@ -343,11 +343,11 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
     event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
 
     function test_revertIf_invocationNotInvoked() public {
-        vm.expectRevert(OrbInvocationTipJar.InvocationNotInvoked.selector);
+        vm.expectRevert(InvocationTipJar.InvocationNotInvoked.selector);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
 
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
-        vm.expectRevert(OrbInvocationTipJar.InvocationNotInvoked.selector);
+        vm.expectRevert(InvocationTipJar.InvocationNotInvoked.selector);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
     }
 
@@ -356,7 +356,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         _invoke(orbAddress, invocationHash);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1 ether);
 
-        vm.expectRevert(OrbInvocationTipJar.InvocationAlreadyClaimed.selector);
+        vm.expectRevert(InvocationTipJar.InvocationAlreadyClaimed.selector);
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0);
     }
 
@@ -364,12 +364,12 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         vm.prank(tipper);
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
         _invoke(orbAddress, invocationHash);
-        vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.InsufficientTips.selector, 1.1 ether, 1 ether));
+        vm.expectRevert(abi.encodeWithSelector(InvocationTipJar.InsufficientTips.selector, 1.1 ether, 1 ether));
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 1.1 ether);
 
         vm.prank(tipper);
         orbTipJar.withdrawTip(orbAddress, invocationHash);
-        vm.expectRevert(abi.encodeWithSelector(OrbInvocationTipJar.InsufficientTips.selector, 0.1 ether, 0));
+        vm.expectRevert(abi.encodeWithSelector(InvocationTipJar.InsufficientTips.selector, 0.1 ether, 0));
         orbTipJar.claimTipsForInvocation(orbAddress, 1, 0.1 ether);
     }
 
@@ -416,7 +416,7 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
         orbTipJar.tipInvocation{value: 1 ether}(orbAddress, invocationHash);
 
         bytes memory claimCalldata =
-            abi.encodeWithSelector(OrbInvocationTipJar.claimTipsForInvocation.selector, orbAddress, 1, 1 ether);
+            abi.encodeWithSelector(InvocationTipJar.claimTipsForInvocation.selector, orbAddress, 1, 1 ether);
 
         // expect revert if not authorized
         vm.expectRevert(
@@ -460,19 +460,17 @@ contract ClaimTipsTest is OrbTipJarBaseTest {
 
 contract UpgradeTest is OrbTipJarBaseTest {
     function test_upgrade_revertOnlyOwner() public {
-        OrbInvocationTipJarTestUpgrade orbInvocationTipJarTestUpgradeImplementation =
-            new OrbInvocationTipJarTestUpgrade();
+        InvocationTipJarTestUpgrade orbInvocationTipJarTestUpgradeImplementation = new InvocationTipJarTestUpgrade();
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, tipper));
         vm.prank(tipper);
         orbTipJar.upgradeToAndCall(
             address(orbInvocationTipJarTestUpgradeImplementation),
-            abi.encodeWithSelector(OrbInvocationTipJarTestUpgrade.initializeTestUpgrade.selector, 0.05 ether)
+            abi.encodeWithSelector(InvocationTipJarTestUpgrade.initializeTestUpgrade.selector, 0.05 ether)
         );
     }
 
     function test_upgradeSucceeds() public {
-        OrbInvocationTipJarTestUpgrade orbInvocationTipJarTestUpgradeImplementation =
-            new OrbInvocationTipJarTestUpgrade();
+        InvocationTipJarTestUpgrade orbInvocationTipJarTestUpgradeImplementation = new InvocationTipJarTestUpgrade();
         bytes4 tipModuloSelector = bytes4(keccak256("tipModulo()"));
 
         assertEq(orbTipJar.version(), 1);
@@ -482,16 +480,16 @@ contract UpgradeTest is OrbTipJarBaseTest {
 
         orbTipJar.upgradeToAndCall(
             address(orbInvocationTipJarTestUpgradeImplementation),
-            abi.encodeWithSelector(OrbInvocationTipJarTestUpgrade.initializeTestUpgrade.selector, 0.05 ether)
+            abi.encodeWithSelector(InvocationTipJarTestUpgrade.initializeTestUpgrade.selector, 0.05 ether)
         );
 
-        assertEq(OrbInvocationTipJarTestUpgrade(address(orbTipJar)).tipModulo(), 0.05 ether);
+        assertEq(InvocationTipJarTestUpgrade(address(orbTipJar)).tipModulo(), 0.05 ether);
         assertEq(orbTipJar.version(), 100);
         // solhint-disable-next-line avoid-low-level-calls
         (bool successAfter,) = address(orbTipJar).call(abi.encodeWithSelector(tipModuloSelector));
         assertEq(successAfter, true);
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        OrbInvocationTipJarTestUpgrade(address(orbTipJar)).initializeTestUpgrade(0.05 ether);
+        InvocationTipJarTestUpgrade(address(orbTipJar)).initializeTestUpgrade(0.05 ether);
     }
 }
