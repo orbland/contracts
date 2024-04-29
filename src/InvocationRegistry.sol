@@ -3,10 +3,9 @@ pragma solidity 0.8.20;
 
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Orbs} from "./Orbs.sol";
-import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
-import {ContractAuthorizationRegistry} from "./ContractAuthorizationRegistry.sol";
-import {PledgeLocker} from "./PledgeLocker.sol";
+
+import {OrbSystem} from "./OrbSystem.sol";
+import {IDelegationMethod} from "./delegation/IDelegationMethod.sol";
 
 /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
 /// InvocationData is used to determine if the response can be flagged by the keeper.
@@ -43,10 +42,9 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         uint256 timestamp,
         bytes32 contentHash
     );
-    event CleartextRevealing(uint256 indexed orbId, uint256 indexed invocationId, string cleartext);
 
-    event InvocationPeriodUpdate(uint256 indexed orbId, uint256 previousInvocationPeriod, uint256 newInvocationPeriod);
-    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
+    event InvocationPeriodUpdate(uint256 indexed orbId, uint256 newInvocationPeriod);
+    event DelegationContractUpdate(uint256 indexed orbId, address delegationContract);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -56,18 +54,19 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     error NotKeeper();
     error NotCreator();
     error NotAuthorized();
-    error NotOrbsContract();
+    error NotOwnershipRegistryContract();
     error ContractHoldsOrb();
     error ContractDoesNotHoldOrb();
     error KeeperInsolvent();
     error CreatorDoesNotControlOrb();
     error ContractNotAuthorized(address externalContract);
     error InvocationPeriodExceedsMaximumDuration(uint256 invocationPeriod, uint256 invocationPeriodMaximumDuration);
+    error DelegationActive();
 
     // Invoking and Responding Errors
     error NotInvokable();
-    error NoUnrespondedInvocation(uint256 orbId);
-    error HasUnrespondedInvocation(uint256 orbId);
+    error NoUnrespondedInvocation();
+    error HasUnrespondedInvocation();
     error ResponseNotFound(uint256 orbId, uint256 invocationId);
     error ResponseExists(uint256 orbId, uint256 invocationId);
 
@@ -80,29 +79,28 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     /// Maximum invocationPeriod duration, to prevent potential underflows. Value: 10 years.
     uint256 internal constant _INVOCATION_PERIOD_MAXIMUM_DURATION = 3650 days;
 
-    address public orbsContract;
-
-    address public pledgeLockerContract;
-
-    address public authorizationsContract;
+    /// Addresses of all system contracts
+    OrbSystem public os;
 
     /// Count of invocations made: used to calculate invocationId of the next invocation.
+    /// Also, id of the last invocation.
     mapping(uint256 orbId => uint256) public invocationCount;
     /// Mapping for invocations: invocationId to InvocationData struct. InvocationId starts at 1.
     mapping(uint256 orbId => mapping(uint256 invocationId => InvocationData)) public invocations;
     /// Mapping for responses (answers to invocations): matching invocationId to ResponseData struct.
     mapping(uint256 orbId => mapping(uint256 invocationId => ResponseData)) public responses;
-    /// Mapping indicating if all invocations have responses
-    mapping(uint256 orbId => bool) public hasUnrespondedInvocation;
+    /// Last invocation time: when the Orb was last invoked. Used together with `invocationPeriod` constant.
+    mapping(uint256 orbId => uint256) public lastInvocationTime;
     /// Mapping of missed deadline invocation IDs -- currently only used to allow claiming of pledges
-    mapping(uint256 orbId => uint256 invocationId) public expiredPeriodInvocation;
+    mapping(uint256 orbId => bool) public lastInvocationResponseWasLate;
 
     /// InvocationPeriod: how often the Orb can be invoked.
     /// Response Period: time period in which the keeper promises to respond to an invocation.
     /// There are no penalties for being late within this contract.
     mapping(uint256 orbId => uint256) public invocationPeriod;
-    /// Last invocation time: when the Orb was last invoked. Used together with `invocationPeriod` constant.
-    mapping(uint256 orbId => uint256) public lastInvocationTime;
+
+    /// Mapping of delegation contracts for each Orb
+    mapping(uint256 orbId => address) public delegationContract;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  INITIALIZER AND INTERFACE SUPPORT
@@ -114,24 +112,59 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /// @dev  Initializes the contract.
-    function initialize(address authorizationsContract_) public initializer {
+    function initialize(address os_) public initializer {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        authorizationsContract = authorizationsContract_;
-        pledgeLockerContract = ContractAuthorizationRegistry(authorizationsContract_).pledgeLockerContract();
+        os = OrbSystem(os_);
     }
 
-    function isInvokable(uint256 orbId) public view virtual returns (bool) {
-        // Can't be called by Orbs contract - check disabled as we are trusting ourselves
-        // if (Orbs(orbsContract).keeper(orbId) == orbsContract) {
-        //     return false;
-        // }
-        // LATER check that there is not an outstanding invocation delegation
+    function hasUnrespondedInvocation(uint256 orbId) external view virtual returns (bool) {
+        return _hasUnrespondedInvocation(orbId);
+    }
 
+    function _hasUnrespondedInvocation(uint256 orbId) internal view virtual returns (bool) {
+        return responses[orbId][invocationCount[orbId]].timestamp == 0;
+    }
+
+    function isKeeperInvokable(uint256 orbId) external view virtual returns (bool) {
+        return _isKeeperInvokable(orbId);
+    }
+
+    function _isKeeperInvokable(uint256 orbId) internal view virtual returns (bool) {
+        address _delegationContract = delegationContract[orbId];
+        if (_delegationContract != address(0) && IDelegationMethod(_delegationContract).isFinalizable(orbId)) {
+            return false;
+        }
+
+        return _isInvokable(orbId);
+    }
+
+    function isInvokable(uint256 orbId) external view virtual returns (bool) {
+        return _isInvokable(orbId);
+    }
+
+    function _isInvokable(uint256 orbId) internal view virtual returns (bool) {
         // Can't be invoked if there is an unresponded invocation --
         // if invocation period has passed and there is no response, Pledge is claimable!
-        if (hasUnrespondedInvocation[orbId]) {
+        if (_hasUnrespondedInvocation(orbId)) {
+            return false;
+        }
+
+        // Can't be invoked if there is a claimable pledge - claim it before invoking!
+        if (os.pledges().hasClaimablePledge(orbId)) {
+            return false;
+        }
+
+        address _keeper = os.ownership().keeper(orbId);
+        if (os.ownership().creator(orbId) == _keeper) {
+            return true;
+        }
+        if (os.ownershipRegistryAddress() == _keeper) {
+            return false;
+        }
+
+        if (os.ownership().keeperSolvent(orbId) == false) {
             return false;
         }
 
@@ -139,59 +172,71 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         return block.timestamp >= lastInvocationTime[orbId] + invocationPeriod[orbId];
     }
 
-    function hasExpiredPeriodInvocation(uint256 orbId) public view virtual returns (bool, uint256) {
-        if (expiredPeriodInvocation[orbId] != 0) {
-            return (true, expiredPeriodInvocation[orbId]);
-        }
-        if (hasUnrespondedInvocation[orbId]) {
-            if (block.timestamp > lastInvocationTime[orbId] + invocationPeriod[orbId]) {
-                return (true, invocationCount[orbId]);
-            }
-        }
-        // would be set to invocationId when responding, don't need to check last invocation if every invocation is
-        // responded
-        return (false, 0);
+    function hasLateResponse(uint256 orbId) external view virtual returns (bool) {
+        return _hasLateResponse(orbId);
     }
 
-    function resetExpiredPeriodInvocation(uint256 orbId) public virtual {
-        if (_msgSender() != orbsContract && _msgSender() != pledgeLockerContract) {
-            revert NotAuthorized();
-        }
-        if (expiredPeriodInvocation[orbId] != 0) {
-            expiredPeriodInvocation[orbId] = 0;
-        }
+    function _hasLateResponse(uint256 orbId) internal view virtual returns (bool) {
+        return (
+            (lastInvocationResponseWasLate[orbId])
+                || (
+                    _hasUnrespondedInvocation(orbId)
+                        && block.timestamp > lastInvocationTime[orbId] + invocationPeriod[orbId]
+                )
+        );
     }
 
-    // ;
+    function maximumKeeperTax(uint256 orbId) external view virtual returns (uint256) {
+        if (invocationPeriod[orbId] == 0) {
+            return type(uint256).max;
+        }
+        // 1000 is used to avoid floating point arithmetic
+        uint256 invocationsInTaxPeriod = os.ownership().keeperTaxPeriod() * 1000 / invocationPeriod[orbId];
+        return (invocationsInTaxPeriod * os.feeDenominator()) / 1000;
+
+        // test for 14 days invocation period:
+        // invocationsInTaxPeriod = 31536000 * 1000 / (14 * 86400) = 31536000000 / 1209600 = 26071
+        // maximumKeeperTax = 26071 * 100_00 / 1000 = 2607_10 or 2607.10%
+
+        // test for 2 days invocation period:
+        // invocationsInTaxPeriod = 31536000 * 1000 / (2 * 86400) = 31536000000 / 172800 = 182500
+        // maximumKeeperTax = 182500 * 100_00 / 1000 = 18250_00 or 18250.00%
+    }
+
+    function _maximumInvocationPeriod(uint256 orbId) internal virtual returns (uint256) {
+        uint256 keeperTax_ = os.ownership().keeperTax(orbId);
+        if (keeperTax_ == 0) {
+            return type(uint256).max;
+        }
+        // 1000 is used to avoid floating point arithmetic
+        uint256 buybacksInTaxPeriod = keeperTax_ * 1000 / os.feeDenominator();
+        return os.ownership().keeperTaxPeriod() * 1000 / buybacksInTaxPeriod;
+
+        // buybacksInTaxPeriod for 100% tax  = 100_00  * 1000 / 100_00 = 100_000_00  / 100_00 = 1000.00 or 1
+        // buybacksInTaxPeriod for 200% tax  = 200_00  * 1000 / 100_00 = 200_000_00  / 100_00 = 2000.00 or 2
+        // buybacksInTaxPeriod for 2400% tax = 2400_00 * 1000 / 100_00 = 2400_000_00 / 100_00 = 24000.00 or 24
+
+        // buybackPeriod for 100% tax  = 31536000 * 1000 / 1000  = 31536000000 / 1000  = 31536000 (1 year)
+        // buybackPeriod for 200% tax  = 31536000 * 1000 / 2000  = 31536000000 / 2000  = 15768000 (6 months)
+        // buybackPeriod for 2400% tax = 31536000 * 1000 / 24000 = 31536000000 / 24000 = 1314000  (15.2 days)
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  MODIFIERS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @dev    Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
-    ///         external functions, otherwise does not make sense.
+    /// @dev    Ensures that the caller owns the Orb.
     /// @param  orbId  Address of the Orb.
     modifier onlyKeeper(uint256 orbId) virtual {
-        if (_msgSender() != Orbs(orbsContract).keeper(orbId)) {
+        if (_msgSender() != os.ownership().keeper(orbId)) {
             revert NotKeeper();
         }
         _;
     }
 
-    /// @dev    Ensures that the Orb belongs to someone, not the contract itself.
-    /// @param  orbId  Address of the Orb.
-    modifier onlyKeeperHeld(uint256 orbId) virtual {
-        if (orbsContract == Orbs(orbsContract).keeper(orbId)) {
-            revert ContractHoldsOrb();
-        }
-        _;
-    }
-
-    /// @dev    Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
-    /// @param  orbId  Orb id
-    modifier onlyKeeperSolvent(uint256 orbId) virtual {
-        if (!Orbs(orbsContract).keeperSolvent(orbId)) {
-            revert KeeperInsolvent();
+    modifier onlyKeeperInvokable(uint256 orbId) virtual {
+        if (_isKeeperInvokable(orbId) == false) {
+            revert NotInvokable();
         }
         _;
     }
@@ -199,7 +244,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev    Ensures that the caller is the creator of the Orb.
     /// @param  orbId  Address of the Orb.
     modifier onlyCreator(uint256 orbId) virtual {
-        if (_msgSender() != Orbs(orbsContract).creator(orbId)) {
+        if (_msgSender() != os.ownership().creator(orbId)) {
             revert NotCreator();
         }
         _;
@@ -210,10 +255,26 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     function initializeOrb(uint256 orbId) public {
-        if (_msgSender() != orbsContract) {
-            revert NotOrbsContract();
+        if (_msgSender() != os.ownershipRegistryAddress()) {
+            revert NotOwnershipRegistryContract();
         }
         invocationPeriod[orbId] = 7 days;
+    }
+
+    function setDelegationContract(uint256 orbId, address delegationContract_) external virtual onlyKeeper(orbId) {
+        address currentDelegationContract = delegationContract[orbId];
+        if (currentDelegationContract != address(0) && IDelegationMethod(currentDelegationContract).isActive(orbId)) {
+            revert DelegationActive();
+        }
+
+        if (os.delegationContractAuthorized(delegationContract_) == false) {
+            revert ContractNotAuthorized(delegationContract_);
+        }
+
+        delegationContract[orbId] = delegationContract_;
+        IDelegationMethod(delegationContract_).initializeOrb(orbId);
+
+        emit DelegationContractUpdate(orbId, delegationContract_);
     }
 
     /// @notice  Allows the Orb creator to set the new invocationPeriod duration, response period, flagging period
@@ -226,28 +287,36 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationPeriod_  New invocationPeriod in seconds. Cannot be longer than
     ///          `_INVOCATION_PERIOD_MAXIMUM_DURATION`.
     function setInvocationPeriod(uint256 orbId, uint256 invocationPeriod_) external virtual onlyCreator(orbId) {
-        // Invocation period cannot be changed at all if held by a Keeper or Creator - too many complications for
-        // expired invocations
-        if (Orbs(orbsContract).keeper(orbId) != orbsContract) {
+        if (os.isCreatorControlled(orbId) == false) {
             revert CreatorDoesNotControlOrb();
         }
 
-        if (hasUnrespondedInvocation[orbId]) {
-            revert HasUnrespondedInvocation(orbId);
+        if (
+            (
+                os.ownership().keeper(orbId) == os.ownershipRegistryAddress()
+                    || os.ownership().keeper(orbId) == os.ownership().creator(orbId)
+            ) && _hasUnrespondedInvocation(orbId)
+        ) {
+            revert HasUnrespondedInvocation();
         }
 
         if (invocationPeriod_ > _INVOCATION_PERIOD_MAXIMUM_DURATION) {
             revert InvocationPeriodExceedsMaximumDuration(invocationPeriod_, _INVOCATION_PERIOD_MAXIMUM_DURATION);
         }
+        if (invocationPeriod_ > _maximumInvocationPeriod(orbId)) {
+            revert InvocationPeriodExceedsMaximumDuration(invocationPeriod_, _maximumInvocationPeriod(orbId));
+        }
 
-        uint256 previousInvocationPeriod = invocationPeriod[orbId];
+        // Must settle, so tax pausing is accounted for
+        os.ownership().settle(orbId);
+
         invocationPeriod[orbId] = invocationPeriod_;
-        emit InvocationPeriodUpdate(orbId, previousInvocationPeriod, invocationPeriod_);
+        emit InvocationPeriodUpdate(orbId, invocationPeriod_);
     }
 
     function initializeOrbInvocationPeriod(uint256 orbId) external virtual {
-        if (_msgSender() != orbsContract) {
-            revert NotOrbsContract();
+        if (_msgSender() != os.ownershipRegistryAddress()) {
+            revert NotOwnershipRegistryContract();
         }
 
         if (lastInvocationTime[orbId] == 0) {
@@ -259,54 +328,60 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ///          creator. Puts the Orb on invocationPeriod. The Orb can only be invoked by solvent keepers.
     /// @dev     Content hash is keccak256 of the cleartext. `invocationCount` is used to track the id of the next
     ///          invocation. Invocation ids start from 1. Emits `Invocation`.
-    /// @param   orbId        Address of the Orb.
-    /// @param   contentHash  Required keccak256 hash of the cleartext.
-    function invokeWithHash(uint256 orbId, bytes32 contentHash)
-        public
+    /// @param   orbId         Address of the Orb.
+    /// @param   contentHash_  Required keccak256 hash of the cleartext.
+    function invoke(uint256 orbId, bytes32 contentHash_)
+        external
         virtual
         onlyKeeper(orbId)
-        onlyKeeperHeld(orbId)
-        onlyKeeperSolvent(orbId)
+        onlyKeeperInvokable(orbId)
     {
-        uint256 _lastInvocationTime = lastInvocationTime[orbId];
-        uint256 _invocationPeriod = invocationPeriod[orbId];
-
-        if (!isInvokable(orbId)) {
-            revert NotInvokable();
-        }
-
-        invocationCount[orbId] += 1;
-        uint256 invocationId = invocationCount[orbId]; // starts at 1
-
-        invocations[orbId][invocationId] = InvocationData(_msgSender(), contentHash, block.timestamp);
-        lastInvocationTime[orbId] = block.timestamp;
-
-        emit Invocation(orbId, invocationId, _msgSender(), block.timestamp, contentHash);
+        _invoke(orbId, _msgSender(), contentHash_);
     }
 
     /// @notice  Invokes the Orb with content hash and calls an external contract.
     /// @dev     Calls `invokeWithHash()` and then calls the external contract.
     /// @param   orbId          Id of the Orb.
-    /// @param   contentHash    Required keccak256 hash of the cleartext.
-    /// @param   addressToCall  Address of the contract to call.
-    /// @param   dataToCall     Data to call the contract with.
-    function invokeWithHashAndCall(uint256 orbId, bytes32 contentHash, address addressToCall, bytes memory dataToCall)
+    /// @param   contentHash_    Required keccak256 hash of the cleartext.
+    function invokeAndClaimTips(uint256 orbId, bytes32 contentHash_, uint256 minimumTipTotal_)
         external
         virtual
+        onlyKeeper(orbId)
+        onlyKeeperInvokable(orbId)
     {
-        invokeWithHash(orbId, contentHash);
-        _callWithData(addressToCall, dataToCall);
+        _invoke(orbId, _msgSender(), contentHash_);
+        os.tips().claim(orbId, invocationCount[orbId], minimumTipTotal_);
     }
 
-    /// @dev    Internal function that calls an external contract. The contract has to be approved via
-    ///         `authorizeCalls()`.
-    /// @param  addressToCall  Address of the contract to call.
-    /// @param  dataToCall     Data to call the contract with.
-    function _callWithData(address addressToCall, bytes memory dataToCall) internal virtual {
-        if (ContractAuthorizationRegistry(authorizationsContract).invocationCallableContracts(addressToCall) == false) {
-            revert ContractNotAuthorized(addressToCall);
+    function invokeDelegated(uint256 orbId, address invoker_, bytes32 contentHash_) external virtual {
+        if (_msgSender() != delegationContract[orbId]) {
+            revert NotAuthorized();
         }
-        Address.functionCall(addressToCall, dataToCall);
+
+        if (_isInvokable(orbId) == false) {
+            revert NotInvokable();
+        }
+
+        _invoke(orbId, invoker_, contentHash_);
+
+        if (os.tips().totalTips(orbId, contentHash_) > 0) {
+            os.tips().claim(orbId, invocationCount[orbId], 0);
+        }
+    }
+
+    function _invoke(uint256 orbId, address invoker_, bytes32 contentHash_) internal virtual {
+        invocationCount[orbId] += 1;
+        uint256 invocationId = invocationCount[orbId]; // starts at 1
+
+        invocations[orbId][invocationId] = InvocationData(invoker_, contentHash_, block.timestamp);
+        lastInvocationTime[orbId] = block.timestamp;
+
+        // Should never be reached if pledge is claimable, so this is ok:
+        if (lastInvocationResponseWasLate[orbId] == true) {
+            lastInvocationResponseWasLate[orbId] = false;
+        }
+
+        emit Invocation(orbId, invocationId, invoker_, block.timestamp, contentHash_);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,33 +392,29 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ///          it was made. A response to an invocation can only be written once. There is no way to record response
     ///          cleartext on-chain.
     /// @dev     Emits `Response`.
-    /// @param   orbId         Id of the Orb.
-    /// @param   contentHash   keccak256 hash of the response text.
-    function respond(uint256 orbId, bytes32 contentHash) external virtual onlyCreator(orbId) {
+    /// @param   orbId          Id of the Orb.
+    /// @param   contentHash_   keccak256 hash of the response text.
+    function respond(uint256 orbId, bytes32 contentHash_) external virtual onlyCreator(orbId) {
         // There can only be one invocation without a response
         uint256 invocationId = invocationCount[orbId];
 
-        if (hasUnrespondedInvocation[orbId] == false) {
-            revert NoUnrespondedInvocation(orbId);
-        }
         if (_responseExists(orbId, invocationId)) {
             revert ResponseExists(orbId, invocationId);
         }
 
         if (block.timestamp > lastInvocationTime[orbId] + invocationPeriod[orbId]) {
-            if (PledgeLocker(pledgeLockerContract).isPledged(orbId)) {
-                expiredPeriodInvocation[orbId] = invocationId;
+            if (os.pledges().hasPledge(orbId)) {
+                lastInvocationResponseWasLate[orbId] = true;
             }
-            if (Orbs(orbsContract).keeper(orbId) != orbsContract) {
+            if (os.ownership().keeper(orbId) != os.ownershipRegistryAddress()) {
                 // Settle to apply Harberger tax discount, and reset for potential discounts in the future
-                Orbs(orbsContract).settle(orbId);
+                os.ownership().settle(orbId);
             }
         }
 
-        responses[orbId][invocationId] = ResponseData(contentHash, block.timestamp);
-        hasUnrespondedInvocation[orbId] = false;
+        responses[orbId][invocationId] = ResponseData(contentHash_, block.timestamp);
 
-        emit Response(orbId, invocationId, _msgSender(), block.timestamp, contentHash);
+        emit Response(orbId, invocationId, _msgSender(), block.timestamp, contentHash_);
     }
 
     /// @dev     Returns if a response to an invocation exists, based on the timestamp of the response being non-zero.
@@ -356,10 +427,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         virtual
         returns (bool isResponseFound)
     {
-        if (responses[orbId][invocationId_].timestamp != 0) {
-            return true;
-        }
-        return false;
+        return responses[orbId][invocationId_].timestamp != 0;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -375,5 +443,5 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Authorizes owner address to upgrade the contract.
     // solhint-disable no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
+    function _authorizeUpgrade(address) internal virtual override onlyOwner {}
 }
