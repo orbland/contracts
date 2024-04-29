@@ -20,7 +20,6 @@ contract MinimumBidTest is OrbTestBase {
 contract StartAuctionTest is OrbTestBase {
     function test_startAuctionOnlyOrbCreator() public {
         vm.prank(address(0xBEEF));
-        // solhint-disable-next-line max-line-length
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(0xBEEF)));
         orb.startAuction();
         orb.startAuction();
