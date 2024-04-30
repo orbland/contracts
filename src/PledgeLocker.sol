@@ -336,6 +336,11 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
 
         _transferPledgeTo(orbId, _invoker);
 
+        (, address purchaser,,) = os.ownership().purchaseOrder(orbId);
+        if (purchaser != address(0)) {
+            os.ownership().cancelPurchase(orbId);
+        }
+
         emit PledgeClaimed(orbId, _invoker);
     }
 

@@ -11,6 +11,13 @@ import {OrbSystem} from "./OrbSystem.sol";
 import {InvocationRegistry} from "./InvocationRegistry.sol";
 import {IAllocationMethod} from "./allocation/IAllocationMethod.sol";
 
+struct PurchaseOrder {
+    uint256 index; // starts from 0, so shouldn't be used to check if the order exists
+    address purchaser;
+    uint256 price; // price if finalized
+    uint256 timestamp; // when the order was placed
+}
+
 /// @title   Orb Ownership Registry
 /// @author  Jonas Lekevicius
 /// @author  Eric Wall
@@ -30,6 +37,8 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     // Purchasing Events
     event PriceUpdate(uint256 indexed orbId, address indexed keeper, uint256 newPrice);
     event Purchase(uint256 indexed orbId, address indexed seller, address indexed buyer, uint256 price);
+    event PurchaseFinalized(uint256 indexed orbId, address indexed seller, address indexed buyer, uint256 price);
+    event PurchaseCancelled(uint256 indexed orbId);
 
     // Orb Ownership Events
     event Foreclosure(uint256 indexed orbId, address indexed formerKeeper);
@@ -72,6 +81,12 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     error OrbDoesNotExist();
     error AddressInvalid(address invalidAddress);
     error NotPermitted();
+    error OrbInvokable();
+    error InsufficientKeeperFunds();
+    error AlreadyLastPurchaser();
+    error NoPurchaseOrder();
+    error PurchaseOrderExpired();
+    error OrbNotInvokable();
 
     // Allocation Errors
     error AllocationActive();
@@ -104,6 +119,8 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
+    /// Next purchase order price multiplier. Value: 1.2x of the previous price.
+    uint256 internal constant _NEXT_PURCHASE_PRICE_MULTIPLIER = 120_00;
 
     // STATE
 
@@ -150,6 +167,8 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     /// Allocation Beneficiary: address that receives most of the auction proceeds. Zero address if run by creator.
     mapping(uint256 orbId => address) public allocationBeneficiary;
 
+    mapping(uint256 orbId => PurchaseOrder) public purchaseOrder;
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  MODIFIERS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +188,9 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     modifier onlyKeeper(uint256 orbId) virtual {
         if (_msgSender() != keeper[orbId]) {
             revert NotKeeper();
+        }
+        if (_keeperSolvent(orbId) == false) {
+            revert KeeperInsolvent();
         }
         _;
     }
@@ -197,16 +219,6 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     modifier onlyCreatorControlled(uint256 orbId) virtual {
         if (os.isCreatorControlled(orbId) == false) {
             revert CreatorDoesNotControlOrb();
-        }
-        _;
-    }
-
-    // FUNDS-RELATED MODIFIERS
-
-    /// @dev  Ensures that the current Orb keeper has enough funds to cover Harberger tax until now.
-    modifier onlyKeeperSolvent(uint256 orbId) virtual {
-        if (keeperSolvent(orbId) == false) {
-            revert KeeperInsolvent();
         }
         _;
     }
@@ -423,7 +435,7 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Deposits are not allowed for insolvent keepers to prevent cheating via front-running. If the user
     ///          becomes insolvent, the Orb will always be returned to the contract as the next step. Emits `Deposit`.
     function deposit(uint256 orbId) external payable virtual {
-        if (_msgSender() == keeper[orbId] && !keeperSolvent(orbId)) {
+        if (_msgSender() == keeper[orbId] && !_keeperSolvent(orbId)) {
             revert KeeperInsolvent();
         }
 
@@ -437,6 +449,9 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     /// @param   amount_  The amount to withdraw.
     function withdraw(uint256 orbId, uint256 amount_) external virtual {
         if (_msgSender() == keeper[orbId]) {
+            if (purchaseOrder[orbId].purchaser != address(0)) {
+                revert NotPermitted();
+            }
             _settle(orbId);
         }
         _withdraw(orbId, _msgSender(), amount_);
@@ -447,6 +462,9 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     /// @dev     Not allowed for the leading auction bidder.
     function withdrawAll(uint256 orbId) external virtual {
         if (_msgSender() == keeper[orbId]) {
+            if (purchaseOrder[orbId].purchaser != address(0)) {
+                revert NotPermitted();
+            }
             _settle(orbId);
         }
         _withdraw(orbId, _msgSender(), fundsOf[orbId][_msgSender()]);
@@ -482,14 +500,31 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         _settle(orbId);
     }
 
+    function keeperSolvent(uint256 orbId) external view virtual returns (bool isKeeperSolvent) {
+        return _keeperSolvent(orbId);
+    }
+
     /// @dev     Returns if the current Orb keeper has enough funds to cover Harberger tax until now. Always true if
     ///          creator holds the Orb.
     /// @return  isKeeperSolvent  If the current keeper is solvent.
-    function keeperSolvent(uint256 orbId) public view virtual returns (bool isKeeperSolvent) {
+    function _keeperSolvent(uint256 orbId) internal view virtual returns (bool) {
         if (creator[orbId] == keeper[orbId]) {
             return true;
         }
         return fundsOf[orbId][keeper[orbId]] >= _owedSinceLastSettlement(orbId);
+    }
+
+    function _foreclosureTimestamp(uint256 orbId) internal view virtual returns (uint256) {
+        if (
+            creator[orbId] == keeper[orbId] || keeper[orbId] == address(this) || price[orbId] == 0
+                || keeperTax[orbId] == 0
+        ) {
+            return type(uint256).max;
+        }
+        uint256 owedFunds = _owedSinceLastSettlement(orbId);
+        uint256 availableFunds = fundsOf[orbId][keeper[orbId]];
+        uint256 effectiveFunds = availableFunds <= owedFunds ? 0 : availableFunds - owedFunds;
+        return effectiveFunds * _KEEPER_TAX_PERIOD * os.feeDenominator() / (price[orbId] * keeperTax[orbId]);
     }
 
     /// @dev     Calculates how much money Orb keeper owes Orb beneficiary. This amount would be transferred between
@@ -548,7 +583,10 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     ///          Settles before adjusting the price, as the new price will change foreclosure time.
     /// @dev     Emits `Settlement` and `PriceUpdate`. See also `_setPrice()`.
     /// @param   newPrice_  New price for the Orb.
-    function setPrice(uint256 orbId, uint256 newPrice_) external virtual onlyKeeper(orbId) onlyKeeperSolvent(orbId) {
+    function setPrice(uint256 orbId, uint256 newPrice_) external virtual onlyKeeper(orbId) {
+        if (purchaseOrder[orbId].purchaser != address(0)) {
+            revert NotPermitted();
+        }
         _settle(orbId);
         _setPrice(orbId, newPrice_);
     }
@@ -586,13 +624,10 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     ///          V2 changes to require providing Keeper auction royalty to prevent front-running.
     /// @param  orbId      ID of the Orb to purchase.
     /// @param  newPrice_  New price to use after the purchase.
-    function purchase(uint256 orbId, uint256 newPrice_)
-        external
-        payable
-        virtual
-        onlyKeeperHeld(orbId)
-        onlyKeeperSolvent(orbId)
-    {
+    function purchase(uint256 orbId, uint256 newPrice_) external payable virtual onlyKeeperHeld(orbId) {
+        if (_keeperSolvent(orbId) == false) {
+            revert KeeperInsolvent();
+        }
         if (lastSettlementTime[orbId] >= block.timestamp) {
             revert PurchasingNotPermitted();
         }
@@ -601,7 +636,10 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
 
         address _keeper = keeper[orbId];
         address _creator = creator[orbId];
-        uint256 _currentPrice = price[orbId];
+        // how much you have to pay now:
+        uint256 _currentPrice = _nextPurchaseOrderPrice(orbId);
+        // might be 0 if there isn't a purchase order:
+        uint256 _lastOrderPrice = _lastPurchaseOrderPrice(orbId);
 
         if (_msgSender() == _keeper) {
             revert AlreadyKeeper();
@@ -615,13 +653,26 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         }
 
         fundsOf[orbId][_msgSender()] -= _currentPrice;
+        address _lastPurchaser = purchaseOrder[orbId].purchaser;
+        uint256 _keeperEarnings = _currentPrice;
+        if (_lastPurchaser != address(0)) {
+            // last order price will not be 0
+            // maker of last purchase order earns the difference as usual
+            _addEarnings(_lastPurchaser, _currentPrice - _lastOrderPrice);
+            // they also get refund for the purchase order funds that were standing
+            fundsOf[orbId][_lastPurchaser] += _lastOrderPrice;
+            _keeperEarnings = _lastOrderPrice;
+            _resetPurchaseOrder(orbId);
+        }
         if (_creator == _keeper) {
             os.invocations().initializeOrbInvocationPeriod(orbId);
-            _addEarnings(_creator, _currentPrice);
+            // if there was a purchase order, it should get the _purchaseOrderFunds
+            // if not, it should get keeper price
+            _addEarnings(_creator, _keeperEarnings);
         } else {
-            uint256 royaltyShare = (_currentPrice * purchaseRoyalty[orbId]) / os.feeDenominator();
+            uint256 royaltyShare = (_keeperEarnings * purchaseRoyalty[orbId]) / os.feeDenominator();
             _addEarnings(_creator, royaltyShare);
-            _addEarnings(_keeper, _currentPrice - royaltyShare);
+            _addEarnings(_keeper, _keeperEarnings - royaltyShare);
         }
 
         _setPrice(orbId, newPrice_);
@@ -629,6 +680,63 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         emit Purchase(orbId, _keeper, _msgSender(), _currentPrice);
 
         keeper[orbId] = _msgSender();
+    }
+
+    function _nextPurchaseOrderPrice(uint256 orbId) internal view virtual returns (uint256) {
+        if (purchaseOrder[orbId].purchaser != address(0)) {
+            return price[orbId] * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** (purchaseOrder[orbId].index + 1))
+                / os.feeDenominator();
+        }
+        return price[orbId];
+    }
+
+    function _lastPurchaseOrderPrice(uint256 orbId) internal view virtual returns (uint256) {
+        if (purchaseOrder[orbId].purchaser != address(0)) {
+            // uses index before updating during purchase order
+            return price[orbId] * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** purchaseOrder[orbId].index) / os.feeDenominator();
+        }
+        return 0;
+    }
+
+    function nextPurchasePrice(uint256 orbId) external view virtual returns (uint256) {
+        return _nextPurchaseOrderPrice(orbId);
+    }
+
+    function placePurchaseOrder(uint256 orbId, uint256 priceIfFinalized_) external payable virtual {
+        // - Only allowed if Orb is charging -- otherwise please use `purchase()`
+        if (os.invocations().isInvokable(orbId)) {
+            revert OrbInvokable();
+        }
+
+        // Only allowed if Keeper has enough funds to go until Orb is invokable again
+        uint256 lastInvocationTime = os.invocations().lastInvocationTime(orbId);
+        uint256 invocationPeriod = os.invocations().invocationPeriod(orbId);
+        if (_foreclosureTimestamp(orbId) < lastInvocationTime + invocationPeriod) {
+            revert InsufficientKeeperFunds();
+        }
+
+        uint256 _purchasePrice = _nextPurchaseOrderPrice(orbId);
+        if (msg.value < _purchasePrice) {
+            revert InsufficientFunds(msg.value, _purchasePrice);
+        }
+
+        address _lastPurchaser = purchaseOrder[orbId].purchaser;
+        if (_msgSender() == _lastPurchaser) {
+            revert AlreadyLastPurchaser();
+        }
+
+        fundsOf[orbId][_msgSender()] += msg.value - _purchasePrice;
+        uint256 _purchaseIndex = purchaseOrder[orbId].index;
+        // 0 if there isn't a purchase order
+        // potentially 0 if there is one
+        if (_lastPurchaser != address(0)) {
+            _purchaseIndex++;
+            // price paid by last purchaser, will not be 0 here
+            uint256 _lastPrice = _lastPurchaseOrderPrice(orbId);
+            uint256 _priceDifference = _purchasePrice - _lastPrice;
+            _addEarnings(_lastPurchaser, _priceDifference);
+        }
+        purchaseOrder[orbId] = PurchaseOrder(_purchaseIndex, _msgSender(), priceIfFinalized_, block.timestamp);
     }
 
     /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
@@ -651,6 +759,84 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: RELINQUISHMENT AND FORECLOSURE
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function finalizePurchase(uint256 orbId) public virtual {
+        if (purchaseOrder[orbId].purchaser == address(0)) {
+            revert NoPurchaseOrder();
+        }
+        if (block.timestamp > purchaseOrder[orbId].timestamp + os.invocations().invocationPeriod(orbId) * 2) {
+            revert PurchaseOrderExpired();
+        }
+        if (!os.invocations().isInvokable(orbId)) {
+            revert OrbNotInvokable();
+        }
+
+        _settle(orbId);
+
+        address _keeper = keeper[orbId];
+        address _creator = creator[orbId];
+
+        // might be 0 if there isn't a purchase order:
+        uint256 _purchaseFunds = _purchaseOrderFunds(orbId);
+        address _lastPurchaser = purchaseOrder[orbId].purchaser;
+
+        if (_creator == _keeper) {
+            os.invocations().initializeOrbInvocationPeriod(orbId);
+            _addEarnings(_creator, _purchaseFunds);
+        } else {
+            uint256 royaltyShare = (_purchaseFunds * purchaseRoyalty[orbId]) / os.feeDenominator();
+            _addEarnings(_creator, royaltyShare);
+            _addEarnings(_keeper, _purchaseFunds - royaltyShare);
+        }
+
+        _setPrice(orbId, purchaseOrder[orbId].price);
+        _resetPurchaseOrder(orbId);
+        keeper[orbId] = _lastPurchaser;
+
+        emit PurchaseFinalized(orbId, _keeper, _lastPurchaser, _purchaseFunds);
+    }
+
+    function _purchaseOrderFunds(uint256 orbId) internal view virtual returns (uint256) {
+        if (purchaseOrder[orbId].purchaser == address(0)) {
+            return 0;
+        }
+        // before first: funds available are 0
+        // after first: keeper price (index == 0)
+        // after second: also keeper price (index == 1)
+        // after third: 2nd purchase price (index == 2)
+        uint256 purchaseFundsIndex = purchaseOrder[orbId].index > 1 ? purchaseOrder[orbId].index - 1 : 0;
+
+        return price[orbId] * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** purchaseFundsIndex) / os.feeDenominator();
+    }
+
+    function cancelPurchase(uint256 orbId) public virtual {
+        bool _canCancel = false;
+        if (purchaseOrder[orbId].purchaser == address(0)) {
+            revert NoPurchaseOrder();
+        }
+        if (_msgSender() == os.pledgeLockerAddress()) {
+            _canCancel = true;
+        }
+        if (
+            block.timestamp > purchaseOrder[orbId].timestamp + os.invocations().invocationPeriod(orbId) * 2
+                && !os.invocations().isInvokable(orbId) && !os.pledges().hasClaimablePledge(orbId)
+        ) {
+            _canCancel = true;
+        }
+        if (_canCancel == false) {
+            revert NotPermitted();
+        }
+
+        // - Purchase funds are returned to purchaserAddress as funds (fee not charged)
+        fundsOf[orbId][purchaseOrder[orbId].purchaser] += _purchaseOrderFunds(orbId);
+        _resetPurchaseOrder(orbId);
+
+        emit PurchaseCancelled(orbId);
+    }
+
+    function _resetPurchaseOrder(uint256 orbId) internal virtual {
+        purchaseOrder[orbId] = PurchaseOrder(0, address(0), 0, 0);
+    }
 
     /// @notice  Allows the Orb creator to recall the Orb from the Keeper, if the Oath is no longer honored. This is an
     ///          alternative to just extending the Oath or swearing it while held by Keeper. It benefits the Orb creator
@@ -681,7 +867,10 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     ///          auction.
     /// @dev     Calls `_withdraw()`, which does value transfer from the contract. Emits `Relinquishment`,
     ///          `Withdrawal`, and optionally `AuctionStart`.
-    function relinquish(uint256 orbId) external virtual onlyKeeper(orbId) onlyKeeperSolvent(orbId) {
+    function relinquish(uint256 orbId) external virtual onlyKeeper(orbId) {
+        if (purchaseOrder[orbId].purchaser != address(0)) {
+            revert NotPermitted();
+        }
         _settle(orbId);
 
         price[orbId] = 0;
@@ -706,8 +895,12 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     ///          (minus the royalty) go to the previous keeper.
     /// @dev     Emits `Foreclosure`, and optionally `AuctionStart`.
     function foreclose(uint256 orbId) external virtual onlyKeeperHeld(orbId) {
-        if (keeperSolvent(orbId)) {
+        if (_keeperSolvent(orbId)) {
             revert KeeperSolvent();
+        }
+
+        if (purchaseOrder[orbId].purchaser != address(0)) {
+            return finalizePurchase(orbId);
         }
 
         _settle(orbId);
@@ -742,7 +935,7 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         emit CreatorUpdate(orbId, newCreator_);
     }
 
-    function transfer(uint256 orbId, address newKeeper_) external virtual onlyKeeper(orbId) onlyKeeperSolvent(orbId) {
+    function transfer(uint256 orbId, address newKeeper_) external virtual onlyKeeper(orbId) {
         if (newKeeper_ == address(0) || newKeeper_ == address(this) || newKeeper_ == creator[orbId]) {
             revert AddressInvalid(newKeeper_);
         }

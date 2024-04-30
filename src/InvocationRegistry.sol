@@ -370,6 +370,11 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _invoke(uint256 orbId, address invoker_, bytes32 contentHash_) internal virtual {
+        (, address purchaser,,) = os.ownership().purchaseOrder(orbId);
+        if (purchaser != address(0)) {
+            revert NotInvokable();
+        }
+
         invocationCount[orbId] += 1;
         uint256 invocationId = invocationCount[orbId]; // starts at 1
 
