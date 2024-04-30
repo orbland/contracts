@@ -37,8 +37,9 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     // Purchasing Events
     event PriceUpdate(uint256 indexed orbId, address indexed keeper, uint256 newPrice);
     event Purchase(uint256 indexed orbId, address indexed seller, address indexed buyer, uint256 price);
-    event PurchaseFinalized(uint256 indexed orbId, address indexed seller, address indexed buyer, uint256 price);
-    event PurchaseCancelled(uint256 indexed orbId);
+    event PurchaseOrderPlacement(uint256 indexed orbId, address indexed purchaser, uint256 price);
+    event PurchaseFinalization(uint256 indexed orbId, address indexed seller, address indexed buyer, uint256 price);
+    event PurchaseCancellation(uint256 indexed orbId);
 
     // Orb Ownership Events
     event Foreclosure(uint256 indexed orbId, address indexed formerKeeper);
@@ -737,6 +738,7 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
             _addEarnings(_lastPurchaser, _priceDifference);
         }
         purchaseOrder[orbId] = PurchaseOrder(_purchaseIndex, _msgSender(), priceIfFinalized_, block.timestamp);
+        emit PurchaseOrderPlacement(orbId, _msgSender(), _purchasePrice);
     }
 
     /// @dev    Does not check if the new price differs from the previous price: no risk. Limits the price to
@@ -793,7 +795,7 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         _resetPurchaseOrder(orbId);
         keeper[orbId] = _lastPurchaser;
 
-        emit PurchaseFinalized(orbId, _keeper, _lastPurchaser, _purchaseFunds);
+        emit PurchaseFinalization(orbId, _keeper, _lastPurchaser, _purchaseFunds);
     }
 
     function _purchaseOrderFunds(uint256 orbId) internal view virtual returns (uint256) {
@@ -831,7 +833,7 @@ contract OwnershipRegistry is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         fundsOf[orbId][purchaseOrder[orbId].purchaser] += _purchaseOrderFunds(orbId);
         _resetPurchaseOrder(orbId);
 
-        emit PurchaseCancelled(orbId);
+        emit PurchaseCancellation(orbId);
     }
 
     function _resetPurchaseOrder(uint256 orbId) internal virtual {
