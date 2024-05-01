@@ -161,7 +161,7 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
                 uint256 reallocationRoyalty = _ownership.reallocationRoyalty(orbId);
 
                 uint256 _allocationMinimumRoyalty =
-                    (_ownership.keeperTax(orbId) * duration_) / _ownership.keeperTaxPeriod();
+                    (_ownership.keeperTax(orbId) * duration_) / os.keepership().keeperTaxPeriod();
                 uint256 _actualAllocationRoyalty =
                     _allocationMinimumRoyalty > reallocationRoyalty ? _allocationMinimumRoyalty : reallocationRoyalty;
 

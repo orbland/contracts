@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {OwnershipRegistry} from "./OwnershipRegistry.sol";
+import {HarbergerTaxKeepership} from "./HarbergerTaxKeepership.sol";
 import {InvocationRegistry} from "./InvocationRegistry.sol";
 import {PledgeLocker} from "./PledgeLocker.sol";
 import {InvocationTipJar} from "./InvocationTipJar.sol";
@@ -27,6 +28,8 @@ contract OrbSystem is OwnableUpgradeable, UUPSUpgradeable {
 
     /// Address of Ownership Registry contract
     address public ownershipRegistryAddress;
+    /// Address of Harberger Tax Keepership contract
+    address public harbergerTaxKeepershipAddress;
     /// Address of Invocation Registry contract
     address public invocationRegistryAddress;
     /// Address of Pledge Locker contract
@@ -64,18 +67,21 @@ contract OrbSystem is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @notice  Allows the owner address to set the contract addresses.
     /// @param   ownershipRegistryAddress_  Address of the Ownership Registry contract.
+    /// @param   harbergerTaxKeepershipAddress_  Address of the Harberger Tax Keepership contract.
     /// @param   invocationRegistryAddress_  Address of the Invocation Registry contract.
     /// @param   pledgeLockerAddress_  Address of the Pledge Locker contract.
     /// @param   invocationTipJarAddress_  Address of the Invocation Tip Jar contract.
     /// @param   invocationAccessVendorAddress_  Address of the Invocation Access Vendor contract.
     function setAddresses(
         address ownershipRegistryAddress_,
+        address harbergerTaxKeepershipAddress_,
         address invocationRegistryAddress_,
         address pledgeLockerAddress_,
         address invocationTipJarAddress_,
         address invocationAccessVendorAddress_
     ) external onlyOwner {
         ownershipRegistryAddress = ownershipRegistryAddress_;
+        harbergerTaxKeepershipAddress = harbergerTaxKeepershipAddress_;
         invocationRegistryAddress = invocationRegistryAddress_;
         pledgeLockerAddress = pledgeLockerAddress_;
         invocationTipJarAddress = invocationTipJarAddress_;
@@ -84,6 +90,10 @@ contract OrbSystem is OwnableUpgradeable, UUPSUpgradeable {
 
     function ownership() public view returns (OwnershipRegistry) {
         return OwnershipRegistry(ownershipRegistryAddress);
+    }
+
+    function keepership() public view returns (HarbergerTaxKeepership) {
+        return HarbergerTaxKeepership(harbergerTaxKeepershipAddress);
     }
 
     function invocations() public view returns (InvocationRegistry) {

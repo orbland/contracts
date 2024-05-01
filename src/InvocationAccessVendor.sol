@@ -92,7 +92,7 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
         if (os.ownership().keeper(orbId) == os.ownershipRegistryAddress()) {
             revert NotOwnedBySolventKeeper();
         }
-        if (!os.ownership().keeperSolvent(orbId)) {
+        if (!os.keepership().keeperSolvent(orbId)) {
             revert NotOwnedBySolventKeeper();
         }
 
@@ -107,7 +107,7 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
     /// @param   invocationId  The invocation id
     /// @param   price_        New price for the invocation
     function setPrice(uint256 orbId, uint256 invocationId, uint256 price_) external virtual {
-        if (_msgSender() != os.ownership().keeper(orbId) || !os.ownership().keeperSolvent(orbId)) {
+        if (_msgSender() != os.ownership().keeper(orbId) || !os.keepership().keeperSolvent(orbId)) {
             revert NotKeeper();
         }
         price[orbId][invocationId] = price_;

@@ -164,7 +164,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
             return false;
         }
 
-        if (os.ownership().keeperSolvent(orbId) == false) {
+        if (os.keepership().keeperSolvent(orbId) == false) {
             return false;
         }
 
@@ -191,7 +191,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
             return type(uint256).max;
         }
         // 1000 is used to avoid floating point arithmetic
-        uint256 invocationsInTaxPeriod = os.ownership().keeperTaxPeriod() * 1000 / invocationPeriod[orbId];
+        uint256 invocationsInTaxPeriod = os.keepership().keeperTaxPeriod() * 1000 / invocationPeriod[orbId];
         return (invocationsInTaxPeriod * os.feeDenominator()) / 1000;
 
         // test for 14 days invocation period:
@@ -210,7 +210,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         }
         // 1000 is used to avoid floating point arithmetic
         uint256 buybacksInTaxPeriod = keeperTax_ * 1000 / os.feeDenominator();
-        return os.ownership().keeperTaxPeriod() * 1000 / buybacksInTaxPeriod;
+        return os.keepership().keeperTaxPeriod() * 1000 / buybacksInTaxPeriod;
 
         // buybacksInTaxPeriod for 100% tax  = 100_00  * 1000 / 100_00 = 100_000_00  / 100_00 = 1000.00 or 1
         // buybacksInTaxPeriod for 200% tax  = 200_00  * 1000 / 100_00 = 200_000_00  / 100_00 = 2000.00 or 2
@@ -308,7 +308,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         // Must settle, so tax pausing is accounted for
-        os.ownership().settle(orbId);
+        os.keepership().settle(orbId);
 
         invocationPeriod[orbId] = invocationPeriod_;
         emit InvocationPeriodUpdate(orbId, invocationPeriod_);
@@ -370,7 +370,8 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _invoke(uint256 orbId, address invoker_, bytes32 contentHash_) internal virtual {
-        (, address purchaser,,) = os.ownership().purchaseOrder(orbId);
+        // Keeper shouldn't be able to invoke the Orb if there's a Purchase Order
+        (, address purchaser,,) = os.keepership().purchaseOrder(orbId);
         if (purchaser != address(0)) {
             revert NotInvokable();
         }
@@ -413,7 +414,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
             }
             if (os.ownership().keeper(orbId) != os.ownershipRegistryAddress()) {
                 // Settle to apply Harberger tax discount, and reset for potential discounts in the future
-                os.ownership().settle(orbId);
+                os.keepership().settle(orbId);
             }
         }
 
