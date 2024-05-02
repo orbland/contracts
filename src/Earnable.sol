@@ -18,12 +18,10 @@ abstract contract Earnable is ContextUpgradeable {
     /// - Harberger tax revenue.
     mapping(address user => uint256 earnings) public earningsOf;
 
-    function _platformFee() internal virtual returns (uint256);
-    function _feeDenominator() internal virtual returns (uint256);
     function _earningsWithdrawalAddress(address) internal virtual returns (address);
 
     function _addEarnings(address user, uint256 amount) internal {
-        uint256 platformShare = (amount * _platformFee()) / _feeDenominator();
+        uint256 platformShare = (amount * 5_00) / 100_00;
         uint256 userShare = amount - platformShare;
 
         earningsOf[address(0)] += platformShare;

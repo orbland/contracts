@@ -133,9 +133,9 @@ contract EnglishAuctionDelegation is DelegationMethod, OwnableUpgradeable, UUPSU
         uint256 _leadingBid = leadingBid[orbId];
 
         fundsOf[orbId][_leadingBidder] -= _leadingBid;
-        _addEarnings(os.ownership().keeper(orbId), _leadingBid);
+        _addEarnings(ownership.keeper(orbId), _leadingBid);
 
-        os.invocations().invokeDelegated(orbId, _leadingBidder, delegationHash[orbId]);
+        invocations.invokeDelegated(orbId, _leadingBidder, delegationHash[orbId]);
 
         emit DelegationFinalization(orbId, _leadingBidder, _leadingBid);
         _reset(orbId);
@@ -159,7 +159,7 @@ contract EnglishAuctionDelegation is DelegationMethod, OwnableUpgradeable, UUPSU
         if (minimumDuration_ == 0) {
             revert InvalidAuctionDuration(minimumDuration_);
         }
-        if (minimumDuration_ > os.invocations().invocationPeriod(orbId)) {
+        if (minimumDuration_ > invocations.invocationPeriod(orbId)) {
             revert InvalidAuctionDuration(minimumDuration_);
         }
 

@@ -7,6 +7,7 @@ import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol
 import {OrbSystem} from "./OrbSystem.sol";
 import {OwnershipRegistry} from "./OwnershipRegistry.sol";
 import {InvocationRegistry} from "./InvocationRegistry.sol";
+import {PledgeLocker} from "./PledgeLocker.sol";
 
 import {Earnable} from "./Earnable.sol";
 
@@ -52,11 +53,13 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     uint256 private constant _VERSION = 1;
     /// Harberger tax period: for how long the tax rate applies. Value: 1 year.
     uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
+    uint256 internal constant _FEE_DENOMINATOR = 100_00;
     /// Next purchase order price multiplier. Value: 1.2x of the previous price.
     uint256 internal constant _NEXT_PURCHASE_PRICE_MULTIPLIER = 120_00;
 
-    OrbSystem public os;
-    OwnershipRegistry public ownershipRegistry;
+    OrbSystem public orbSystem;
+    OwnershipRegistry public ownership;
+    InvocationRegistry public invocations;
 
     // Funds Variables
 
@@ -74,7 +77,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     mapping(uint256 orbId => PurchaseOrder) public purchaseOrder;
 
     modifier onlyOwnershipContract() {
-        if (_msgSender() != address(ownershipRegistry)) {
+        if (_msgSender() != address(ownership)) {
             revert NotPermitted();
         }
         _;
@@ -83,7 +86,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     /// @dev  Ensures that the caller owns the Orb. Should only be used in conjuction with `onlyKeeperHeld` or on
     ///       external functions, otherwise does not make sense.
     modifier onlyKeeper(uint256 orbId) virtual {
-        if (_msgSender() != ownershipRegistry.keeper(orbId)) {
+        if (_msgSender() != ownership.keeper(orbId)) {
             revert NotKeeper();
         }
         if (_keeperSolvent(orbId) == false) {
@@ -96,10 +99,10 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
 
     /// @dev  Ensures that the Orb belongs to someone (possibly creator), not the contract itself.
     modifier onlyKeeperHeld(uint256 orbId) virtual {
-        if (address(0) == ownershipRegistry.keeper(orbId)) {
+        if (address(0) == ownership.keeper(orbId)) {
             revert OrbDoesNotExist();
         }
-        if (address(this) == ownershipRegistry.keeper(orbId)) {
+        if (address(this) == ownership.keeper(orbId)) {
             revert ContractHoldsOrb();
         }
         _;
@@ -118,7 +121,12 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        os = OrbSystem(os_);
+        orbSystem = OrbSystem(os_);
+    }
+
+    function setSystemContracts() external {
+        ownership = OwnershipRegistry(orbSystem.ownershipRegistryAddress());
+        invocations = InvocationRegistry(orbSystem.invocationRegistryAddress());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +137,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     /// @dev     Deposits are not allowed for insolvent keepers to prevent cheating via front-running. If the user
     ///          becomes insolvent, the Orb will always be returned to the contract as the next step. Emits `Deposit`.
     function deposit(uint256 orbId) external payable virtual {
-        if (_msgSender() == ownershipRegistry.keeper(orbId) && !_keeperSolvent(orbId)) {
+        if (_msgSender() == ownership.keeper(orbId) && !_keeperSolvent(orbId)) {
             revert KeeperInsolvent();
         }
 
@@ -142,7 +150,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     /// @dev     Not allowed for the leading auction bidder.
     /// @param   amount_  The amount to withdraw.
     function withdraw(uint256 orbId, uint256 amount_) external virtual {
-        if (_msgSender() == ownershipRegistry.keeper(orbId)) {
+        if (_msgSender() == ownership.keeper(orbId)) {
             if (purchaseOrder[orbId].purchaser != address(0)) {
                 revert NotPermitted();
             }
@@ -155,7 +163,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     ///          is not zero, as they will become immediately foreclosable. To give up the Orb, call `relinquish()`.
     /// @dev     Not allowed for the leading auction bidder.
     function withdrawAll(uint256 orbId) external virtual {
-        if (_msgSender() == ownershipRegistry.keeper(orbId)) {
+        if (_msgSender() == ownership.keeper(orbId)) {
             if (purchaseOrder[orbId].purchaser != address(0)) {
                 revert NotPermitted();
             }
@@ -185,10 +193,6 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
         Address.sendValue(payable(recipient_), amount_);
     }
 
-    function keeperTaxPeriod() external pure virtual returns (uint256) {
-        return _KEEPER_TAX_PERIOD;
-    }
-
     function hasPurchaseOrder(uint256 orbId) external view virtual returns (bool) {
         return purchaseOrder[orbId].purchaser != address(0);
     }
@@ -206,10 +210,10 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     ///          creator holds the Orb.
     /// @return  isKeeperSolvent  If the current keeper is solvent.
     function _keeperSolvent(uint256 orbId) internal view virtual returns (bool) {
-        if (ownershipRegistry.creator(orbId) == ownershipRegistry.keeper(orbId)) {
+        if (ownership.creator(orbId) == ownership.keeper(orbId)) {
             return true;
         }
-        return fundsOf[orbId][ownershipRegistry.keeper(orbId)] >= _owedSinceLastSettlement(orbId);
+        return fundsOf[orbId][ownership.keeper(orbId)] >= _owedSinceLastSettlement(orbId);
     }
 
     function keeperSolvent(uint256 orbId) external view virtual returns (bool isKeeperSolvent) {
@@ -218,17 +222,16 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
 
     function _foreclosureTimestamp(uint256 orbId) internal view virtual returns (uint256) {
         if (
-            ownershipRegistry.creator(orbId) == ownershipRegistry.keeper(orbId)
-                || ownershipRegistry.keeper(orbId) == address(this) || ownershipRegistry.price(orbId) == 0
-                || ownershipRegistry.keeperTax(orbId) == 0
+            ownership.creator(orbId) == ownership.keeper(orbId) || ownership.keeper(orbId) == address(this)
+                || ownership.price(orbId) == 0 || ownership.keeperTax(orbId) == 0
         ) {
             return type(uint256).max;
         }
         uint256 owedFunds = _owedSinceLastSettlement(orbId);
-        uint256 availableFunds = fundsOf[orbId][ownershipRegistry.keeper(orbId)];
+        uint256 availableFunds = fundsOf[orbId][ownership.keeper(orbId)];
         uint256 effectiveFunds = availableFunds <= owedFunds ? 0 : availableFunds - owedFunds;
-        return effectiveFunds * _KEEPER_TAX_PERIOD * os.feeDenominator()
-            / (ownershipRegistry.price(orbId) * ownershipRegistry.keeperTax(orbId));
+        return effectiveFunds * _KEEPER_TAX_PERIOD * _FEE_DENOMINATOR
+            / (ownership.price(orbId) * ownership.keeperTax(orbId));
     }
 
     /// @dev     Calculates how much money Orb keeper owes Orb beneficiary. This amount would be transferred between
@@ -237,7 +240,6 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     /// @return  owedValue  Wei Orb keeper owes Orb beneficiary since the last settlement time.
     function _owedSinceLastSettlement(uint256 orbId) internal view virtual returns (uint256 owedValue) {
         uint256 taxedUntil = block.timestamp;
-        InvocationRegistry invocations = os.invocations();
 
         // Settles during response, so we only need to account for pause if an invocation has no response
         if (invocations.hasUnrespondedInvocation(orbId)) {
@@ -249,8 +251,8 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
         }
         uint256 secondsSinceLastSettlement =
             taxedUntil > lastSettlementTime[orbId] ? taxedUntil - lastSettlementTime[orbId] : 0;
-        return (ownershipRegistry.price(orbId) * ownershipRegistry.keeperTax(orbId) * secondsSinceLastSettlement)
-            / (_KEEPER_TAX_PERIOD * os.feeDenominator());
+        return (ownership.price(orbId) * ownership.keeperTax(orbId) * secondsSinceLastSettlement)
+            / (_KEEPER_TAX_PERIOD * _FEE_DENOMINATOR);
     }
 
     /// @dev  Keeper might owe more than they have funds available: it means that the keeper is foreclosable.
@@ -258,8 +260,8 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     ///       the creator holds the Orb, but always updates `lastSettlementTime`. Should never be called if Orb is
     ///       owned by the contract. Emits `Settlement`.
     function _settle(uint256 orbId) internal virtual {
-        address _keeper = ownershipRegistry.keeper(orbId);
-        address _creator = ownershipRegistry.creator(orbId);
+        address _keeper = ownership.keeper(orbId);
+        address _creator = ownership.creator(orbId);
 
         if (_creator == _keeper) {
             lastSettlementTime[orbId] = block.timestamp;
@@ -307,8 +309,8 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
 
         _settle(orbId);
 
-        address _keeper = ownershipRegistry.keeper(orbId);
-        address _creator = ownershipRegistry.creator(orbId);
+        address _keeper = ownership.keeper(orbId);
+        address _creator = ownership.creator(orbId);
         // how much you have to pay now:
         uint256 _currentPrice = _nextPurchaseOrderPrice(orbId);
         // might be 0 if there isn't a purchase order:
@@ -338,12 +340,12 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
             _resetPurchaseOrder(orbId);
         }
         if (_creator == _keeper) {
-            os.invocations().initializeOrbInvocationPeriod(orbId);
+            invocations.initializeOrbInvocationPeriod(orbId);
             // if there was a purchase order, it should get the _purchaseOrderFunds
             // if not, it should get keeper price
             _addEarnings(_creator, _keeperEarnings);
         } else {
-            uint256 royaltyShare = (_keeperEarnings * ownershipRegistry.purchaseRoyalty(orbId)) / os.feeDenominator();
+            uint256 royaltyShare = (_keeperEarnings * ownership.purchaseRoyalty(orbId)) / _FEE_DENOMINATOR;
             _addEarnings(_creator, royaltyShare);
             _addEarnings(_keeper, _keeperEarnings - royaltyShare);
         }
@@ -352,26 +354,26 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
 
         emit Purchase(orbId, _keeper, _msgSender(), _currentPrice);
 
-        ownershipRegistry.setKeeper(orbId, _msgSender());
+        ownership.setKeeper(orbId, _msgSender());
     }
 
     function _setPrice(uint256 orbId, uint256 newPrice_) internal virtual {
-        ownershipRegistry.setPriceInternal(orbId, newPrice_);
+        ownership.setPriceInternal(orbId, newPrice_);
     }
 
     function _nextPurchaseOrderPrice(uint256 orbId) internal view virtual returns (uint256) {
         if (purchaseOrder[orbId].purchaser != address(0)) {
-            return ownershipRegistry.price(orbId)
-                * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** (purchaseOrder[orbId].index + 1)) / os.feeDenominator();
+            return ownership.price(orbId) * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** (purchaseOrder[orbId].index + 1))
+                / _FEE_DENOMINATOR;
         }
-        return ownershipRegistry.price(orbId);
+        return ownership.price(orbId);
     }
 
     function _lastPurchaseOrderPrice(uint256 orbId) internal view virtual returns (uint256) {
         if (purchaseOrder[orbId].purchaser != address(0)) {
             // uses index before updating during purchase order
-            return ownershipRegistry.price(orbId) * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** purchaseOrder[orbId].index)
-                / os.feeDenominator();
+            return ownership.price(orbId) * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** purchaseOrder[orbId].index)
+                / _FEE_DENOMINATOR;
         }
         return 0;
     }
@@ -382,13 +384,13 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
 
     function placePurchaseOrder(uint256 orbId, uint256 priceIfFinalized_) external payable virtual {
         // - Only allowed if Orb is charging -- otherwise please use `purchase()`
-        if (os.invocations().isInvokable(orbId)) {
+        if (invocations.isInvokable(orbId)) {
             revert OrbInvokable();
         }
 
         // Only allowed if Keeper has enough funds to go until Orb is invokable again
-        uint256 lastInvocationTime = os.invocations().lastInvocationTime(orbId);
-        uint256 invocationPeriod = os.invocations().invocationPeriod(orbId);
+        uint256 lastInvocationTime = invocations.lastInvocationTime(orbId);
+        uint256 invocationPeriod = invocations.invocationPeriod(orbId);
         if (_foreclosureTimestamp(orbId) < lastInvocationTime + invocationPeriod) {
             revert InsufficientKeeperFunds();
         }
@@ -426,34 +428,34 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
         if (purchaseOrder[orbId].purchaser == address(0)) {
             revert NoPurchaseOrder();
         }
-        if (block.timestamp > purchaseOrder[orbId].timestamp + os.invocations().invocationPeriod(orbId) * 2) {
+        if (block.timestamp > purchaseOrder[orbId].timestamp + invocations.invocationPeriod(orbId) * 2) {
             revert PurchaseOrderExpired();
         }
-        if (!os.invocations().isInvokable(orbId)) {
+        if (!invocations.isInvokable(orbId)) {
             revert OrbNotInvokable();
         }
 
         _settle(orbId);
 
-        address _keeper = ownershipRegistry.keeper(orbId);
-        address _creator = ownershipRegistry.creator(orbId);
+        address _keeper = ownership.keeper(orbId);
+        address _creator = ownership.creator(orbId);
 
         // might be 0 if there isn't a purchase order:
         uint256 _purchaseFunds = _purchaseOrderFunds(orbId);
         address _lastPurchaser = purchaseOrder[orbId].purchaser;
 
         if (_creator == _keeper) {
-            os.invocations().initializeOrbInvocationPeriod(orbId);
+            invocations.initializeOrbInvocationPeriod(orbId);
             _addEarnings(_creator, _purchaseFunds);
         } else {
-            uint256 royaltyShare = (_purchaseFunds * ownershipRegistry.purchaseRoyalty(orbId)) / os.feeDenominator();
+            uint256 royaltyShare = (_purchaseFunds * ownership.purchaseRoyalty(orbId)) / _FEE_DENOMINATOR;
             _addEarnings(_creator, royaltyShare);
             _addEarnings(_keeper, _purchaseFunds - royaltyShare);
         }
 
         _setPrice(orbId, purchaseOrder[orbId].price);
         _resetPurchaseOrder(orbId);
-        ownershipRegistry.setKeeper(orbId, _lastPurchaser);
+        ownership.setKeeper(orbId, _lastPurchaser);
 
         emit PurchaseFinalization(orbId, _keeper, _lastPurchaser, _purchaseFunds);
     }
@@ -468,8 +470,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
         // after third: 2nd purchase price (index == 2)
         uint256 purchaseFundsIndex = purchaseOrder[orbId].index > 1 ? purchaseOrder[orbId].index - 1 : 0;
 
-        return ownershipRegistry.price(orbId) * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** purchaseFundsIndex)
-            / os.feeDenominator();
+        return ownership.price(orbId) * (_NEXT_PURCHASE_PRICE_MULTIPLIER ** purchaseFundsIndex) / _FEE_DENOMINATOR;
     }
 
     function cancelPurchase(uint256 orbId) public virtual {
@@ -477,12 +478,13 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
         if (purchaseOrder[orbId].purchaser == address(0)) {
             revert NoPurchaseOrder();
         }
-        if (_msgSender() == os.pledgeLockerAddress()) {
+        address pledges = orbSystem.pledgeLockerAddress();
+        if (_msgSender() == pledges) {
             _canCancel = true;
         }
         if (
-            block.timestamp > purchaseOrder[orbId].timestamp + os.invocations().invocationPeriod(orbId) * 2
-                && !os.invocations().isInvokable(orbId) && !os.pledges().hasClaimablePledge(orbId)
+            block.timestamp > purchaseOrder[orbId].timestamp + invocations.invocationPeriod(orbId) * 2
+                && !invocations.isInvokable(orbId) && !PledgeLocker(pledges).hasClaimablePledge(orbId)
         ) {
             _canCancel = true;
         }
@@ -529,15 +531,7 @@ contract HarbergerTaxKeepership is Earnable, OwnableUpgradeable, UUPSUpgradeable
     // solhint-disable no-empty-blocks
     function _authorizeUpgrade(address newImplementation_) internal virtual override onlyOwner {}
 
-    function _platformFee() internal virtual override returns (uint256) {
-        return os.platformFee();
-    }
-
-    function _feeDenominator() internal virtual override returns (uint256) {
-        return os.feeDenominator();
-    }
-
     function _earningsWithdrawalAddress(address user) internal virtual override returns (address) {
-        return os.earningsWithdrawalAddress(user);
+        return orbSystem.earningsWithdrawalAddress(user);
     }
 }

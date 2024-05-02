@@ -7,8 +7,10 @@ import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
-import {InvocationRegistry} from "./InvocationRegistry.sol";
 import {OrbSystem} from "./OrbSystem.sol";
+import {OwnershipRegistry} from "./OwnershipRegistry.sol";
+import {HarbergerTaxKeepership} from "./HarbergerTaxKeepership.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
 
 /// @title   Orb Pledge Locker
 /// @author  Jonas Lekevicius
@@ -80,7 +82,8 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     // STATE
 
     /// Addresses of all system contracts
-    OrbSystem public os;
+    OrbSystem public orbSystem;
+    InvocationRegistry public invocations;
 
     /// Honored Until: timestamp until which the Orb Oath is honored for the keeper.
     mapping(uint256 orbId => uint256 pledgedUntil) public pledgedUntil;
@@ -105,11 +108,15 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        os = OrbSystem(os_);
+        orbSystem = OrbSystem(os_);
+    }
+
+    function setSystemContracts() external {
+        invocations = InvocationRegistry(orbSystem.invocationRegistryAddress());
     }
 
     modifier onlyCreator(uint256 orbId) {
-        if (_msgSender() != os.ownership().creator(orbId)) {
+        if (_msgSender() != OwnershipRegistry(orbSystem.ownershipRegistryAddress()).creator(orbId)) {
             revert NotCreator();
         }
         _;
@@ -123,7 +130,7 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     modifier onlyCreatorControlled(uint256 orbId) {
-        if (os.isCreatorControlled(orbId) == false) {
+        if (orbSystem.isCreatorControlled(orbId) == false) {
             revert NotCreatorControlled();
         }
         _;
@@ -147,9 +154,7 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _isClaimable(uint256 orbId) internal view returns (bool) {
-        InvocationRegistry _invocations = os.invocations();
-
-        uint256 lastInvocationTime = _invocations.lastInvocationTime(orbId);
+        uint256 lastInvocationTime = invocations.lastInvocationTime(orbId);
         // The invocation must have been made before "pledged until" date expired.
         // So, if made after, pledge is not claimable.
         // If pledgedUntil is 0, then this is an early return.
@@ -161,11 +166,11 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
         // If there is no late response, pledge is not claimable.
         // Note that lastInvocationResponseWasLate gets reset after a new invocation is made, so we are not letting the
         // Keeper to invoke again before claiming the pledge.
-        if (_invocations.hasLateResponse(orbId) == false) {
+        if (invocations.hasLateResponse(orbId) == false) {
             return false;
         }
 
-        uint256 invocationPeriod = _invocations.invocationPeriod(orbId);
+        uint256 invocationPeriod = invocations.invocationPeriod(orbId);
         // Claiming window of one additional invocation period mustn’t have expired
         // (if invocation period is 7 days, then pledge is claimable on days 7th to 14th since invocation was made)
         if (block.timestamp > lastInvocationTime + invocationPeriod * 2) {
@@ -241,7 +246,7 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _pledgeUntil(uint256 orbId, uint256 pledgedUntil_) internal virtual {
-        if (os.isCreatorControlled(orbId)) {
+        if (orbSystem.isCreatorControlled(orbId)) {
             // If creator controlled, can be zero or anything in the future
             if (pledgedUntil_ > 0 && pledgedUntil_ < block.timestamp) {
                 revert PledgedUntilInThePast();
@@ -328,17 +333,18 @@ contract PledgeLocker is OwnableUpgradeable, UUPSUpgradeable {
             revert NoClaimablePledge();
         }
 
-        uint256 lastInvocationId = os.invocations().invocationCount(orbId);
-        (address _invoker,,) = os.invocations().invocations(orbId, lastInvocationId);
+        uint256 lastInvocationId = invocations.invocationCount(orbId);
+        (address _invoker,,) = invocations.invocations(orbId, lastInvocationId);
         if (_msgSender() != _invoker) {
             revert NotInvoker();
         }
 
         _transferPledgeTo(orbId, _invoker);
 
-        (, address purchaser,,) = os.keepership().purchaseOrder(orbId);
+        HarbergerTaxKeepership keepership = HarbergerTaxKeepership(orbSystem.harbergerTaxKeepershipAddress());
+        (, address purchaser,,) = keepership.purchaseOrder(orbId);
         if (purchaser != address(0)) {
-            os.keepership().cancelPurchase(orbId);
+            keepership.cancelPurchase(orbId);
         }
 
         emit PledgeClaimed(orbId, _invoker);

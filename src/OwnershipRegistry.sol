@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 import {OrbSystem} from "./OrbSystem.sol";
@@ -31,12 +30,6 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event Recall(uint256 indexed orbId, address indexed formerKeeper);
     event OrbTransfer(uint256 indexed orbId, address indexed formerKeeper, address indexed newKeeper);
 
-    // Allocation
-    event AllocationStart(uint256 indexed orbId, address indexed allocationContract, address indexed beneficiary);
-    event AllocationFinalization(
-        uint256 indexed orbId, address indexed beneficiary, address indexed recipient, uint256 proceeds
-    );
-
     // Orb Parameter Events
     event FeesUpdate(
         uint256 indexed orbId, uint256 newKeeperTax, uint256 newPurchaseRoyalty, uint256 newReallocationRoyalty
@@ -58,24 +51,15 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
     error ContractDoesNotHoldOrb();
     error KeeperDoesNotHoldOrb();
     error CreatorDoesNotControlOrb();
-    error AlreadyKeeper();
     error AddressUnauthorized(address unauthorizedAddress);
-    error OrbNotReclaimable();
     error NotAllocationContract();
     error Unauthorized();
     error OrbDoesNotExist();
     error AddressInvalid(address invalidAddress);
     error NotPermitted();
-    error OrbInvokable();
-    error InsufficientKeeperFunds();
-    error AlreadyLastPurchaser();
-    error NoPurchaseOrder();
-    error PurchaseOrderExpired();
-    error OrbNotInvokable();
 
     // Allocation Errors
     error AllocationActive();
-    error UnrespondedInvocationExists();
 
     // Funding Errors
     error KeeperSolvent();
@@ -99,11 +83,13 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
     uint256 private constant _VERSION = 1;
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
+    uint256 internal constant _FEE_DENOMINATOR = 100_00;
 
     // STATE
 
-    OrbSystem public os;
+    OrbSystem public orbSystem;
     HarbergerTaxKeepership public keepership;
+    InvocationRegistry public invocations;
 
     /// Orb count: how many Orbs have been created.
     uint256 public orbCount;
@@ -182,14 +168,14 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     modifier onlyCreatorControlled(uint256 orbId) virtual {
-        if (os.isCreatorControlled(orbId) == false) {
+        if (orbSystem.isCreatorControlled(orbId) == false) {
             revert CreatorDoesNotControlOrb();
         }
         _;
     }
 
     modifier onlyKeepership() virtual {
-        if (_msgSender() != os.harbergerTaxKeepershipAddress()) {
+        if (_msgSender() != orbSystem.harbergerTaxKeepershipAddress()) {
             revert NotPermitted();
         }
         _;
@@ -208,7 +194,12 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        os = OrbSystem(os_);
+        orbSystem = OrbSystem(os_);
+    }
+
+    function setSystemContracts() external {
+        keepership = HarbergerTaxKeepership(orbSystem.harbergerTaxKeepershipAddress());
+        invocations = InvocationRegistry(orbSystem.invocationRegistryAddress());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +222,7 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         address signingAddress = ECDSA.recover(
             keccak256(abi.encodePacked(_msgSender(), allocationContract_, orbId)), authorizationSignature_
         );
-        if (signingAddress != os.platformSignerAddress()) {
+        if (signingAddress != orbSystem.platformSignerAddress()) {
             revert Unauthorized();
         }
 
@@ -245,7 +236,7 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         allocationContract[orbId] = allocationContract_;
         reallocationContract[orbId] = allocationContract_;
         IAllocationMethod(allocationContract_).initializeOrb(orbId);
-        os.invocations().initializeOrb(orbId);
+        invocations.initializeOrb(orbId);
         // Pledge Locker does not need to be initialized.
 
         orbCount++;
@@ -272,14 +263,14 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         if (keeper[orbId] != address(this)) {
             keepership.settle(orbId);
         }
-        if (purchaseRoyalty_ > os.feeDenominator()) {
-            revert RoyaltyNumeratorExceedsDenominator(purchaseRoyalty_, os.feeDenominator());
+        if (purchaseRoyalty_ > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(purchaseRoyalty_, _FEE_DENOMINATOR);
         }
-        if (reallocationRoyalty_ > os.feeDenominator()) {
-            revert RoyaltyNumeratorExceedsDenominator(reallocationRoyalty_, os.feeDenominator());
+        if (reallocationRoyalty_ > _FEE_DENOMINATOR) {
+            revert RoyaltyNumeratorExceedsDenominator(reallocationRoyalty_, _FEE_DENOMINATOR);
         }
 
-        uint256 maximumKeeperTax = os.invocations().maximumKeeperTax(orbId);
+        uint256 maximumKeeperTax = invocations.maximumKeeperTax(orbId);
         if (keeperTax_ > maximumKeeperTax) {
             revert KeeperTaxTooHigh(keeperTax_, maximumKeeperTax);
         }
@@ -326,10 +317,13 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         ) {
             revert AllocationActive();
         }
-        if (os.allocationContractAuthorized(allocationContract_) == false) {
+        if (orbSystem.allocationContractAuthorized(allocationContract_) == false) {
             revert AddressUnauthorized(allocationContract_);
         }
-        if (reallocationContract_ != address(0) && os.allocationContractAuthorized(reallocationContract_) == false) {
+        if (
+            reallocationContract_ != address(0)
+                && orbSystem.allocationContractAuthorized(reallocationContract_) == false
+        ) {
             revert AddressUnauthorized(reallocationContract_);
         }
 
@@ -358,8 +352,6 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
         allocationBeneficiary[orbId] = _creator;
         allocation.start(orbId);
-
-        emit AllocationStart(orbId, allocationContract[orbId], _creator);
     }
 
     /// @notice  Finalizes the auction, transferring the winning bid to the beneficiary, and the Orb to the winner.
@@ -389,7 +381,7 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
             keepership.resetSettlementTime(orbId);
 
             if (allocationBeneficiary[orbId] == creator[orbId]) {
-                os.invocations().initializeOrbInvocationPeriod(orbId);
+                invocations.initializeOrbInvocationPeriod(orbId);
             }
 
             uint256 effectiveInitialPrice = initialPrice_ > minimumPrice[orbId] ? initialPrice_ : minimumPrice[orbId];
@@ -496,8 +488,6 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         if (creator[orbId] != _msgSender() && reallocation != address(0)) {
             allocationBeneficiary[orbId] = _msgSender();
             IAllocationMethod(reallocation).start(orbId);
-
-            emit AllocationStart(orbId, reallocation, _msgSender());
         }
 
         keepership.withdrawAllFor(orbId, _msgSender()); // TODO test that it works, might need to force it
@@ -533,8 +523,6 @@ contract OwnershipRegistry is OwnableUpgradeable, UUPSUpgradeable {
         if (reallocation != address(0)) {
             allocationBeneficiary[orbId] = _keeper;
             IAllocationMethod(reallocation).start(orbId);
-
-            emit AllocationStart(orbId, reallocation, _keeper);
         }
     }
 

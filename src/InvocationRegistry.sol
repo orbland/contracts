@@ -5,6 +5,10 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 import {OrbSystem} from "./OrbSystem.sol";
+import {OwnershipRegistry} from "./OwnershipRegistry.sol";
+import {HarbergerTaxKeepership} from "./HarbergerTaxKeepership.sol";
+import {PledgeLocker} from "./PledgeLocker.sol";
+import {InvocationTipJar} from "./InvocationTipJar.sol";
 import {IDelegationMethod} from "./delegation/IDelegationMethod.sol";
 
 /// Structs used to track invocation and response information: keccak256 content hash and block timestamp.
@@ -78,9 +82,15 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     uint256 private constant _VERSION = 1;
     /// Maximum invocationPeriod duration, to prevent potential underflows. Value: 10 years.
     uint256 internal constant _INVOCATION_PERIOD_MAXIMUM_DURATION = 3650 days;
+    uint256 internal constant _FEE_DENOMINATOR = 100_00;
+    uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
 
     /// Addresses of all system contracts
-    OrbSystem public os;
+    OrbSystem public orbSystem;
+    OwnershipRegistry public ownership;
+    HarbergerTaxKeepership public keepership;
+    PledgeLocker public pledges;
+    InvocationTipJar public tips;
 
     /// Count of invocations made: used to calculate invocationId of the next invocation.
     /// Also, id of the last invocation.
@@ -116,7 +126,14 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        os = OrbSystem(os_);
+        orbSystem = OrbSystem(os_);
+    }
+
+    function setSystemContracts() external {
+        ownership = OwnershipRegistry(orbSystem.ownershipRegistryAddress());
+        keepership = HarbergerTaxKeepership(orbSystem.harbergerTaxKeepershipAddress());
+        pledges = PledgeLocker(orbSystem.pledgeLockerAddress());
+        tips = InvocationTipJar(orbSystem.invocationTipJarAddress());
     }
 
     function hasUnrespondedInvocation(uint256 orbId) external view virtual returns (bool) {
@@ -125,10 +142,6 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     function _hasUnrespondedInvocation(uint256 orbId) internal view virtual returns (bool) {
         return responses[orbId][invocationCount[orbId]].timestamp == 0;
-    }
-
-    function isKeeperInvokable(uint256 orbId) external view virtual returns (bool) {
-        return _isKeeperInvokable(orbId);
     }
 
     function _isKeeperInvokable(uint256 orbId) internal view virtual returns (bool) {
@@ -152,19 +165,19 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         // Can't be invoked if there is a claimable pledge - claim it before invoking!
-        if (os.pledges().hasClaimablePledge(orbId)) {
+        if (pledges.hasClaimablePledge(orbId)) {
             return false;
         }
 
-        address _keeper = os.ownership().keeper(orbId);
-        if (os.ownership().creator(orbId) == _keeper) {
+        address _keeper = ownership.keeper(orbId);
+        if (ownership.creator(orbId) == _keeper) {
             return true;
         }
-        if (os.ownershipRegistryAddress() == _keeper) {
+        if (address(ownership) == _keeper) {
             return false;
         }
 
-        if (os.keepership().keeperSolvent(orbId) == false) {
+        if (keepership.keeperSolvent(orbId) == false) {
             return false;
         }
 
@@ -191,8 +204,8 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
             return type(uint256).max;
         }
         // 1000 is used to avoid floating point arithmetic
-        uint256 invocationsInTaxPeriod = os.keepership().keeperTaxPeriod() * 1000 / invocationPeriod[orbId];
-        return (invocationsInTaxPeriod * os.feeDenominator()) / 1000;
+        uint256 invocationsInTaxPeriod = _KEEPER_TAX_PERIOD * 1000 / invocationPeriod[orbId];
+        return (invocationsInTaxPeriod * _FEE_DENOMINATOR) / 1000;
 
         // test for 14 days invocation period:
         // invocationsInTaxPeriod = 31536000 * 1000 / (14 * 86400) = 31536000000 / 1209600 = 26071
@@ -204,13 +217,13 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function _maximumInvocationPeriod(uint256 orbId) internal virtual returns (uint256) {
-        uint256 keeperTax_ = os.ownership().keeperTax(orbId);
+        uint256 keeperTax_ = ownership.keeperTax(orbId);
         if (keeperTax_ == 0) {
             return type(uint256).max;
         }
         // 1000 is used to avoid floating point arithmetic
-        uint256 buybacksInTaxPeriod = keeperTax_ * 1000 / os.feeDenominator();
-        return os.keepership().keeperTaxPeriod() * 1000 / buybacksInTaxPeriod;
+        uint256 buybacksInTaxPeriod = keeperTax_ * 1000 / _FEE_DENOMINATOR;
+        return _KEEPER_TAX_PERIOD * 1000 / buybacksInTaxPeriod;
 
         // buybacksInTaxPeriod for 100% tax  = 100_00  * 1000 / 100_00 = 100_000_00  / 100_00 = 1000.00 or 1
         // buybacksInTaxPeriod for 200% tax  = 200_00  * 1000 / 100_00 = 200_000_00  / 100_00 = 2000.00 or 2
@@ -228,7 +241,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev    Ensures that the caller owns the Orb.
     /// @param  orbId  Address of the Orb.
     modifier onlyKeeper(uint256 orbId) virtual {
-        if (_msgSender() != os.ownership().keeper(orbId)) {
+        if (_msgSender() != ownership.keeper(orbId)) {
             revert NotKeeper();
         }
         _;
@@ -244,7 +257,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     /// @dev    Ensures that the caller is the creator of the Orb.
     /// @param  orbId  Address of the Orb.
     modifier onlyCreator(uint256 orbId) virtual {
-        if (_msgSender() != os.ownership().creator(orbId)) {
+        if (_msgSender() != ownership.creator(orbId)) {
             revert NotCreator();
         }
         _;
@@ -255,7 +268,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     function initializeOrb(uint256 orbId) public {
-        if (_msgSender() != os.ownershipRegistryAddress()) {
+        if (_msgSender() != address(ownership)) {
             revert NotOwnershipRegistryContract();
         }
         invocationPeriod[orbId] = 7 days;
@@ -267,7 +280,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
             revert DelegationActive();
         }
 
-        if (os.delegationContractAuthorized(delegationContract_) == false) {
+        if (orbSystem.delegationContractAuthorized(delegationContract_) == false) {
             revert ContractNotAuthorized(delegationContract_);
         }
 
@@ -287,15 +300,13 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationPeriod_  New invocationPeriod in seconds. Cannot be longer than
     ///          `_INVOCATION_PERIOD_MAXIMUM_DURATION`.
     function setInvocationPeriod(uint256 orbId, uint256 invocationPeriod_) external virtual onlyCreator(orbId) {
-        if (os.isCreatorControlled(orbId) == false) {
+        if (orbSystem.isCreatorControlled(orbId) == false) {
             revert CreatorDoesNotControlOrb();
         }
 
         if (
-            (
-                os.ownership().keeper(orbId) == os.ownershipRegistryAddress()
-                    || os.ownership().keeper(orbId) == os.ownership().creator(orbId)
-            ) && _hasUnrespondedInvocation(orbId)
+            (ownership.keeper(orbId) == address(ownership) || ownership.keeper(orbId) == ownership.creator(orbId))
+                && _hasUnrespondedInvocation(orbId)
         ) {
             revert HasUnrespondedInvocation();
         }
@@ -308,14 +319,14 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         // Must settle, so tax pausing is accounted for
-        os.keepership().settle(orbId);
+        keepership.settle(orbId);
 
         invocationPeriod[orbId] = invocationPeriod_;
         emit InvocationPeriodUpdate(orbId, invocationPeriod_);
     }
 
     function initializeOrbInvocationPeriod(uint256 orbId) external virtual {
-        if (_msgSender() != os.ownershipRegistryAddress()) {
+        if (_msgSender() != address(ownership) && _msgSender() != address(keepership)) {
             revert NotOwnershipRegistryContract();
         }
 
@@ -350,7 +361,7 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         onlyKeeperInvokable(orbId)
     {
         _invoke(orbId, _msgSender(), contentHash_);
-        os.tips().claim(orbId, invocationCount[orbId], minimumTipTotal_);
+        tips.claim(orbId, invocationCount[orbId], minimumTipTotal_);
     }
 
     function invokeDelegated(uint256 orbId, address invoker_, bytes32 contentHash_) external virtual {
@@ -364,14 +375,14 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
         _invoke(orbId, invoker_, contentHash_);
 
-        if (os.tips().totalTips(orbId, contentHash_) > 0) {
-            os.tips().claim(orbId, invocationCount[orbId], 0);
+        if (tips.totalTips(orbId, contentHash_) > 0) {
+            tips.claim(orbId, invocationCount[orbId], 0);
         }
     }
 
     function _invoke(uint256 orbId, address invoker_, bytes32 contentHash_) internal virtual {
         // Keeper shouldn't be able to invoke the Orb if there's a Purchase Order
-        (, address purchaser,,) = os.keepership().purchaseOrder(orbId);
+        (, address purchaser,,) = keepership.purchaseOrder(orbId);
         if (purchaser != address(0)) {
             revert NotInvokable();
         }
@@ -409,12 +420,12 @@ contract InvocationRegistry is OwnableUpgradeable, UUPSUpgradeable {
         }
 
         if (block.timestamp > lastInvocationTime[orbId] + invocationPeriod[orbId]) {
-            if (os.pledges().hasPledge(orbId)) {
+            if (pledges.hasPledge(orbId)) {
                 lastInvocationResponseWasLate[orbId] = true;
             }
-            if (os.ownership().keeper(orbId) != os.ownershipRegistryAddress()) {
+            if (ownership.keeper(orbId) != address(ownership)) {
                 // Settle to apply Harberger tax discount, and reset for potential discounts in the future
-                os.keepership().settle(orbId);
+                keepership.settle(orbId);
             }
         }
 

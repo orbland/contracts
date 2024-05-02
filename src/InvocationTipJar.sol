@@ -6,6 +6,8 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 import {OrbSystem} from "./OrbSystem.sol";
+import {OwnershipRegistry} from "./OwnershipRegistry.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
 
 /// @title   Orb Invocation Tip Jar - A contract for suggesting Orb invocations and tipping Orb keepers
 /// @author  Jonas Lekevicius
@@ -33,7 +35,7 @@ contract InvocationTipJar is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(uint256 orbId => uint256) public minimumTip;
 
     /// Addresses of all system contracts
-    OrbSystem public os;
+    OrbSystem public orbSystem;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
@@ -71,7 +73,7 @@ contract InvocationTipJar is Earnable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        os = OrbSystem(os_);
+        orbSystem = OrbSystem(os_);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +109,8 @@ contract InvocationTipJar is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     /// @param   invocationId     The invocation id to check
     /// @param   minimumTipTotal  The minimum tip value to claim (reverts if the total tips are less than this value)
     function claim(uint256 orbId, uint256 invocationId, uint256 minimumTipTotal) external virtual {
-        (address invoker, bytes32 contentHash,) = os.invocations().invocations(orbId, invocationId);
+        (address invoker, bytes32 contentHash,) =
+            InvocationRegistry(orbSystem.invocationRegistryAddress()).invocations(orbId, invocationId);
 
         if (contentHash == bytes32(0)) {
             revert InvocationNotInvoked();
@@ -170,7 +173,7 @@ contract InvocationTipJar is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     /// @param   orbId              The address of the Orb
     /// @param   minimumTip_  The minimum tip value
     function setMinimumTip(uint256 orbId, uint256 minimumTip_) external virtual {
-        if (_msgSender() != os.ownership().keeper(orbId)) {
+        if (_msgSender() != OwnershipRegistry(orbSystem.ownershipRegistryAddress()).keeper(orbId)) {
             revert NotKeeper();
         }
         minimumTip[orbId] = minimumTip_;
@@ -192,15 +195,7 @@ contract InvocationTipJar is Earnable, OwnableUpgradeable, UUPSUpgradeable {
     // solhint-disable no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
-    function _platformFee() internal virtual override returns (uint256) {
-        return os.platformFee();
-    }
-
-    function _feeDenominator() internal virtual override returns (uint256) {
-        return os.feeDenominator();
-    }
-
     function _earningsWithdrawalAddress(address user) internal virtual override returns (address) {
-        return os.earningsWithdrawalAddress(user);
+        return orbSystem.earningsWithdrawalAddress(user);
     }
 }

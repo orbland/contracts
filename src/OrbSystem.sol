@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {OwnershipRegistry} from "./OwnershipRegistry.sol";
-import {HarbergerTaxKeepership} from "./HarbergerTaxKeepership.sol";
-import {InvocationRegistry} from "./InvocationRegistry.sol";
-import {PledgeLocker} from "./PledgeLocker.sol";
-import {InvocationTipJar} from "./InvocationTipJar.sol";
-import {InvocationAccessVendor} from "./InvocationAccessVendor.sol";
-
 import {IAllocationMethod} from "./allocation/IAllocationMethod.sol";
 
 import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+import {OwnershipRegistry} from "./OwnershipRegistry.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
+import {PledgeLocker} from "./PledgeLocker.sol";
 
 contract OrbSystem is OwnableUpgradeable, UUPSUpgradeable {
     event AllocationContractAuthorization(address indexed contractAddress, bool indexed authorized);
@@ -86,34 +83,6 @@ contract OrbSystem is OwnableUpgradeable, UUPSUpgradeable {
         pledgeLockerAddress = pledgeLockerAddress_;
         invocationTipJarAddress = invocationTipJarAddress_;
         invocationAccessVendorAddress = invocationAccessVendorAddress_;
-    }
-
-    function ownership() public view returns (OwnershipRegistry) {
-        return OwnershipRegistry(ownershipRegistryAddress);
-    }
-
-    function keepership() public view returns (HarbergerTaxKeepership) {
-        return HarbergerTaxKeepership(harbergerTaxKeepershipAddress);
-    }
-
-    function invocations() public view returns (InvocationRegistry) {
-        return InvocationRegistry(invocationRegistryAddress);
-    }
-
-    function pledges() public view returns (PledgeLocker) {
-        return PledgeLocker(pledgeLockerAddress);
-    }
-
-    function tips() public view returns (InvocationTipJar) {
-        return InvocationTipJar(invocationTipJarAddress);
-    }
-
-    function accessVendor() public view returns (InvocationAccessVendor) {
-        return InvocationAccessVendor(invocationAccessVendorAddress);
-    }
-
-    function feeDenominator() public pure returns (uint256) {
-        return _FEE_DENOMINATOR;
     }
 
     function platformFee() public pure returns (uint256) {
