@@ -28,6 +28,7 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
 
     /// Version. Value: 1.
     uint256 private constant _VERSION = 1;
+    uint256 internal constant _FEE_DENOMINATOR = 100_00;
 
     // Auction State Variables
 
@@ -61,7 +62,7 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
     mapping(uint256 orbId => uint256) public initialPrice;
 
     function initializeOrb(uint256 orbId) public override onlyOwnershipRegistry {
-        if (_msgSender() != os.ownershipRegistryAddress()) {
+        if (_msgSender() != orbSystem.ownershipRegistryAddress()) {
             revert NotOwnershipRegistryContract();
         }
         if (minimumDuration[orbId] > 0) {
@@ -87,7 +88,7 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
     }
 
     function _isReallocation(uint256 orbId) internal view virtual override returns (bool) {
-        OwnershipRegistry _ownership = OwnershipRegistry(os.ownershipRegistryAddress());
+        OwnershipRegistry _ownership = OwnershipRegistry(orbSystem.ownershipRegistryAddress());
         return _ownership.allocationBeneficiary(orbId) != _ownership.creator(orbId);
     }
 
@@ -96,7 +97,7 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
     ///          after auction is finalized. Emits `AuctionStart`.
     ///          V2 adds `onlyHonored` modifier to require active Oath to start auction.
     function start(uint256 orbId) external virtual override onlyOwnershipRegistry onlyInactive(orbId) {
-        if (os.ownershipRegistryAddress() != os.ownership().keeper(orbId)) {
+        if (orbSystem.ownershipRegistryAddress() != ownership.keeper(orbId)) {
             revert ContractDoesNotHoldOrb();
         }
 
@@ -144,7 +145,7 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
             revert AllocationNotActive();
         }
 
-        OwnershipRegistry _ownership = OwnershipRegistry(os.ownershipRegistryAddress());
+        OwnershipRegistry _ownership = OwnershipRegistry(orbSystem.ownershipRegistryAddress());
         address _leadingBidder = leadingBidder[orbId];
         uint256 _leadingBid = leadingBid[orbId];
         uint256 _leadingBidderFunds = 0;
@@ -160,18 +161,17 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
                 uint256 duration_ = endTime[orbId] - startTime[orbId];
                 uint256 reallocationRoyalty = _ownership.reallocationRoyalty(orbId);
 
-                uint256 _allocationMinimumRoyalty =
-                    (_ownership.keeperTax(orbId) * duration_) / _ownership.keeperTaxPeriod();
+                uint256 _allocationMinimumRoyalty = (_ownership.keeperTax(orbId) * duration_) / _KEEPER_TAX_PERIOD;
                 uint256 _actualAllocationRoyalty =
                     _allocationMinimumRoyalty > reallocationRoyalty ? _allocationMinimumRoyalty : reallocationRoyalty;
 
-                uint256 royaltyShare = (_leadingBid * _actualAllocationRoyalty) / os.feeDenominator();
+                uint256 royaltyShare = (_leadingBid * _actualAllocationRoyalty) / _FEE_DENOMINATOR;
                 _addEarnings(_creator, royaltyShare);
                 _addEarnings(_beneficiary, _leadingBid - royaltyShare);
             }
         }
 
-        os.ownership().finalizeAllocation{value: _leadingBidderFunds}(
+        ownership.finalizeAllocation{value: _leadingBidderFunds}(
             orbId, _leadingBidder, _leadingBidderFunds, initialPrice[orbId]
         );
 
@@ -253,8 +253,8 @@ contract EnglishAuctionAllocation is AllocationMethod, OwnableUpgradeable, UUPSU
         if (priceIfWon_ > _MAXIMUM_PRICE) {
             revert InvalidPrice(priceIfWon_);
         }
-        if (priceIfWon_ < os.ownership().minimumPrice(orbId)) {
-            revert PriceTooLow(priceIfWon_, os.ownership().minimumPrice(orbId));
+        if (priceIfWon_ < ownership.minimumPrice(orbId)) {
+            revert PriceTooLow(priceIfWon_, ownership.minimumPrice(orbId));
         }
 
         fundsOf[orbId][_msgSender()] = totalFunds;

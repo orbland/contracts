@@ -74,7 +74,7 @@ contract PriceDelegation is DelegationMethod, OwnableUpgradeable, UUPSUpgradeabl
         delegationExpiration[orbId] = block.timestamp + delegationExpiration[orbId];
 
         emit DelegationPurchase(orbId, _msgSender(), price[orbId]);
-        if (os.invocations().isInvokable(orbId)) {
+        if (invocations.isInvokable(orbId)) {
             finalize(orbId);
         }
     }
@@ -120,9 +120,9 @@ contract PriceDelegation is DelegationMethod, OwnableUpgradeable, UUPSUpgradeabl
         address delegate = delegateAddress[orbId];
 
         fundsOf[orbId][delegate] -= _price;
-        _addEarnings(os.ownership().keeper(orbId), _price);
+        _addEarnings(ownership.keeper(orbId), _price);
 
-        os.invocations().invokeDelegated(orbId, delegate, delegationHash[orbId]);
+        invocations.invokeDelegated(orbId, delegate, delegationHash[orbId]);
 
         emit DelegationFinalization(orbId, delegate, _price);
         _reset(orbId);

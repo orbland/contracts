@@ -4,20 +4,23 @@ pragma solidity 0.8.20;
 import {IAllocationMethod} from "./IAllocationMethod.sol";
 import {Earnable} from "../Earnable.sol";
 import {OrbSystem} from "../OrbSystem.sol";
+import {OwnershipRegistry} from "../OwnershipRegistry.sol";
 
 abstract contract AllocationMethod is IAllocationMethod, Earnable {
     /// Maximum Orb price, limited to prevent potential overflows.
     uint256 internal constant _MAXIMUM_PRICE = 2 ** 128;
+    uint256 internal constant _KEEPER_TAX_PERIOD = 365 days;
 
     /// Addresses of all system contracts
-    OrbSystem public os;
+    OrbSystem public orbSystem;
+    OwnershipRegistry public ownership;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     modifier onlyOwnershipRegistry() virtual {
-        if (_msgSender() != os.ownershipRegistryAddress()) {
+        if (_msgSender() != orbSystem.ownershipRegistryAddress()) {
             revert NotOwnershipRegistryContract();
         }
         _;
@@ -52,14 +55,14 @@ abstract contract AllocationMethod is IAllocationMethod, Earnable {
     }
 
     modifier onlyCreator(uint256 orbId) virtual {
-        if (_msgSender() != os.ownership().creator(orbId)) {
+        if (_msgSender() != OwnershipRegistry(orbSystem.ownershipRegistryAddress()).creator(orbId)) {
             revert NotCreator();
         }
         _;
     }
 
     modifier onlyCreatorControlled(uint256 orbId) virtual {
-        if (os.isCreatorControlled(orbId) == false) {
+        if (orbSystem.isCreatorControlled(orbId) == false) {
             revert CreatorDoesNotControlOrb();
         }
         _;
@@ -74,15 +77,11 @@ abstract contract AllocationMethod is IAllocationMethod, Earnable {
     function isCancelable(uint256) public view virtual override returns (bool);
     function isFinalizable(uint256) public view virtual override returns (bool);
 
-    function _platformFee() internal virtual override returns (uint256) {
-        return os.platformFee();
-    }
-
-    function _feeDenominator() internal virtual override returns (uint256) {
-        return os.feeDenominator();
+    function setSystemContracts() external {
+        ownership = OwnershipRegistry(orbSystem.ownershipRegistryAddress());
     }
 
     function _earningsWithdrawalAddress(address user) internal virtual override returns (address) {
-        return os.earningsWithdrawalAddress(user);
+        return orbSystem.earningsWithdrawalAddress(user);
     }
 }

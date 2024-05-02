@@ -6,6 +6,9 @@ import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/cont
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 import {OrbSystem} from "./OrbSystem.sol";
+import {OwnershipRegistry} from "./OwnershipRegistry.sol";
+import {HarbergerTaxKeepership} from "./HarbergerTaxKeepership.sol";
+import {InvocationRegistry} from "./InvocationRegistry.sol";
 
 /// @title   Orb Invocation Access Vendor
 /// @author  Jonas Lekevicius
@@ -27,7 +30,9 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
         accessPurchased;
 
     /// Addresses of all system contracts
-    OrbSystem public os;
+    OrbSystem public orbSystem;
+    OwnershipRegistry public ownership;
+    HarbergerTaxKeepership public keepership;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  EVENTS
@@ -63,7 +68,12 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
-        os = OrbSystem(os_);
+        orbSystem = OrbSystem(os_);
+    }
+
+    function setSystemContracts() external {
+        ownership = OwnershipRegistry(orbSystem.ownershipRegistryAddress());
+        keepership = HarbergerTaxKeepership(orbSystem.harbergerTaxKeepershipAddress());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,18 +95,19 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
         if (accessPurchased[orbId][invocationId][_msgSender()] > 0) {
             revert AlreadyPurchased();
         }
-        (, uint256 responseTimestamp) = os.invocations().responses(orbId, invocationId);
+        (, uint256 responseTimestamp) =
+            InvocationRegistry(orbSystem.invocationRegistryAddress()).responses(orbId, invocationId);
         if (responseTimestamp == 0) {
             revert ResponseDoesNotExist();
         }
-        if (os.ownership().keeper(orbId) == os.ownershipRegistryAddress()) {
+        if (ownership.keeper(orbId) == orbSystem.ownershipRegistryAddress()) {
             revert NotOwnedBySolventKeeper();
         }
-        if (!os.ownership().keeperSolvent(orbId)) {
+        if (!keepership.keeperSolvent(orbId)) {
             revert NotOwnedBySolventKeeper();
         }
 
-        _addEarnings(os.ownership().keeper(orbId), msg.value);
+        _addEarnings(ownership.keeper(orbId), msg.value);
         accessPurchased[orbId][invocationId][_msgSender()] = block.timestamp;
 
         emit AccessPurchase(orbId, invocationId, _msgSender(), msg.value);
@@ -107,7 +118,7 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
     /// @param   invocationId  The invocation id
     /// @param   price_        New price for the invocation
     function setPrice(uint256 orbId, uint256 invocationId, uint256 price_) external virtual {
-        if (_msgSender() != os.ownership().keeper(orbId) || !os.ownership().keeperSolvent(orbId)) {
+        if (_msgSender() != ownership.keeper(orbId) || !keepership.keeperSolvent(orbId)) {
             revert NotKeeper();
         }
         price[orbId][invocationId] = price_;
@@ -129,15 +140,7 @@ contract InvocationAccessVendor is Earnable, OwnableUpgradeable, UUPSUpgradeable
     // solhint-disable no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
-    function _platformFee() internal virtual override returns (uint256) {
-        return os.platformFee();
-    }
-
-    function _feeDenominator() internal virtual override returns (uint256) {
-        return os.feeDenominator();
-    }
-
     function _earningsWithdrawalAddress(address user) internal virtual override returns (address) {
-        return os.earningsWithdrawalAddress(user);
+        return orbSystem.earningsWithdrawalAddress(user);
     }
 }
