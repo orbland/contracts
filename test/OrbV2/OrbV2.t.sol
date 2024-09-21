@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable no-console,func-name-mixedcase,private-vars-leading-underscore,one-contract-per-file
 pragma solidity 0.8.20;
 
-/* solhint-disable no-console */
-import {console} from "../../lib/forge-std/src/console.sol";
 import {Test} from "../../lib/forge-std/src/Test.sol";
 import {ERC1967Proxy} from "../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Initializable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {PaymentSplitter} from "../../src/CustomPaymentSplitter.sol";
+import {PaymentSplitter} from "../../src/legacy/CustomPaymentSplitter.sol";
 import {OrbHarness} from "./OrbV2Harness.sol";
-import {OrbPond} from "../../src/OrbPond.sol";
-import {OrbPondV2} from "../../src/OrbPondV2.sol";
-import {OrbInvocationRegistry} from "../../src/OrbInvocationRegistry.sol";
-import {Orb} from "../../src/Orb.sol";
-import {OrbV2} from "../../src/OrbV2.sol";
-import {OrbTestUpgrade} from "../../src/test-upgrades/OrbTestUpgrade.sol";
-import {Orb} from "../../src/Orb.sol";
+import {OrbPond} from "../../src/legacy/OrbPond.sol";
+import {OrbPondV2} from "../../src/legacy/OrbPondV2.sol";
+import {OrbInvocationRegistry} from "../../src/legacy/OrbInvocationRegistry.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
+import {OrbV2} from "../../src/legacy/OrbV2.sol";
+import {OrbTestUpgrade} from "../../src/legacy/test-upgrades/OrbTestUpgrade.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
-/* solhint-disable func-name-mixedcase,private-vars-leading-underscore */
 contract OrbTestBase is Test {
     PaymentSplitter internal paymentSplitterImplementation;
 
@@ -66,9 +65,7 @@ contract OrbTestBase is Test {
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondV1Implementation),
             abi.encodeWithSelector(
-                OrbPond.initialize.selector,
-                address(orbInvocationRegistry),
-                address(paymentSplitterImplementation)
+                OrbPond.initialize.selector, address(orbInvocationRegistry), address(paymentSplitterImplementation)
             )
         );
         bytes memory orbInitializeCalldata = abi.encodeWithSelector(Orb.initialize.selector, address(0), "", "", "");
@@ -208,19 +205,17 @@ contract InitialStateTest is OrbTestBase {
     }
 
     function test_revertsInitializer() public {
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         orb.initialize(address(0), "", "", "");
     }
 
     function test_revertsV2Initializer() public {
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
         orb.initializeV2();
     }
 
     function test_initializerSuccess() public {
-        ERC1967Proxy orbProxy = new ERC1967Proxy(
-            address(orbV2Implementation), ""
-        );
+        ERC1967Proxy orbProxy = new ERC1967Proxy(address(orbV2Implementation), "");
         Orb _orb = Orb(address(orbProxy));
         assertEq(_orb.owner(), address(0));
         _orb.initialize(address(0xC0FFEE), "name", "symbol", "tokenURI");

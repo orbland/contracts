@@ -6,13 +6,13 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Script} from "../lib/forge-std/src/Script.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
-import {OrbPond} from "../src/OrbPond.sol";
-import {OrbPondV2} from "../src/OrbPondV2.sol";
-import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
-import {OrbInvocationTipJar} from "../src/OrbInvocationTipJar.sol";
-import {Orb} from "../src/Orb.sol";
-import {OrbV2} from "../src/OrbV2.sol";
+import {PaymentSplitter} from "../src/legacy/CustomPaymentSplitter.sol";
+import {OrbPond} from "../src/legacy/OrbPond.sol";
+import {OrbPondV2} from "../src/legacy/OrbPondV2.sol";
+import {OrbInvocationRegistry} from "../src/legacy/OrbInvocationRegistry.sol";
+import {InvocationTipJar} from "../src/InvocationTipJar.sol";
+import {Orb} from "../src/legacy/Orb.sol";
+import {OrbV2} from "../src/legacy/OrbV2.sol";
 
 contract LocalDeployBase is Script {
     address public immutable orbLandAddress = 0x9F49230672c52A2b958F253134BB17Ac84d30833;
@@ -23,8 +23,8 @@ contract LocalDeployBase is Script {
     OrbInvocationRegistry public orbInvocationRegistryImplementation;
     OrbInvocationRegistry public orbInvocationRegistry;
 
-    OrbInvocationTipJar public orbInvocationTipJarImplementation;
-    OrbInvocationTipJar public orbInvocationTipJar;
+    InvocationTipJar public orbInvocationTipJarImplementation;
+    InvocationTipJar public orbInvocationTipJar;
 
     OrbPond public orbPondImplementation;
     OrbPondV2 public orbPondV2Implementation;
@@ -50,8 +50,8 @@ contract LocalDeployBase is Script {
         paymentSplitterImplementation = new PaymentSplitter();
         console.log("PaymentSplitter implementation: ", address(paymentSplitterImplementation));
 
-        orbInvocationTipJarImplementation = new OrbInvocationTipJar();
-        console.log("OrbInvocationTipJar implementation: ", address(orbInvocationTipJarImplementation));
+        orbInvocationTipJarImplementation = new InvocationTipJar();
+        console.log("InvocationTipJar implementation: ", address(orbInvocationTipJarImplementation));
 
         ERC1967Proxy orbInvocationRegistryProxy = new ERC1967Proxy(
             address(orbInvocationRegistryImplementation),
@@ -62,17 +62,15 @@ contract LocalDeployBase is Script {
 
         ERC1967Proxy orbInvocationTipJarProxy = new ERC1967Proxy(
             address(orbInvocationTipJarImplementation),
-            abi.encodeWithSelector(OrbInvocationTipJar.initialize.selector, address(orbLandAddress), 5_00)
+            abi.encodeWithSelector(InvocationTipJar.initialize.selector, address(orbLandAddress), 5_00)
         );
-        orbInvocationTipJar = OrbInvocationTipJar(address(orbInvocationTipJarProxy));
-        console.log("OrbInvocationTipJar: ", address(orbInvocationTipJar));
+        orbInvocationTipJar = InvocationTipJar(address(orbInvocationTipJarProxy));
+        console.log("InvocationTipJar: ", address(orbInvocationTipJar));
 
         ERC1967Proxy orbPondProxy = new ERC1967Proxy(
             address(orbPondImplementation),
             abi.encodeWithSelector(
-                OrbPond.initialize.selector,
-                address(orbInvocationRegistry),
-                address(paymentSplitterImplementation)
+                OrbPond.initialize.selector, address(orbInvocationRegistry), address(paymentSplitterImplementation)
             )
         );
         bytes memory orbPondV1InitializeCalldata =

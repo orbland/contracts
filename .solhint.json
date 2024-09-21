@@ -4,7 +4,7 @@
         "max-states-count": "off",
         "max-line-length": [
             "error",
-            120
+            125
         ],
         "reason-string": [
             "warn",

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Address} from "../../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {Orb} from "./Orb.sol";
 import {OrbInvocationRegistry} from "./OrbInvocationRegistry.sol";
@@ -89,7 +89,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
     /// @dev  Initializes the contract.
     function initialize(address platformAddress_, uint256 platformFee_) public initializer {
-        __Ownable_init();
+        __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
 
         if (platformAddress_ == address(0)) {
@@ -157,7 +157,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
         claimedInvocations[orb][contentHash] = invocationIndex;
         platformFunds += platformPortion;
-        AddressUpgradeable.sendValue(payable(invoker), invokerPortion);
+        Address.sendValue(payable(invoker), invokerPortion);
 
         emit TipsClaim(orb, contentHash, invoker, invokerPortion);
     }
@@ -176,7 +176,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
 
         totalTips[orb][invocationHash] -= tipValue;
         tipperTips[msg.sender][orb][invocationHash] = 0;
-        AddressUpgradeable.sendValue(payable(msg.sender), tipValue);
+        Address.sendValue(payable(msg.sender), tipValue);
 
         emit TipWithdrawal(orb, invocationHash, msg.sender, tipValue);
     }
@@ -201,7 +201,7 @@ contract OrbInvocationTipJar is OwnableUpgradeable, UUPSUpgradeable {
         if (_platformFunds == 0) {
             revert NoFundsAvailable();
         }
-        AddressUpgradeable.sendValue(payable(_platformAddress), _platformFunds);
+        Address.sendValue(payable(_platformAddress), _platformFunds);
         platformFunds = 0;
         emit TipsClaim(address(0), bytes32(0), _platformAddress, _platformFunds);
     }

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IERC165Upgradeable} from
-    "../../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/IERC165Upgradeable.sol";
+import {IERC165} from "../../../lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
-interface IOrb is IERC165Upgradeable {
+interface IOrb is IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

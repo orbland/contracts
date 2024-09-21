@@ -2,10 +2,10 @@
 pragma solidity 0.8.20;
 
 import {ERC165Upgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
-import {OwnableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AddressUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol";
+    "../../lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Address} from "../../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 import {Orb} from "./Orb.sol";
 
@@ -36,8 +36,6 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     );
     event CleartextRecording(address indexed orb, uint256 indexed invocationId, string cleartext);
     event ResponseFlagging(address indexed orb, uint256 indexed invocationId, address indexed flagger);
-
-    event ContractAuthorization(address indexed contractAddress, bool indexed authorized);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  ERRORS
@@ -111,7 +109,7 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
 
     /// @dev  Initializes the contract.
     function initialize() public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
     }
 
@@ -255,7 +253,7 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
         if (authorizedContracts[addressToCall] == false) {
             revert ContractNotAuthorized(addressToCall);
         }
-        AddressUpgradeable.functionCall(addressToCall, dataToCall);
+        Address.functionCall(addressToCall, dataToCall);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -332,14 +330,6 @@ contract OrbInvocationRegistry is ERC165Upgradeable, OwnableUpgradeable, UUPSUpg
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  FUNCTIONS: UPGRADING AND MANAGEMENT
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// @notice  Allows the owner address to authorize externally callable contracts.
-    /// @param   addressToAuthorize  Address of the contract to authorize.
-    /// @param   authorizationValue  Boolean value to set the authorization to.
-    function authorizeContract(address addressToAuthorize, bool authorizationValue) external virtual onlyOwner {
-        authorizedContracts[addressToAuthorize] = authorizationValue;
-        emit ContractAuthorization(addressToAuthorize, authorizationValue);
-    }
 
     /// @notice  Returns the version of the Orb Invocation Registry. Internal constant `_VERSION` will be increased with
     ///          each upgrade.

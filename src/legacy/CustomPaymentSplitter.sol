@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {PaymentSplitterUpgradeable} from
-    "../lib/openzeppelin-contracts-upgradeable/contracts/finance/PaymentSplitterUpgradeable.sol";
+    "./lib/openzeppelin-contracts-upgradeable-v4/contracts/PaymentSplitterUpgradeable.sol";
 
 /// @title   CustomPaymentSplitter - Payment Splitter with initializer
 /// @author  Jonas Lekevicius

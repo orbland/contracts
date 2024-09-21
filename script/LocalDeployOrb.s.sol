@@ -6,24 +6,23 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {Script} from "../lib/forge-std/src/Script.sol";
 import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {PaymentSplitter} from "../src/CustomPaymentSplitter.sol";
-import {OrbPond} from "../src/OrbPond.sol";
-import {OrbPondV2} from "../src/OrbPondV2.sol";
-import {OrbInvocationRegistry} from "../src/OrbInvocationRegistry.sol";
-import {OrbInvocationTipJar} from "../src/OrbInvocationTipJar.sol";
-import {Orb} from "../src/OrbV1Renamed.sol";
-import {OrbV2} from "../src/OrbV2.sol";
+import {PaymentSplitter} from "../src/legacy/CustomPaymentSplitter.sol";
+import {OrbPond} from "../src/legacy/OrbPond.sol";
+import {OrbPondV2} from "../src/legacy/OrbPondV2.sol";
+import {InvocationRegistry} from "../src/InvocationRegistry.sol";
+import {InvocationTipJar} from "../src/InvocationTipJar.sol";
+import {Orb} from "../src/legacy/OrbV1Renamed.sol";
+import {OrbV2} from "../src/legacy/OrbV2.sol";
 
 contract LocalDeployOrb is Script {
     address public immutable creatorAddress = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc;
     address public immutable orbLandAddress = 0x9F49230672c52A2b958F253134BB17Ac84d30833;
 
     // Fixed base deployment addresses
-    OrbInvocationRegistry public immutable orbInvocationRegistry =
-        OrbInvocationRegistry(0xa513E6E4b8f2a923D98304ec87F64353C4D5C853);
+    InvocationRegistry public immutable orbInvocationRegistry =
+        InvocationRegistry(0xa513E6E4b8f2a923D98304ec87F64353C4D5C853);
     OrbPondV2 public immutable orbPond = OrbPondV2(0x8A791620dd6260079BF849Dc5567aDC3F2FdC318);
-    OrbInvocationTipJar public immutable orbInvocationTipJar =
-        OrbInvocationTipJar(0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6);
+    InvocationTipJar public immutable orbInvocationTipJar = InvocationTipJar(0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6);
 
     PaymentSplitter public orbBeneficiary;
     OrbV2 public orb;
@@ -123,7 +122,7 @@ contract LocalDeployOrb is Script {
                 orb.swearOath(oathHash, honoredUntil);
             }
             orb.listWithPrice(1 ether);
-            orbInvocationTipJar.setMinimumTip(address(orb), 0.05 ether);
+            orbInvocationTipJar.setMinimumTip(1, 0.05 ether);
             orb.relinquish(false);
             vm.stopBroadcast();
         }

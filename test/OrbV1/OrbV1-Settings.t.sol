@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable func-name-mixedcase,one-contract-per-file
 pragma solidity 0.8.20;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
+import {OwnableUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 import {OrbTestBase} from "./OrbV1.t.sol";
-import {Orb} from "../../src/Orb.sol";
+import {Orb} from "../../src/legacy/Orb.sol";
 
-/* solhint-disable func-name-mixedcase */
 contract SwearOathTest is OrbTestBase {
     event OathSwearing(bytes32 indexed oathHash, uint256 indexed honoredUntil, uint256 indexed responsePeriod);
 
     function test_swearOathOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.swearOath(keccak256(abi.encodePacked("test oath")), 100, 3600);
 
         vm.prank(owner);
@@ -48,7 +48,7 @@ contract ExtendHonoredUntilTest is OrbTestBase {
 
     function test_extendHonoredUntilOnlyOwner() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.extendHonoredUntil(101);
 
         makeKeeperAndWarp(user, 1 ether);
@@ -75,7 +75,7 @@ contract ExtendHonoredUntilTest is OrbTestBase {
 contract SettingTokenURITest is OrbTestBase {
     function test_tokenURIrevertsIfUser() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setTokenURI("https://static.orb.land/new/");
     }
 
@@ -102,7 +102,7 @@ contract SettingAuctionParametersTest is OrbTestBase {
 
     function test_setAuctionParametersOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setAuctionParameters(0.2 ether, 0.2 ether, 2 days, 1 days, 10 minutes);
 
         vm.prank(owner);
@@ -177,7 +177,7 @@ contract SettingFeesTest is OrbTestBase {
 
     function test_setFeesOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setFees(100_00, 100_00);
 
         vm.prank(owner);
@@ -236,7 +236,7 @@ contract SettingCooldownTest is OrbTestBase {
 
     function test_setCooldownOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setCooldown(1 days, 2 days);
 
         vm.prank(owner);
@@ -281,7 +281,7 @@ contract SettingCleartextMaximumLengthTest is OrbTestBase {
 
     function test_setCleartextMaximumLengthOnlyOwnerControlled() public {
         vm.prank(user);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, user));
         orb.setCleartextMaximumLength(1);
 
         vm.prank(owner);
